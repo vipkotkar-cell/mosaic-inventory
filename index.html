@@ -147,6 +147,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--font);font-size:13px
 .stacked-bar{height:22px;display:flex;border-radius:4px;overflow:hidden;background:var(--br)}
 .stacked-seg{height:100%;position:relative;transition:all .2s}
 .stacked-seg:hover{opacity:.85}
+.cat-tbl-row{cursor:pointer;transition:background .1s}.cat-tbl-row:hover{background:var(--sf)}
 .stacked-seg:hover::after{content:attr(data-tip);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--tx);color:#fff;font-size:9px;padding:3px 7px;border-radius:4px;white-space:nowrap;margin-bottom:4px;font-family:var(--mono);z-index:20}
 .stacked-legend{display:flex;gap:14px;flex-wrap:wrap;padding:10px 18px 16px;border-top:1px solid var(--br);margin-top:6px}
 
@@ -354,13 +355,13 @@ tbody tr:hover td{background:var(--sf)}
     <div class="sb-date-s" id="sb-date-s">Inventory Health Monitor</div>
   </div>
   <nav class="sb-nav">
-    <div class="sb-grp">A. Inventory</div>
-    <button class="nav-item on" onclick="goPage('overview')" id="nav-overview"><span class="nav-icon">&#9635;</span>Inventory Overview</button>
-    <button class="nav-item" onclick="goPage('expiry')" id="nav-expiry"><span class="nav-icon">&#9203;</span>Expiry Watch<span class="nav-bdg nav-bdg-a" id="nb-expiry">-</span></button>
-
-    <div class="sb-grp">B. Inventory Impact Tracking</div>
-    <button class="nav-item" onclick="goPage('today')" id="nav-today"><span class="nav-icon">&#9888;</span>Today&apos;s Impact<span class="nav-bdg" id="nb-today">-</span></button>
+    <div class="sb-grp">Inventory Impact Tracking</div>
+    <button class="nav-item on" onclick="goPage('today')" id="nav-today"><span class="nav-icon">&#9888;</span>Today&apos;s Impact<span class="nav-bdg" id="nb-today">-</span></button>
     <button class="nav-item" onclick="goPage('wtd')" id="nav-wtd"><span class="nav-icon">&#128200;</span>WTD &amp; MTD<span class="nav-bdg nav-bdg-g" id="nb-wtd">-</span></button>
+
+    <div class="sb-grp">Inventory Reference</div>
+    <button class="nav-item" onclick="goPage('overview')" id="nav-overview"><span class="nav-icon">&#9635;</span>Inventory Overview</button>
+    <button class="nav-item" onclick="goPage('expiry')" id="nav-expiry"><span class="nav-icon">&#9203;</span>Expiry Watch<span class="nav-bdg nav-bdg-a" id="nb-expiry">-</span></button>
   </nav>
   <div class="sb-foot">
     <a class="sb-sheet-btn" href="https://docs.google.com/spreadsheets/d/1Jz1cCR6f8anX4y3O9bn3lRQsyx5bYy2OUxhZcgmgjvY" target="_blank">&#128202; View Data Sheet</a>
@@ -525,6 +526,14 @@ tbody tr:hover td{background:var(--sf)}
 
   <!-- ═══ TODAY'S IMPACT ═══ -->
   <div class="pg content" id="pg-today">
+    <!-- View Toggle -->
+    <div style="display:flex;gap:0;margin-bottom:16px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;width:fit-content">
+      <button class="sub-tab on" id="tog-movement" onclick="switchView('movement')" style="min-width:180px">&#128200; Movement Analysis</button>
+      <button class="sub-tab" id="tog-remarks" onclick="switchView('remarks')" style="min-width:220px">&#128203; Top 10 Negative Remarks</button>
+    </div>
+
+    <!-- VIEW 1: Movement Analysis -->
+    <div id="view-movement">
     <!-- Prominent Impact Summary Tiles -->
     <div class="impact-hero" id="impact-hero"></div>
     <!-- Category breakdown strip -->
@@ -565,6 +574,39 @@ tbody tr:hover td{background:var(--sf)}
         <div class="card"><div id="biz-bars"></div></div>
       </div>
     </div>
+    </div><!-- /view-movement -->
+
+    <!-- VIEW 2: Top 10 Negative Remarks -->
+    <div id="view-remarks" style="display:none">
+      <!-- Remarks Summary -->
+      <div id="rmk-summary" style="margin-bottom:14px"></div>
+      <!-- Business Toggle Filter -->
+      <div id="rmk-biz-toggle" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" data-active="All"></div>
+
+      <!-- Top 10 Table -->
+      <div class="card">
+        <div class="card-h">
+          <div class="card-t">Top 10 Negative Movements — Remarks</div>
+          <span class="badge bdg-r" id="rmk-top-cnt">Top 10</span>
+        </div>
+        <div class="tbl-wrap" style="max-height:600px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead><tr>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);white-space:nowrap">#</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)"">SKU ID</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Item Type Name</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Movement Type</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Business</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);min-width:200px">Remarks</th>
+            </tr></thead>
+            <tbody id="rmk-top-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /view-remarks -->
   </div>
 
     <!-- ═══ WTD & MTD — CEO Review ═══ -->
@@ -576,68 +618,64 @@ tbody tr:hover td{background:var(--sf)}
 
     <!-- WTD Panel -->
     <div id="panel-wtd">
-      <!-- DEBUG PANEL - remove after confirming data -->
-      <div id="debug-panel" style="background:#1a1a2e;color:#00ff88;font-family:monospace;font-size:10px;padding:12px 14px;border-radius:8px;margin-bottom:14px;white-space:pre-wrap;max-height:200px;overflow-y:auto;display:none"></div>
-      <div id="wtd-kpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px"></div>
+      <div class="impact-hero" id="wtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
       <div id="wtd-insight"></div>
-      <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="card" style="padding:16px 20px 14px">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact Trend</div>
-          <div class="trend-bars" id="wtd-trend"></div>
-          <div id="wtd-trend-labels" style="display:flex;justify-content:space-between;padding-top:6px;font-size:8px;color:var(--mu)"></div>
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1.8fr;gap:14px;margin-bottom:14px">
         <div class="card">
-          <div id="wtd-gauge"></div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Movement Breakdown</div>
+          <div id="wtd-mov-table"></div>
+        </div>
+        <div class="card" style="padding:16px 20px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact — Business-wise Trends</div>
+          <div id="wtd-trend" style="width:100%;"></div>
         </div>
       </div>
+      <div id="wtd-gauge" style="display:none"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div id="wtd-drivers"></div>
-        <div>
-          <div class="card">
-            <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 5 Facilities by Net COGS</div>
-            <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>
-              <th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">#</th>
-              <th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">Facility</th>
-              <th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
-            </tr></thead><tbody id="wtd-fac-rank"></tbody></table>
-          </div>
-          <div class="card" style="margin-top:14px">
-            <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-            <div id="wtd-biz-bars"></div>
-          </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities by Net COGS</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>
+            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">#</th>
+            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>
+            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
+            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
+          </tr></thead><tbody id="wtd-fac-rank"></tbody></table>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+          <div id="wtd-biz-bars"></div>
         </div>
       </div>
     </div>
 
     <!-- MTD Panel -->
     <div id="panel-mtd" style="display:none">
-      <div id="mtd-kpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px"></div>
+      <div class="impact-hero" id="mtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
       <div id="mtd-insight"></div>
-      <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="card" style="padding:16px 20px 14px">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact Trend (MTD)</div>
-          <div class="trend-bars" id="mtd-trend"></div>
-          <div id="mtd-trend-labels" style="display:flex;justify-content:space-between;padding-top:6px;font-size:8px;color:var(--mu)"></div>
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1.8fr;gap:14px;margin-bottom:14px">
         <div class="card">
-          <div id="mtd-gauge"></div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Movement Breakdown</div>
+          <div id="mtd-mov-table"></div>
+        </div>
+        <div class="card" style="padding:16px 20px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact — Business-wise Trends (MTD)</div>
+          <div id="mtd-trend" style="width:100%;"></div>
         </div>
       </div>
+      <div id="mtd-gauge" style="display:none"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div id="mtd-drivers"></div>
-        <div>
-          <div class="card">
-            <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 5 Facilities by Net COGS</div>
-            <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>
-              <th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">#</th>
-              <th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">Facility</th>
-              <th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
-            </tr></thead><tbody id="mtd-fac-rank"></tbody></table>
-          </div>
-          <div class="card" style="margin-top:14px">
-            <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-            <div id="mtd-biz-bars"></div>
-          </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities by Net COGS</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>
+            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">#</th>
+            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>
+            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
+            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
+          </tr></thead><tbody id="mtd-fac-rank"></tbody></table>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+          <div id="mtd-biz-bars"></div>
         </div>
       </div>
     </div>
@@ -653,6 +691,7 @@ const STOCK_URL = PROXY + "?sheet=NI_TodayStock";
 const EXPIRY_URL= PROXY + "?sheet=NI_Expiry";
 const HIST_URL  = PROXY + "?sheet=NI_History";
 const REMK_URL  = PROXY + "?sheet=NI_Remarks";
+const FAC_URL   = PROXY + "?sheet=NI_FacHistory";
 const COGS_DB   = {"MWBWBCP.00166.B0_N":58.24,"MWBWHFFS.0039.B0_N":11.44,"MWBWHFFS.0040.B0_N":18.5,"MWBWHFFS.0041.B0_N":12.98,"MWBWHFP.00145.B0_N":170.41,"MWBWHFP.00161.B0_N":32.47,"MWBWHFP.00167.B0_N":96.96,"MWBWHFP.0017.B0_N":58.64,"MWBWHFP.00172.B0_N":63.79,"MWBWHFP.0018.B0_N":75.98,"MWBWHFP.0019.B0_N":82.21,"MWBWHFP.0020.B0_N":75.72,"MWBWHFP.00204.B0_N":240.28,"MWBWHFP.0021.B0_N":85.34,"MWBWHFP.00225.B0_N":91.0,"MWBWHFP.00229.B0_N":95.54,"MWBWHFP.00310.B0_N":314.79,"MWBWHFP.00391.B0_N":89.29,"MWBWHFP.00397.B0_N":168.14,"MWBWHFP.00531.B0_N":83.53,"MWBWHFP.00538.B0_N":61.47,"MWBWHFP.00541.B0_N":167.0,"MWBWHFP.00574.B0_N":58.64,"MWBWHFP.00575.B0_N":125.69,"MWBWHFP.0060.B0_N":167.85,"MWBWHFP.00609.B0_N":100.25,"MWBWHFP.00610.B0_N":99.77,"MWBWHFP.00625.B0_N":141.64,"MWBWHFP.00626.B0_N":169.64,"MWBWHFP.00635.B0_N":109.8,"MWBWHFP.00637.B0_N":52.22,"MWBWHFP.00644.B0_N":58.19,"MWBWHFP.00667.B0_N":176.25,"MWBWHFP.00672.B0_N":220.95,"MWBWHFP.0081.B0_N":171.05,"MWBWICP.00334.B0_N":109.0,"MWBWNTP.00168.B0_N":172.57,"MWBWNTP.00341.B0_N":252.89,"MWBWNTP.00345.B0_N":162.38,"MWBWNTP.00347.B0_N":198.71,"MWBWNTP.00348.B0_N":388.65,"MWBWNTP.00349.B0_N":137.79,"MWBWPCP.0066.B0_N":79.22,"MWBWPCP.0092.B0_N":89.16,"MWBWSKK.00201.B0_N":73.21,"MWBWSKK.0057.B0_N":19.13,"MWBWSKP.0001.B0_N":54.1,"MWBWSKP.0002.B0_N":30.7,"MWBWSKP.0003.B0_N":54.81,"MWBWSKP.0005.B0_N":1.0,"MWBWSKP.0006.B0_N":80.19,"MWBWSKP.00132.B0_N":199.01,"MWBWSKP.00143.B0_N":1.0,"MWBWSKP.00165.B0_N":96.85,"MWBWSKP.00169.B0_N":36.6,"MWBWSKP.00206.B0_N":45.33,"MWBWSKP.00214.B0_N":81.48,"MWBWSKP.00226.B0_N":327.57,"MWBWSKP.00240.B0_N":74.63,"MWBWSKP.00241.B0_N":72.81,"MWBWSKP.00265.B0_N":29.85,"MWBWSKP.00266.B0_N":1.0,"MWBWSKP.00328.B0_N":69.81,"MWBWSKP.00401.B0_N":77.52,"MWBWSKP.00418.B0_N":33.6,"MWBWSKP.00419.B0_N":1.0,"MWBWSKP.00427.B0_N":75.4,"MWBWSKP.00428.B0_N":61.52,"MWBWSKP.00436.B0_N":73.04,"MWBWSKP.00437.B0_N":40.02,"MWBWSKP.00468.B0_N":1.0,"MWBWSKP.00504.B0_N":26.52,"MWBWSKP.00505.B0_N":112.48,"MWBWSKP.00506.B0_N":52.58,"MWBWSKP.00518.B0_N":1.0,"MWBWSKP.00524.B0_N":1.0,"MWBWSKP.00525.B0_N":43.7,"MWBWSKP.00526.B0_N":36.0,"MWBWSKP.00532.B0_N":116.4,"MWBWSKP.00533.B0_N":69.49,"MWBWSKP.00536.B0_N":1.0,"MWBWSKP.00537.B0_N":49.41,"MWBWSKP.00584.B0_N":104.79,"MWBWSKP.00585.B0_N":75.31,"MWBWSKP.00586.B0_N":79.75,"MWBWSKP.00587.B0_N":51.26,"MWBWSKP.00589.B0_N":40.92,"MWBWSKP.00613.B7_N":144.92,"MWBWSKP.00614.B0_N":43.6,"MWBWSKP.00626.B0_N":28.16,"MWBWSKP.00630.B0_N":98.0,"MWBWSKP.00646.B0_N":44.03,"MWBWSKP.00647.B0_N":77.8,"MWBWSKP.00648.B0_N":67.91,"MWBWSKP.00649.B0_N":143.54,"MWBWSKP.0065.B0_N":28.45,"MWBWSKP.00650.B0_N":72.22,"MWBWSKP.00651.B0_N":108.71,"MWBWSKP.00652.B0_N":96.49,"MWBWSKP.00653.B0_N":17.02,"MWBWSKP.00657.B0_N":97.76,"MWBWSKP.00659.B0_N":91.95,"MWBWSKP.00660.B0_N":28.04,"MWBWSKP.00661.B0_N":17.8,"MWBWSKP.00672.B0_N":103.19,"MWBWSKP.00676.B0_N":92.55,"MWBWSKP.00677.B0_N":141.28,"MWBWSKP.00680.B0_N":45.38,"MWBWSKP.00681.B0_N":37.78,"MWBWSKP.00683.B0_N":1245.32,"MWBWSKP.00684.B0_N":45.19,"MWBWSKP.00687.B0_N":56.25,"MWBWSKP.00690.B0_N":26.74,"MWBWSKP.00697.B0_N":117.95,"MWBWSKP.00703.B0_N":78.5,"MWBWSKP.0083.B0_N":165.26,"MWBWSKS.0038.B0_N":1.0,"MWBWSKS.0045.B0_N":12.18,"MWBWSKS.0049.B0_N":17.23,"MWBWSKS.0050.B0_N":18.33,"MWBWSKS.0051.B0_N":13.82,"MWBWSKS.0052.B0_N":15.06,"MWBWSKS.0054.B0_N":26.95,"MWBWSKS.0062.B0_N":28.08,"MWBWSKS.0064.B0_N":15.23,"MWBWSKS.0065.B0_N":20.21,"MWBWUSAHFP.00001.B0_N":122.76,"MWBWUSAPRP.00001.B0_N":171.58,"MWBWUSAPRP.00003.B0_N":218.19,"MWBWUSAPRP.00022.B0_N":416.29,"MWLJDCP.0001.B0_N":28.35,"MWLJDCP.00011.B0_N":37.9,"MWLJDCS.0001.B0_N":8.55,"MWLJGCP.0005.B0_N":2.75,"MWLJGCP.0006.B0_N":2.0,"MWLJGCP.0007.B0_N":14.0,"MWLJGCP.0008.B0_N":14.0,"MWLJGCP.0009.B0_N":110.0,"MWLJGNP.00021.B0_N":1.0,"MWLJGNP.00022.B0_N":4.33,"MWLJGNP.00024.B0_N":13.21,"MWLJGNP.00025.B0_N":1.0,"MWLJGNP.00026.B0_N":12.96,"MWLJGNP.00027.B0_N":12.88,"MWLJGNP.00030.B0_N":1.0,"MWLJGNP.00031.B0_N":1.05,"MWLJGNP.00051.B0_N":60.0,"MWLJGNP.00052.B0_N":60.0,"MWLJGNP.00053.B0_N":60.0,"MWLJGNP.00059.B0_N":55.0,"MWLJGNP.00069.B0_N":67.0,"MWLJGNP.00071.B0_N":6.5,"MWLJHYP.0001.B0_N":64.21,"MWLJHYP.0003.B0_N":61.67,"MWLJHYP.0006.B0_N":72.6,"MWLJNTK.00102.B0_N":287.57,"MWLJNTK.00366.B0_N":13.32,"MWLJNTK.00367.B0_N":129.21,"MWLJNTK.00379.B0_N":14.26,"MWLJNTP.00017.B0_N":165.79,"MWLJNTP.00018.B0_N":53.0,"MWLJNTP.00019.B0_N":179.21,"MWLJNTP.0002.B0_N":100.14,"MWLJNTP.00023.B0_N":166.28,"MWLJNTP.00027.B0_N":146.13,"MWLJNTP.0003.B0_N":150.26,"MWLJNTP.00033.B0_N":268.28,"MWLJNTP.00034.B0_N":155.16,"MWLJNTP.00040.B0_N":114.4,"MWLJNTP.00043.B0_N":95.12,"MWLJNTP.00051.B0_N":90.27,"MWLJNTP.00056.B0_N":254.74,"MWLJNTP.00059.B0_N":172.92,"MWLJNTP.00060.B0_N":104.53,"MWLJNTP.0007.B0_N":96.2,"MWLJNTP.000709.B0_N":319.44,"MWLJNTP.000748.B0_N":126.73,"MWLJNTP.000755.B0_N":106.08,"MWLJNTP.000759.B0_N":204.77,"MWLJNTP.00122.B0_N":139.27,"MWLJNTP.00124.B0_N":146.51,"MWLJNTP.00126.B0_N":205.26,"MWLJNTP.00138.B_N":30.29,"MWLJNTP.00169.B0_N":315.71,"MWLJNTP.00177.B0_N":176.78,"MWLJNTP.00241.B0_N":94.59,"MWLJNTP.00248.B0_N":96.32,"MWLJNTP.00339.B0_N":297.92,"MWLJNTP.00370.B0_N":64.03,"MWLJNTP.00372.B0_N":173.29,"MWLJNTP.00380.B0_N":94.59,"MWLJNTP.00381.B0_N":69.63,"MWLJNTP.00406.B0_N":125.86,"MWLJNTP.00423.B0_N":169.89,"MWLJNTP.00480.B0_N":96.77,"MWLJNTP.00481.B0_N":41.01,"MWLJNTP.00482.B0_N":165.26,"MWLJNTP.00483.B0_N":164.66,"MWLJNTP.00484.B0_N":169.24,"MWLJNTP.00485.B0_N":169.53,"MWLJNTP.00500.B0_N":466.82,"MWLJNTP.00501.B0_N":38.76,"MWLJNTP.00507.B0_N":408.06,"MWLJNTP.00519.B0_N":91.24,"MWLJNTP.00528.B0_N":192.26,"MWLJNTP.00529.B0_N":188.4,"MWLJNTP.00530.B0_N":175.64,"MWLJNTP.00531.B0_N":182.59,"MWLJNTP.00532.B0_N":170.04,"MWLJNTP.00533.B0_N":175.02,"MWLJNTP.00534.B0_N":166.71,"MWLJNTP.00535.B0_N":504.77,"MWLJNTP.00536.B0_N":51.79,"MWLJNTP.00548.B0_N":106.08,"MWLJNTP.00558.B0_N":194.34,"MWLJNTP.00560.B0_N":68.75,"MWLJNTP.00561.B0_N":162.9,"MWLJNTP.00562.B0_N":14.33,"MWLJNTP.00563.B0_N":14.22,"MWLJNTP.00571.B0_N":120.67,"MWLJNTP.00572.B0_N":74.78,"MWLJNTP.00582.B0_N":135.5,"MWLJNTP.00589.B0_N":46.57,"MWLJNTP.00591.B0_N":11.43,"MWLJNTP.00592.B0_N":9.96,"MWLJNTP.00636.B0_N":167.81,"MWLJNTP.00664.B0_N":87.5,"MWLJNTP.00667.B0_N":425.42,"MWLJNTP.00668.B0_N":387.12,"MWLJNTP.00676.B0_N":8.68,"MWLJNTP.00678.B0_N":4.68,"MWLJNTP.00687.B0_N":304.3,"MWLJNTP.00696.B0_N":151.75,"MWLJNTP.00697.B0_N":79.44,"MWLJNTP.00698.B0_N":160.21,"MWLJNTP.00699.B0_N":295.69,"MWLJNTP.00700.B0_N":315.76,"MWLJNTS.0001.B0_N":13.03,"MWLJNTS.00016.B0_N":12.39,"MWLJNTS.00018.B0_N":13.79,"MWLJNTS.0002.B0_N":11.07,"MWLJNTS.00021.B0_N":14.23,"MWLJNTS.00022.B0_N":12.89,"MWLJNTS.0003.B0_N":11.52,"MWLJNTS.00039.B0_N":11.33,"MWLJNTS.00040.B0_N":15.44,"MWLJNTS.00041.B0_N":20.04,"MWLJNTS.00043.B0_N":12.41,"MWLJNTS.0006.BO_N":17.03,"MWLJNTS.00064.B0_N":18.23,"MWLJNTS.0008.B0_N":11.14,"MWLJPCP.0003.B0_N":142.77,"MWLJSKP.0001.B0_N":92.8,"MWLJSKP.0002.B0_N":62.68,"MWLJSKP.0003.B0_N":61.5,"MWLJSKP.0007.B0_N":62.74,"MWLJSKP.0008.B0_N":55.0,"MWLJSKP.0034.B0_N":97.03,"MWLJSKS.0001.B0_N":13.73,"MWLJUAEP.00045.B0_N":78.43,"MWMMBDK.0280.AAAA.B0_N":60.0,"MWMMBDP.0001.AAAA.B0_N":44.68,"MWMMBDP.0003.AAAA.B0_N":70.21,"MWMMBDP.0005.AAAA.B0_N":67.95,"MWMMBDP.0006.AAAA.B0_N":84.31,"MWMMBDP.0085.AAAA.B0_R":75.41,"MWMMBDP.0128.AAAA.B0_R":97.89,"MWMMBDP.0132.AAAA.B0_R":65.07,"MWMMGCP.0005.AAAA.B0_N":0.55,"MWMMHKC.00001.AAAA.B0_N":1.5,"MWMMHRP.0001.AAAA.B0_N":56.18,"MWMMHRP.0002.AAAA.B0_N":72.22,"MWMMHRP.0003.AAAA.B0_N":60.29,"MWMMHRP.0004.AAAA.B0_N":72.39,"MWMMHRP.0005.AAAA.B0_N":1.0,"MWMMHRP.0006.AAAA.B0_R":109.19,"MWMMHRP.0007.AAAA.B0_R":64.87,"MWMMHRP.0008.AAAA.B0_R":82.55,"MWMMHRP.0009.AAAA.B0_N":34.15,"MWMMHRP.0009.AAAA.B0_R":54.98,"MWMMHRP.0010.AAAA.B0_N":148.54,"MWMMHRP.0010.AAAA.B0_R":58.9,"MWMMHRP.0012.AAAA.B0_N":95.0,"MWMMHRP.0013.AAAA.B0_N":104.14,"MWMMHRP.0014.AAAA.B0_N":74.8,"MWMMHRP.0015.AAAA.B0_N":97.02,"MWMMHRP.0017.AAAA.B0_N":81.71,"MWMMHRP.0018.AAAA.B0_N":28.5,"MWMMHRP.1001.AAAA.B0_N":48.04,"MWMMHRP.1002.AAAA.B0_N":1.0,"MWMMHRP.1003.AAAA.B0_N":49.93,"MWMMHRP.2050.AAAA.B0_N":59.0,"MWMMHRP.6171.AAAA.B0_N":1.0,"MWMMHRP.6190.AAAA.B0_N":214.13,"MWMMHRP.6198.AAAA.B0_N":76.89,"MWMMHRP.6226.AAAA.B0_N":1.0,"MWMMHRP.6286.AAAA.B0_N":61.0,"MWMMHRP.6298.AAAA.B0_N":123.07,"MWMMHRP.6337.AAAA.B0_N":26.91,"MWMMHRP.6483.AAAA.B0_N":82.28,"MWMMHRP.6533.AAAA.B0_R":1.0,"MWMMHRP.6622.B0_R":131.2,"MWMMHRP.6662.B0_N":1.0,"MWMMHRP.6663.B0_N":137.38,"MWMMHRP.6686.B0_R":89.0,"MWMMHRP.6770.B0_N":52.0,"MWMMHRP.7030.B0_N":130.05,"MWMMHRP.7031.B0_N":59.0,"MWMMHRS.0011.AAAA.B0_N":11.44,"MWMMHTP.0001.AAAA.B0_N":48.29,"MWMMHTP.0004.AAAA.B0_N":52.78,"MWMMHTP.0005.AAAA.B0_N":13.5,"MWMMHTP.0006.AAAA.B0_N":1.0,"MWMMHTP.0007.AAAA.B0_N":42.95,"MWMMHTP.0127.AAAA.B0_N":70.32,"MWMMNTK.0059.AAAA.B0_N":1.0,"MWMMNTK.0129.AAAA.B0_N":274.84,"MWMMNTK.0141.AAAA.B0_N":709.6,"MWMMNTP.000174.AAAAB0_N":430.05,"MWMMNTP.000176.AAAAB0_N":453.45,"MWMMNTP.000187.AAAAB0_N":527.74,"MWMMNTP.000191.AAAAB0_N":118.75,"MWMMNTP.0002.AAAA.B0_N":363.68,"MWMMNTP.0003.AAAA.B0_N":211.95,"MWMMNTP.0004.AAAA.B0_N":171.48,"MWMMNTP.00205.AAAA.B0_N":126.23,"MWMMNTP.0040.AAAA.B0_N":107.0,"MWMMNTP.0055.AAAA.B0_N":58.17,"MWMMNTP.0073.AAAA.B0_N":147.67,"MWMMNTP.0105.AAAA.B0_N":61.16,"MWMMNTP.0109.AAAA.B0_N":387.4,"MWMMNTP.0110.AAAA.B0_N":49.86,"MWMMNTP.0112.AAAA.B0_N":80.45,"MWMMNTP.0148.AAAA.B0_N":15.45,"MWMMNTP.0149.AAAA.B0_N":77.48,"MWMMNTP.0150.AAAA.B0_N":769.64,"MWMMNTP.0151.AAAA.B0_N":50.64,"MWMMNTP.0169.AAAA.B0_N":253.95,"MWMMNTP.0170.AAAA.B0_N":1106.0,"MWMMNTP.0171.AAAA.B0_N":210.15,"MWMMNTS.0032.AAAA.B0_N":37.62,"MWMMNTS.0034.AAAA.B0_N":65.39,"MWMMPRK.2026.AAAA.B0_N":90.99,"MWMMPRK.2097.B0_N":202.93,"MWMMPRP.0009.AAAA.B0_N":29.0,"MWMMPRP.1001.AAAA.B0_N":92.78,"MWMMPRP.2022.AAAA.B0_N":61.22,"MWMMPRP.2032.AAAA.B0_N":29.0,"MWMMPRP.2092.B0_N":109.16,"MWMMSKP.5002.AAAA.B0_N":56.7,"MWMMSKP.5003.AAAA.B0_N":52.47,"MWMMSKP.5005.AAAA.B0_N":30.72,"MWMMSKP.5006.AAAA.B0_N":1.0,"MWMMSKP.5011.AAAA.B0_N":1.0,"MWMMSKP.5012.AAAA.B0_N":40.38,"MWMMSKP.5049.AAAA.B0_N":38.52,"MWMMSKP.5059.AAAA.B0_N":77.94,"MWMMSKP.5061.AAAA.B0_N":78.51,"MWRLUSAPRK.00001.B0_N":229.65,"MWRLUSAPRK.00003.B0_N":220.72,"MWRLUSAPRK.00004.B0_N":216.76,"MWRLUSAPRP.00010.B0_N":290.65,"MWRLUSAPRP.00013.B0_N":237.93,"MWRLUSAPRP.00014.B0_N":439.25,"MWSBP.0007.AAAA.B0_N":698.0,"MWSSUSAPRP.0008.B0_N":331.02,"OWNAPP.0001":1271.2,"Sample_Manmatters":1.0,"MWBWICP.0085.B0_N":1.0,"MWLJUAEP.00018.B0_N":183.02,"MWRLUSAPRP.00007.B0_N":341.34,"MWLJUAEP.0008.B0_N":182.91,"MWMMHRP.0021.AAAA.B0_R":201.75,"MWLJHYP.0007.B0_N":74.0,"MWLJUAEP.0002.B0_N":96.84,"MWLJNTP.0004.B0_N":90.46,"MWLJUAEP.00026.B0_N":24.54,"MWLJUAEP.00025.B0_N":23.6,"MWLJUAEP.00037.B0_N":15.71,"MWLJUAEP.00044.B0_N":15.53,"MWLJNTP.00407.B0_N":160.01,"MWLJNTP.00588.B0_N":68.96,"MWMMHRP.6158.B0_N":137.31,"MWBWHRP.0061.AAAA.B0_R":61.31,"MWMMHTP.1016.AAAA.B0_N":113.9,"MWMMHTP.1017.AAAA.B0_N":118.65,"MWBWSKP.00583.B0_N":73.43,"MWMMHTP.1009.AAAA.B0_N":45.5,"MWBWOCP.00002.B0_N":390.0,"MWMMHTP.1018.AAAA.B0_N":45.5,"MWMMHTP.1007.AAAA.B0_N":45.5,"MWMMHTP.1008.AAAA.B0_N":45.5,"MWMMHTP.1003.AAAA.B0_N":45.5,"MWMMHTP.1022.AAAA.B0_N":1.0,"MWLJGNP.00023.B0_N":13.11,"MWBWSLP.00420.B0_N":112.81,"MWMMHKC.00002.AAAA.B0_N":1.0,"Sample_Bebodywise":0.29,"Sample_Littlejoys":1.0,"MWMMHTS.1003.AAAA.B0_N":14.18,"MWMMHRS.0018.AAAA.B0_N":15.18,"MWLJNTP.00123.B0_N":2.35,"MWMMPRP.2040.AAAA.B0_N":28.14,"MWMMHTP.1024.AAAA.B0_N":99.57,"MWBWSKK.00453.B0_N":58.36,"MWMMSKP.5007.AAAA.B0_N":1.0,"MWBWPCP.00174.B0_N":187.09,"MWMMHRP.6450.AAAA.B0_N":101.97,"MWLJUAEP.00041.B0_N":45.33,"MWLJUAEP.00028.B0_N":39.99,"MWBWSKK.0059.B0_N":1.0,"MWBWSKP.00627.B0_N":37.16,"MWLJGNP.00068.B0_N":10.0,"MWLJHCP.0001.B0_N":121.99,"MWLJNTK.00559.B0_N":97.01,"MWLJNTK.00612.B0_N":466.36,"MWLJPCP.0001.B0_N":111.17,"MWLJUAEP.00042.B0_N":12.51,"MWLJUAEP.00047.B0_N":126.1,"MWMMHRP.0005.AAAA.B0_R":34.69,"MWMMHRS.0009.AAAA.B0_N":11.78,"MWMMHTP.1002.AAAA.B0_N":50.92,"MWMMNSP.0006.B0_R":1.0,"MWMMNTP.0147.AAAA.B0_N":18.18,"MWMMPRP.0010.AAAA.B0_N":101.37,"MWMMPRP.2017.AAAA.B0_N":1.0,"MWMMPRP.2018.AAAA.B0_N":1.0,"MWBWHFS.0020.B0_N":37.01,"MWBWSKKC.00001.AAAA.B0_N":3.2,"MWBWSKP.0011.B0_N":1.0,"MWBWSKP.0088.B0_N":12.84,"MWBWSKS.0060.B0_N":26.81,"MWBWSKS.0061.B0_N":27.78,"MWBWUSAPRP.00021.B0_N":201.36,"MWLJDCP.0002.B0_N":101.58,"MWLJDCP.0003.B0_N":58.73,"MWLJDCP.0007.B0_N":37.5,"MWLJGNP.0001.B0_N":260.0,"MWLJGNP.00040.B0_N":179.6,"MWLJGNP.00041.B0_N":399.6,"MWLJHYP.0005.B0_N":70.0,"MWLJNTS.00057.B0_N":16.53,"MWLJNTS.00059.B0_N":15.64,"MWMMHRK.6856.B0_N":39.0,"MWMMNSK.0005.B1_R":134.88,"MWMMNSP.0009.B0_N":1.0,"MWMMNTP.0072.AAAA.B0_N":217.28,"MWMMNTP.0127.AAAA.B0_N":158.03,"MWMMPRP.2090.B0_N":80.14,"MWMMPRP.2091.B0_N":71.85,"MWRLUSAPRK.00005.B0_N":241.23,"MWLJUAEP.00029.B0_N":63.09,"MWLJUAEP.0001.B0_N":103.48,"MWLJGNP.00029.B0_N":13.0,"MWBWWMP.00147.B0_N":51.69,"MWLJUAEP.00039.B0_N":115.0,"MWLJUAEP.00040.B0_N":95.2,"MWLJNTK.00611.B0_N":299.62,"MWBWSKS.0006.B0_N":11.8,"MWMMPRP.2020.AAAA.B0_N":166.08,"MWLJNTS.00058.B0_N":16.02,"MWLJUAEP.00035.B0_N":70.4,"MWLJUAEP.00036.B0_N":71.12,"MWLJNTK.00613.B0_N":587.83,"MWBWPRP.00004.B0_N":212.59,"MWBWHFP.00623.B0_N":78.57,"MWBWNTP.00339.B_N":80.45,"MWBWHFP.00622.B0_N":159.86,"MWBWHFP.00160.B0_N":120.7,"MWMMPKC.00001.AAAA.B0_N":1.57,"MWBWHFP.00624.B0_N":89.13,"MWBWPCS.0038.B0_N":8.46,"MWBWSKP.0012.B0_N":97.8,"MWMMHTP.1004.AAAA.B0_N":45.5,"MWLJNTP.00302.B0_N":129.3,"MWLJNTP.00042.B0_N":65.83,"MWMMHTP.1001.AAAA.B0_N":1.0,"MWLJNTP.00037.B0_N":95.5,"MWLJNTP.00125.B0_N":69.7,"MWMMHTP.1023.AAAA.B0_N":119.02,"MWMMNTP.0038.AAAA.B0_N":1031.3,"MWBWWMP.00123.B0_N":168.08,"MWLJGNP.0002.B0_N":152.0,"MWMMPRP.2019.AAAA.B0_N":86.8,"MWBWHFP.00129.B0_N":1.0,"MWBWHFP.0022.B0_R":121.04,"MWLJNTP.00067.B0_N":132.36,"MWLJNTS.00031.B0_N":21.0,"MWLJNTS.00034.B0_N":10.7,"MWMMHRP.0020.AAAA.B0_N":1.0,"MWBWSKK.00452.B0_N":81.9,"MWBWICP.0084.B0_N":71.1,"MWMMSLP.0001.B0_N":67.68,"MWMMNTS.0036.AAAA.B0_N":32.3,"MWLJUAEP.00031.B0_N":414.33,"MWMMHTP.1005.AAAA.B0_N":117.75,"MWLJGNP.00056.B0_N":12.0,"MWLJSKP.0004.B0_N":55.13,"MWMMHTP.1012.AAAA.B0_N":1.0,"MWBWSKP.00469.B0_N":1.0,"MWMMPRP.2041.AAAA.B0_N":28.17,"MWBWHFFS.0033.B0_N":18.26,"MWBWHFFS.0038.B0_N":2.42,"MWBWHFFS.0044.B0_N":12.0,"MWBWHFK.00221.B0_N":77.82,"MWBWHFK.0089.B0_N":164.89,"MWBWHFP.00146.B0_N":45.08,"MWBWHFP.00159.B0_N":1.0,"MWBWHFP.00231.B0_N":146.9,"MWBWHFP.00529.B0_N":70.87,"MWBWHFP.00616.B0_N":87.94,"MWBWHFS.0017.B0_N":20.63,"MWBWHFS.0021.B0_N":13.39,"MWBWICP.0079.B0_N":84.87,"MWBWICP.0080.B0_N":59.05,"MWBWICP.0087.B0_N":63.81,"MWBWOCP.00001.B0_N":229.69,"MWBWOCP.00007.B0_N":56.28,"MWBWPCK.0001.B0_N":11.69,"MWBWPCK.0002.B0_N":5.9,"MWBWPCK.0003.B0_N":2.0,"MWBWPCK.0004.B0_N":1.38,"MWBWPCK.0005.B0_N":4.68,"MWBWPCK.0006.B0_N":23.38,"MWBWPCK.0007.B0_N":5.87,"MWBWPCP.00001.B0_N":587.38,"MWBWPCP.00134.B0_N":163.61,"MWBWPCS.0035.B0_N":16.07,"MWBWPCS.0037.B0_N":10.96,"MWBWSKK.0056.B0_N":20.86,"MWBWSKP.0013.B0_N":148.19,"MWBWSKP.00538.B0_N":96.3,"MWBWSKS.0005.B0_N":17.4,"MWBWSKS.0036.B0_N":26.75,"MWBWSKS.0040.B0_N":19.0,"MWBWSKS.0042.B0_N":6.15,"MWBWSKS.0059.B0_N":41.12,"MWBWSKS.0066.B0_N":24.4,"MWBWSKS.0067.B0_N":40.47,"MWBWSKS.0070.B0_N":18.62,"MWBWSLP.00230.B0_N":122.55,"MWBWUTP.0067.B0_N":105.23,"MWBWUTP.0068.B0_N":260.09,"MWBWUTP.0073.B0_N":14.11,"MWBWWMP.00105.B0_N":302.44,"MWBWWMP.00122.B0_N":1.0,"MWBWWMP.00195.B0_N":125.89,"MWBWWMP.0027.B0_N":118.53,"MWBWWMP.0028.B0_N":92.78,"MWBWWMP.0098.B0_N":41.89,"MWLJGNP.00012.B0_N":1.0,"MWLJGNP.00016.B0_N":0.72,"MWLJGNP.00028.B0_N":12.98,"MWLJGNP.0003.B0_N":30.01,"MWLJGNP.0009.B0_N":49.67,"MWLJHYP.0002.B0_N":70.0,"MWLJNTK.00101.B0_N":99.2,"MWLJNTK.00104.B0_N":64.66,"MWLJNTP.0001.B0_N":109.36,"MWLJNTP.00041.B0_N":68.74,"MWLJNTP.00052.B0_N":67.2,"MWLJNTP.0008.B0_N":60.0,"MWLJNTP.00113.B0_N":42.0,"MWLJNTP.00148.B0_N":15.0,"MWLJNTS.00032.B0_N":9.45,"MWLJNTS.0004.B0_N":10.89,"MWLJNTS.00056.B0_N":16.72,"MWLJNTS.0007.B0_N":9.05,"MWLJPCK.0001.B0_N":22.87,"MWLJPCK.0002.B0_N":9.19,"MWLJPCK.0003.B0_N":11.59,"MWLJPCK.0004.B0_N":1.5,"MWLJPCK.0005.B0_N":7.84,"MWLJPCK.0006.B0_N":33.13,"MWLJPCK.0007.B0_N":10.0,"MWLJPCK.0008.B0_N":15.5,"MWLJPCK.0009.B0_N":6.15,"MWLJPCP.00010.B0_N":136.82,"MWLJPCP.00011.B0_N":135.0,"MWLJPCP.00016.B0_N":151.76,"MWLJPCP.00017.B0_N":120.0,"MWLJPCP.0005.B0_N":105.41,"MWLJPCP.0006.B0_N":120.0,"MWLJPCP.0007.B0_N":132.31,"MWLJPCP.0008.B0_N":133.39,"MWLJPCP.0009.B0_N":135.0,"MWLJSKP.0005.B0_N":57.6,"MWMMBDP.0002.AAAA.B0_N":25.82,"MWMMBDP.0004.AAAA.B0_N":98.75,"MWMMHRP.0011.AAAA.B0_N":72.76,"MWMMHRP.0015.AAAA.B0_R":82.49,"MWMMHRP.0016.AAAA.B0_N":119.95,"MWMMHRP.0019.AAAA.B0_N":122.84,"MWMMHRP.0022.AAAA.B0_R":94.68,"MWMMHRP.2055.AAAA.B0_N":78.53,"MWMMHRP.6200.AAAA.B0_N":73.4,"MWMMHRP.6474.AAAA.B0_N":128.33,"MWMMHRS.00013.AAAA.B0_N":16.2,"MWMMHRS.0001.AAAA.B0_N":13.07,"MWMMHRS.0002.AAAA.B0_N":21.9,"MWMMHRS.0003.AAAA.B0_N":19.87,"MWMMHRS.0004.AAAA.B0_N":11.1,"MWMMHRS.0007.AAAA.B0_N":19.31,"MWMMHRS.0008.AAAA.B0_N":1.0,"MWMMHRS.0010.AAAA.B0_N":20.91,"MWMMHRS.0012.AAAA.B0_N":17.17,"MWMMHRS.0013.AAAA.B0_N":3.51,"MWMMHRS.0014.AAAA.B0_N":3.9,"MWMMHRS.0015.AAAA.B0_N":7.61,"MWMMHRS.0016.AAAA.B0_N":4.0,"MWMMHRS.0017.AAAA.B0_N":11.23,"MWMMHRS.0019.AAAA.B0_N":10.49,"MWMMHRS.0020.AAAA.B0_N":11.02,"MWMMHTP.0002.AAAA.B0_N":57.5,"MWMMHTP.0003.AAAA.B0_N":47.47,"MWMMHTP.1006.AAAA.B0_N":89.71,"MWMMHTP.1010.AAAA.B0_N":131.5,"MWMMHTP.1011.AAAA.B0_N":65.5,"MWMMHTP.1013.AAAA.B0_N":117.0,"MWMMHTP.1014.AAAA.B0_N":119.92,"MWMMHTP.1015.AAAA.B0_N":123.64,"MWMMHTP.1019.AAAA.B0_N":123.74,"MWMMHTP.1020.AAAA.B0_N":123.77,"MWMMHTP.1021.AAAA.B0_N":45.51,"MWMMHTS.1001.AAAA.B0_N":9.0,"MWMMHTS.1002.AAAA.B0_N":19.62,"MWMMHYKC.00001.AAAA.B0_N":2.11,"MWMMIMP.0001.AAAA.B0_N":119.0,"MWMMNTK.0100.AAAA.B0_N":474.86,"MWMMNTP.0001.AAAA.B0_N":47.26,"MWMMNTP.0012.AAAA.B0_N":198.21,"MWMMNTP.0013.AAAA.B0_N":75.21,"MWMMNTP.0014.AAAA.B0_N":165.88,"MWMMNTP.0019.AAAA.B0_N":139.07,"MWMMNTP.0041.AAAA.B0_N":680.76,"MWMMNTP.0047.AAAA.B0_N":266.05,"MWMMNTS.0001.AAAA.B0_N":29.8,"MWMMNTS.0033.AAAA.B0_N":10.84,"MWMMNTS.0037.AAAA.B0_N":8.76,"MWMMNTS.0038.AAAA.B0_N":6.2,"MWMMNTS.0043.AAAA.B0_N":6.15,"MWMMOCP.0001.B0_N":228.91,"MWMMOCP.0002.B0_N":387.64,"MWMMOCP.0003.B0_N":37.34,"MWMMOCP.0004.B0_N":110.72,"MWMMOCP.0005.B0_N":112.14,"MWMMOCP.0006.B0_N":406.1,"MWMMOCP.0019.B0_N":6.15,"MWMMPCK.0001.AAAA.B0_N":34.84,"MWMMPCK.0002.AAAA.B0_N":10.29,"MWMMPCK.0003.AAAA.B0_N":10.52,"MWMMPCK.0004.AAAA.B0_N":4.6,"MWMMPCK.0005.AAAA.B0_N":2.35,"MWMMPCK.0006.AAAA.B0_N":3.3,"MWMMPCK.0007.AAAA.B0_N":1.1,"MWMMPCK.0008.AAAA.B0_N":1.36,"MWMMPCK.0009.AAAA.B0_N":4.16,"MWMMPCK.0010.AAAA.B0_N":39.34,"MWMMPCK.0013.AAAA.B0_N":5.76,"MWMMPCK.0015.AAAA.B0_N":4.16,"MWMMPCK.0016.AAAA.B0_N":5.04,"MWMMPCK.0017.AAAA.B0_N":3.75,"MWMMPCK.0018.AAAA.B0_N":5.15,"MWMMPRP.0007.AAAA.B0_R":6.2,"MWMMPRP.0008.AAAA.B0_R":9.67,"MWMMPRP.0040.AAAA.B0_N":62.0,"MWMMPRP.0041.AAAA.B0_N":57.5,"MWMMPRP.2016.AAAA.B0_N":24.0,"MWMMPRP.2021.AAAA.B0_N":50.48,"MWMMPRP.2034.AAAA.B0_N":128.32,"MWMMPRP.2045.AAAA.B0_N":54.58,"MWMMPRS.1001.AAAA.B0_N":9.1,"MWMMPRS.1002.AAAA.B0_N":17.5,"MWMMSKC.00001.AAAA.B0_N":1.81,"MWMMSKKC.00001.AAAA.B0_N":1.81,"MWMMSKP.5001.AAAA.B0_N":138.44,"MWMMSKP.5004.AAAA.B0_N":74.06,"MWMMSKP.5008.AAAA.B0_N":155.9,"MWMMSKP.5009.AAAA.B0_N":59.28,"MWMMSKP.5010.AAAA.B0_N":117.56,"MWMMSKS.5002.AAAA.B0_N":27.77,"MWMMSKS.5003.AAAA.B0_N":16.04,"MWMMSMP.4001.AAAA.B0_N":117.15,"MWMMSMP.4002.AAAA.B0_N":35.12,"MWMMSMP.4003.AAAA.B0_N":115.14,"MWMMSMP.4004.AAAA.B0_N":90.07,"MWMMSMP.4005.AAAA.B0_N":113.24,"MWMMWKC.00001.AAAA.B0_N":1.82,"MWMMWTP.0001.AAAA.B0_N":95.48,"MWMMWTP.1001.AAAA.B0_N":75.74,"MWMMWTP.1002.AAAA.B0_N":107.42,"MWMMWTP.1003.AAAA.B0_N":196.74,"MWMMWTP.1004.AAAA.B0_N":114.64,"MWLJGNP.00045.B0_N":18.09,"MWLJNTK.00470.B0_N":16.99,"MWLJNTP.00153.B0_N":107.26,"MWMMNTS.0035.AAAA.B0_N":32.33,"MWLJGNP.00011.B0_N":1.2,"MWLJNTKS.00046.B0_N":15.57,"MWLJNTP.00032.B0_N":282.29,"MWMMNTP.0104.AAAA.B0_N":145.96,"MWLJNTS.00017.B0_N":11.43,"MWBWSKK.0058.B0_N":23.4,"MWLJUAEP.00032.B0_N":53.0,"MWLJUAEP.00010.B0_N":21.19,"MWLJUAEP.00016.B0_N":42.0,"MWLJUAEP.00020.B0_N":350.0,"MWLJUAEP.00021.B0_N":280.0,"MWLJUAEP.00022.B0_N":435.0,"MWLJUAEP.00027.B0_N":78.0,"MWLJUAEP.00030.B0_N":16.5,"MWLJUAEP.0004.B0_N":98.42,"MWLJUAEP.0006.B1_N":107.49,"MWLJUAEP.0007.B0_N":64.19,"MWLJUAEP.0009.B0_N":10.0,"MWBWUSAPRP.00002.B0_N":172.62,"MWBWUSAPRP.00004.B0_N":201.36,"MWBWUSAPRP.00005.B0_N":357.0,"MWBWUSAPRP.00006.B0_N":267.0,"MWBWUSAPRP.00007.B0_N":227.16,"MWSSUSAPRK.00001.B0_N":212.77,"MWRLUSAPRK.00006.B0_N":437.61,"MWLJUAEP.00043.B0_N":8.71,"MWMMHRP.7044.B0_N":120.0,"MWMMPRP.5002.AAAA.B0_N":0.1,"MWBWSKP.0004.B0_R":24.79,"MWBWHFP.0070.B0_R":59.0,"MWBWWMP.0082.B0_N":209.08,"MWMMNTP.0005.AAAA.B0_N":199.72,"MWBWSKP.00133.B0_N":159.46,"MWMMHRK.6165.AAAA.B0_N":257.23,"MWLJPCK.00020.B0_N":120.5,"MWMMWMS.0001.AAAA.B0_N":13.53,"MWLJGNP.0008.B0_N":43.5,"MWLJGNP.0007.B0_N":80.0,"MWLJGNP.0006.B0_N":122.9,"MWLJUAEP.0005.B0_N":55.0,"Sample_BeBB":1.0,"Sample_LJ":1.0,"MWBWSKP.00517.B0_N":1.0,"MWLJUAEP.00017.B0_N":68.0,"MWBWPRP.00001.B0_N":171.77,"MWBWPRP.00002.B0_N":172.6,"MWBWPRP.00003.B0_N":142.87,"MWMMHRP.0004.AAAA.B0_N2":84.4,"MWBWUSAHFP.00002.B0_N":166.7,"MWBWUSAPR.00P.025_B0_N":220.95,"MWLJGCP.00010.B0_N":100.0,"MWLJGNK.00077.B0_N":75.0,"MWSSUSAPRP.00010.B0_N":341.23,"MWBWBCP.00167.B0_N":182.08,"MWLJNTP.000795.B0_N":60.38,"MWLJUAEP.00019.B0_N":196.83,"MWLJUAEP.00023.B0_N":160.49,"MWMMNTP.00207.AAAA.B0_N":212.34,"MWMMSKP.5063.AAAA.B0_N":108.97,"POBUAEBB1":24.5,"POBUAELJ1":38.5,"POBUAELJ2":39.5,"POBUAELJ3":15.52,"POBUAELJ4":15.52,"POBUAELJ5":15.52,"MWBWNTP.00356.B0_N":281.8,"MWBWSKP.00777.B0_N":47.07,"MWLJNTP.000809.B0_N":135.7,"MWLJNTP.000810.B0_N":92.15,"MWLJNTP.00518.B0_N":152.11,"MWLJNTP.00520.B0_N":111.32,"MWLJUAEP.00051.B0_N":93.03,"MWMMNTP.000172.AAAAB0_N":256.38,"POBUAELJ6":40.0,"MWBWBCP.00170.B0_N":106.53,"MWBWHFP.00689.B0_N":28.85,"MWBWHFP.00707.B0_N":113.74,"MWBWNTP.00357.B0_N":227.44,"MWBWSKP.00797.B0_N":115.4,"MWLJNTP.000796.B0_N":8.78,"MWLJNTP.000813.B0_N":164.02,"MWLJNTP.000814.B0_N":111.02,"MWLJUAEP.00033.B0_N":106.08,"MWLJUAEP.00049.B0_N":88.0,"MWLJUSANTP.00002.B0_N":87.88,"MWMMHRP.7121.B0_R":150.0,"MWMMNTP.000186.AAAAB0_N":567.26,"MWMMNTP.00210.AAAA.B0_N":1096.0,"MWMMNTP.00211.AAAA.B0_N":185.0,"POBUAELJ7":15.0,"MWBWBCP.00168.B0_N":136.71,"MWBWSKP.00771.B0_N":97.52,"MWBWUAEBCP.0001B0_N":45.24,"MWBWUAEBCP.0002B0_N":57.48,"MWBWUAEBCP.0003B0_N":47.25,"MWBWUAEBCP.0004B0_N":58.08,"MWBWUAEBCP.0005B0_N":51.01,"MWBWUAEBCP.0006B0_N":55.52,"MWLJNTP.000836.B0_N":124.96,"MWLJNTP.00541.BO_N":563.11,"MWMMHRP.7106.B0_R":204.24,"MWMMNTP.00208.AAAA.B0_N":292.16,"MWMMNTP.0035.AAAABO_N":197.58,"MWMMOCP.0029.B0_N":600.0,"POBUAELJ9":40.0,"MWBWHFP.00711.B0_N":103.06,"MWBWSKP.00787.B0_N":49.0,"MWBWSKP.00788.B0_N":47.0,"MWBWUAEBCP.0007B0_N":56.92,"MWBWUAEBCP.0008B0_N":58.24,"MWBWUAEHFP.0001B0_N":133.19,"MWBWUAEHFP.0002B0_N":85.23,"MWBWUAESKP.0004B0_N":81.45,"MWBWUAESKP.0005B0_N":133.54,"MWBWUAESKP.0006B1_N":46.55,"MWBWUAESKP.0007B0_N":231.12,"MWBWUSAPR.00P.026_B0_N":134.0,"MWLJGNP.00531.BO_N":88.0,"MWLJNTP.000801.B0_N":117.65,"MWLJNTP.000820.B0_N":55.67,"MWLJNTP.00527.BO_N":314.37,"MWLJNTP.00542.BO_N":92.29,"MWLJNTP.00574.BO_N":52.74,"MWLJNTP.00584.BO_N":239.37,"POBUAELJ10":10.0,"POBUAELJ8":39.5,"MWBWBCP.00188.BO_N":59.0,"MWBWHFP.00188.BO_N":205.5,"MWBWUAEOCP.0001B0_N":46.0,"MWBWUAEOCP.0004B0_N":14.0,"MWBWUAEOCP.0005B0_N":28.0,"MWBWUAEOCP.0006B0_N":38.0,"MWBWUAEOCP.0007B0_N":19.0,"MWBWUAEOCP.0008B0_N":170.0,"MWBWUAESKP.0003B0_N":111.07,"MWLJNTP.00551.BO_N":79.52,"MWLJNTP.00553.BO_N":128.1,"MWLJNTP.00586.BO_N":87.06,"MWLJNTP.00603.BO_N":16.21,"MWLJNTP.00605.BO_N":13.15,"MWLJNTP.00615.BO_N":95.56,"MWLJNTP.00616.BO_N":107.26,"MWLJUAEOC.0001.B0_N":4.0,"MWLJUAEOC.0002.B0_N":37.0,"MWMMNTP.6345.AAAABO_N":109.8,"MWMMNTP.6348.AAAABO_N":188.87,"MWMMNTP.6349.AAAABO_N":216.0,"MWRLUSAPRP.00021.B0_N":348.81,"POBUAELJ13":56.0,"POBUAELJ14":30.5,"POBUAELJ15":10.0,"POBUAELJ16":10.0,"POBUAELJ17":10.0,"MWBWUAENTP.0002B0_N":281.19,"MWBWUAESKP.0008B0_N":106.82,"MWMMNTP.6346.AAAABO_N":95.03,"POBUAELJ11":10.0,"POBUAELJ12":10.0};
 const _F = [{"f":"SL Mother Hub","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"SL PM","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"SL Ambient","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"Aramex","bf":"3PL USA","b":"B2B","c":"Bhiwandi","p":"Aramex","s":"Operational"},{"f":"Inamo_Chembur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"SL RM","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"B2B Beyond NCR ECOM","bf":"3PL B2B","b":"B2B","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"SL RX","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"Inamo_Sion","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"B2B Beyond NCR Offline","bf":"3PL B2B","b":"B2B","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"OWN","bf":"Self Warehouse","b":"B2C","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"NCR B2B","bf":"3PL B2B","b":"B2B","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"SL NEW","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"BLR B2B","bf":"3PL B2B","b":"B2B","c":"Bangalore","p":"Emiza","s":"Operational"},{"f":"BLR B2B Offline","bf":"3PL B2B","b":"B2B","c":"Bangalore","p":"Emiza","s":"Operational"},{"f":"OWN Beyond BWD","bf":"3PL B2C","b":"B2C","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"LJ_ER_Thane","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BW EMIZA BLR","bf":"3PL B2C","b":"B2C","c":"Bangalore","p":"Emiza","s":"Operational"},{"f":"MM EMIZA BLR","bf":"3PL B2C","b":"B2C","c":"Bangalore","p":"Emiza","s":"Operational"},{"f":"B2B Kolkata Offline","bf":"3PL B2B","b":"B2B","c":"Kolkata","p":"Delhivery","s":"Operational"},{"f":"MM HYD New","bf":"3PL B2C","b":"B2C","c":"Hyderabad","p":"Delhivery","s":"Operational"},{"f":"MM Beyond NCR","bf":"3PL B2C","b":"B2C","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"LJ Kolkata","bf":"3PL B2C","b":"B2C","c":"Kolkata","p":"Delhivery","s":"Operational"},{"f":"LJ Beyond NCR","bf":"3PL B2C","b":"B2C","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"SL LJ","bf":"Self Warehouse","b":"B2C","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"LJ HYD NEW","bf":"3PL B2C","b":"B2C","c":"Hyderabad","p":"Delhivery","s":"Operational"},{"f":"SL MM","bf":"Self Warehouse","b":"B2C","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"BW HYD New","bf":"3PL B2C","b":"B2C","c":"Hyderabad","p":"Delhivery","s":"Operational"},{"f":"B2B Ahmedabad Offline","bf":"3PL B2B","b":"B2B","c":"Ahmedabad","p":"Beyond","s":"Operational"},{"f":"BW Beyond NCR","bf":"3PL B2C","b":"B2C","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"LJ Beyond LUC","bf":"3PL B2C","b":"B2C","c":"Lucknow","p":"Beyond","s":"Operational"},{"f":"BW Kolkata","bf":"3PL B2C","b":"B2C","c":"Kolkata","p":"Delhivery","s":"Operational"},{"f":"SL BW","bf":"Self Warehouse","b":"B2C","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"BW HYD","bf":"3PL B2C","b":"B2C","c":"Hyderabad","p":"Delhivery","s":"Closed"},{"f":"SL Damage","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"LJ Emiza Guwahati","bf":"3PL B2C","b":"B2C","c":"Guwahati","p":"Emiza","s":"Operational"},{"f":"LJ Ahmedabad","bf":"3PL B2C","b":"B2C","c":"Ahmedabad","p":"Beyond","s":"Operational"},{"f":"LJ EMIZA BLR","bf":"3PL B2C","b":"B2C","c":"Bangalore","p":"Emiza","s":"Operational"},{"f":"MM Kolkata","bf":"3PL B2C","b":"B2C","c":"Kolkata","p":"Delhivery","s":"Operational"},{"f":"OWN Beyond NCR","bf":"3PL B2C","b":"B2C","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"OWN Beyond BLR","bf":"3PL B2C","b":"B2C","c":"Bangalore","p":"Beyond","s":"Operational"},{"f":"MM EMIZA NCR","bf":"3PL B2C","b":"B2C","c":"Delhi NCR","p":"Emiza","s":"Closed"},{"f":"LJ_ER_Andheri","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM Emiza Guwahati","bf":"3PL B2C","b":"B2C","c":"Guwahati","p":"Emiza","s":"Operational"},{"f":"BW Ahmedabad","bf":"3PL B2C","b":"B2C","c":"Ahmedabad","p":"Beyond","s":"Operational"},{"f":"DTDC_Ernakulum","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kochi","p":"Dark store","s":"Operational"},{"f":"BW Beyond LUC","bf":"3PL B2C","b":"B2C","c":"Lucknow","p":"Beyond","s":"Operational"},{"f":"BW Emiza Guwahati","bf":"3PL B2C","b":"B2C","c":"Guwahati","p":"Emiza","s":"Operational"},{"f":"MP BLR","bf":"3PL B2C MP","b":"B2C MP","c":"Bangalore","p":"Emiza","s":"Operational"},{"f":"LJ GLOBAL","bf":"Self Warehouse","b":"B2C","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"MP Kolkata","bf":"3PL B2C MP","b":"B2C MP","c":"Kolkata","p":"Delhivery","s":"Operational"},{"f":"SL B2B ECOM","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"MM Hyd","bf":"3PL B2C","b":"B2C","c":"Hyderabad","p":"Delhivery","s":"Closed"},{"f":"MM Ahmedabad","bf":"3PL B2C","b":"B2C","c":"Ahmedabad","p":"Beyond","s":"Operational"},{"f":"Delhivery_Vadaplani","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Chennai","p":"Dark store","s":"Operational"},{"f":"Kuik_Begur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Begur","p":"Dark store","s":"Operational"},{"f":"DS Bangalore","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"MM Beyond LUC","bf":"3PL B2C","b":"B2C","c":"Lucknow","p":"Beyond","s":"Operational"},{"f":"LJ_ER_Beleghata","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Charkop","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MP Ahmedabad","bf":"3PL B2C MP","b":"B2C MP","c":"Ahmedabad","p":"Beyond","s":"Operational"},{"f":"LJ_ER_Vikhroli","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"DS Ahmedabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Ahmedabad","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Sanpada","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MP Lucknow","bf":"3PL B2C MP","b":"B2C MP","c":"Lucknow","p":"Beyond","s":"Operational"},{"f":"MM GLOBAL","bf":"Self Warehouse","b":"B2C","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"MP Beyond NCR","bf":"3PL B2C MP","b":"B2C MP","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"LJ_Kuik_KalyanNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"MP HYD","bf":"3PL B2C MP","b":"B2C MP","c":"Hyderabad","p":"Delhivery","s":"Operational"},{"f":"MP NCR","bf":"3PL B2C MP","b":"B2C MP","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"PnD_East_Delhi","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Rahatani","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"BB_ER_KalyanNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"PnD_Noida","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"Kuik_DefenceColony","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"Kuik_Vadodara","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Vadodara","p":"Dark store","s":"Operational"},{"f":"BB_Kuik_KalyanNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"PnD_Gurugram","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Banashankari","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"Kuik_Chrompet","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Chennai","p":"Dark store","s":"Operational"},{"f":"Kuik_Madipakkam","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Chennai","p":"Dark store","s":"Operational"},{"f":"DS_Hyd","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"LJ_Kuik_Memnagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Ahmedabad","p":"Dark store","s":"Operational"},{"f":"MM_ER_Banashankari","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"BB_ER_Vikhroli","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BW GLOBAL","bf":"Self Warehouse","b":"B2C","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"LJ_Kuik_Nagpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Nagpur","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Vasai","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BB_Kuik_Memnagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Ahmedabad","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_Uttamnagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_Kuik_Abids","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"Kuik_Miyapur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"PnD_Okhla","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_Humayunpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_ER_Rahatani","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Kalyan","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_TransportNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"B2B Bhumi","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed - Used for  USA Invoicing"},{"f":"RCity Kiosk","bf":"Kiosk","b":"Virtual facility","c":"Virtual facility","p":"Exhibition / Kiosk / Trial","s":"Operational"},{"f":"BB_ER_Banashankari","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"BB_Kuik_Abids","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Ruby","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"BB_ER_Rahatani","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"BB_ER_Thane","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"PnD_Faridabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_Kuik_Abids","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"BB_ER_Mundhwa","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"LJ Lucknow","bf":"3PL B2C","b":"B2C","c":"Lucknow","p":"Beyond","s":"Closed"},{"f":"Trial inventory","bf":"Trial","b":"Virtual facility","c":"Virtual facility","p":"Exhibition / Kiosk / Trial","s":"Closed"},{"f":"LJ_ER_Mundhwa","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_Nangloi","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_Kuik_Memnagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Ahmedabad","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Brookfield","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Chinchwad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_Jaipur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Jaipur","p":"Dark store","s":"Operational"},{"f":"LJ_ER_AirportGateNo1","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Kondapur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"MM_ER_Ruby","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"MM_ER_Vikhroli","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_ER_Vasai","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_Kuik_KalyanNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Yeswanthpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"MM_ER_Kothrud","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Yelahanka","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"MM_ER_Andheri","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Dhanori","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Sarjapur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_PatelNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_ER_Beleghata","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"BB_ER_Kalyan","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BB_ER_Charkop","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Kothrud","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"MM_ER_Charkop","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_PnD_Jaipur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Jaipur","p":"Dark store","s":"Operational"},{"f":"BB_ER_Kothrud","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"MM_ER_Sanpada","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_ER_Thane","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_Kuik_Nagpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Nagpur","p":"Dark store","s":"Operational"},{"f":"BB_ER_Andheri","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BB_ER_Sanpada","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BB_ER_Vasai","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"LJ_ER_KarwanSahu","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"MM_ER_Kalyan","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_ER_Yeswanthpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"BB_ER_AirportGateNo1","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_ER_Yelahanka","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"RM PARASNATH","bf":"Self Warehouse","b":"RM","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"MM_ER_Kondapur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"MM_ER_Sarjapur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"MM_ER_Dhanori","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"PnD_Ghaziabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_ER_Chinchwad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"Parasnath","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed - Used for non RX registered Invoicing"},{"f":"MM_ER_Mundhwa","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"BB_PnD_PatelNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MH_ER_Mumbai","bf":"DS Mother Hub","b":"DS Mother Hub","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"RTV GLOBAL","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"LJ_PnD_Lucknow","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Lucknow","p":"Dark store","s":"Operational"},{"f":"BB_ER_Chinchwad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"BB_ER_Dhanori","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Pune","p":"Dark store","s":"Operational"},{"f":"BB_Kuik_Nagpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Nagpur","p":"Dark store","s":"Operational"},{"f":"BB_PnD_Nangloi","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_ER_SuchitraJunction","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"MM_PnD_Nangloi","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_ER_Beleghata","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"MM_ER_AirportGateNo1","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"BB_ER_Ruby","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"MM_PnD_TransportNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_PnD_Lucknow","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Lucknow","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Behala","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"MM_ER_KarwanSahu","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"BB_ER_Behala","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"MM_PnD_Uttamnagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"Exhibition","bf":"Exhibition","b":"Virtual facility","c":"Virtual facility","p":"Exhibition / Kiosk / Trial","s":"Operational"},{"f":"MM_PnD_PatelNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"SRF_NCR","bf":"3PL B2C","b":"B2C","c":"Virtual facility","p":"Virtual facility","s":"Closed"},{"f":"BB_ER_Yeswanthpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"B2B Global","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"BB_ER_Sarjapur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"BB_ER_Yelahanka","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"BB_PnD_TransportNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"Lakeshore Thane Kiosk","bf":"Kiosk","b":"Virtual facility","c":"Virtual facility","p":"Exhibition / Kiosk / Trial","s":"Operational"},{"f":"MM_PnD_Humayunpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"Zippee_Mum_LJ","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BB_PnD_Uttamnagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_ER_Kondapur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"BB_PnD_Humayunpur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_ER_Byculla","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BB_PnD_Jaipur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Jaipur","p":"Dark store","s":"Operational"},{"f":"BB_ER_Brookfield","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"MM_ER_Byculla","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_ER_SuchitraJunction","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"MM_ER_Behala","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Kolkata","p":"Dark store","s":"Operational"},{"f":"MM_ER_Brookfield","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"BB_ER_Byculla","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"Servicelink","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"LJ_PnD_Gurugram","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BW EMIZA NCR","bf":"3PL B2C","b":"B2C","c":"Delhi NCR","p":"Emiza","s":"Operational"},{"f":"MM Lucknow","bf":"3PL B2C","b":"B2C","c":"Lucknow","p":"Beyond","s":"Closed"},{"f":"DS_Kol","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Virtual facility","p":"Virtual facility","s":"Operational"},{"f":"B2B Kolkata ECOM","bf":"3PL B2B","b":"B2B","c":"Kolkata","p":"Delhivery","s":"Operational"},{"f":"FLIPKART_SMART","bf":"3PL B2C MP","b":"B2C MP","c":"Delhi NCR","p":"Beyond","s":"Operational"},{"f":"BB_PnD_Lucknow","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Lucknow","p":"Dark store","s":"Operational"},{"f":"MM_Delhivery_Nayananda","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"BW Lucknow","bf":"3PL B2C","b":"B2C","c":"Lucknow","p":"Beyond","s":"Closed"},{"f":"LJ_Delhivery_Nayananda","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"Mosaic Wellness Private Limited","bf":"Virtual Facility - Used for US billing","b":"DS fulfillment store","c":"Virtual facility","p":"Virtual facility","s":"Closed"},{"f":"Kuik_Purasaivakkam","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Chennai","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_EastDelhi","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_Okhla","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_Noida","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_Kuik_DefenceColony","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_Faridabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_Kuik_RRNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"MM_Kuik_Begur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"Zippee_Mum_MM","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"BB_Delhivery_Vadaplani","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_PnD_Gurugram","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_PnD_Gurugram","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_PnD_EastDelhi","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"QDD_Shrinkage","bf":"Virtual DS storage - Damaged Goods","b":"DS fulfillment store","c":"Virtual facility","p":"Virtual facility","s":"Operational"},{"f":"Kuik_RRNagar","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"Zippee_Mum_BB","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Mumbai","p":"Dark store","s":"Operational"},{"f":"MM_PnD_Faridabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ Bhumi","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"LJ_Delhivery_Vadaplani","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Chennai","p":"Dark store","s":"Operational"},{"f":"B2B Ahmedabad ECOM","bf":"3PL B2B","b":"B2B","c":"Ahmedabad","p":"Beyond","s":"Operational"},{"f":"OWN B2B","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"OWN Exhibition","bf":"Exhibition","b":"Virtual facility","c":"Virtual facility","p":"Exhibition / Kiosk / Trial","s":"Operational"},{"f":"BB_PnD_Okhla","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_PnD_Ghaziabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"ER_TEST","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Virtual facility","p":"Dark store","s":"Closed"},{"f":"SL B2B Offline","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Operational"},{"f":"BB_PnD_Ghaziabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_PnD_Faridabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_Blitz_Tirumalagiri","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"MM_PnD_Okhla","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_PnD_EastDelhi","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM_PnD_Ghaziabad","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"LJ_Kuik_DefenceColony","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_Blitz_Tirumalagiri","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"DP World","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"BW Bhumi","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"BB_ER_SuchitraJunction","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"LJ_Kuik_Purasaivakkam","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Chennai","p":"Dark store","s":"Operational"},{"f":"MM_Kuik_DefenceColony","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"MM CH 28","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"MM_PnD_Noida","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_PnD_Noida","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BW CH 28","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"BB_Kuik_Chrompet","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Chennai","p":"Dark store","s":"Operational"},{"f":"MM MAROL","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"BB_ER_KarwanSahu","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"MM Bhumi","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"MM CH 14","bf":"Self Warehouse","b":"B2B","c":"Bhiwandi","p":"Self","s":"Closed"},{"f":"BW_Kuik_Begur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"LJ_Kuik_Begur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Bangalore","p":"Dark store","s":"Operational"},{"f":"Vega City Kiosk","bf":"Kiosk","b":"Virtual facility","c":"Virtual facility","p":"Exhibition / Kiosk / Trial","s":"Operational"},{"f":"MM_Blitz_Tirumalagiri","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"},{"f":"MH_PND_DELHI","bf":"DS Mother Hub","b":"DS Mother Hub","c":"Delhi NCR","p":"Dark store","s":"Operational"},{"f":"BB_Kuik_Miyapur","bf":"DS fulfillment store","b":"DS fulfillment store","c":"Hyderabad","p":"Dark store","s":"Operational"}];
 const ASGN      = {"Self Warehouse":{"name":"Bhavesh Patel","email":"bhavesh.patel@mosaicwellness.in"},"3PL B2C":{"name":"Rupesh Shelar","email":"rupesh.shelar@mosaicwellness.in"},"3PL B2B":{"name":"Rupesh Shelar","email":"rupesh.shelar@mosaicwellness.in"},"Dark Store":{"name":"Akshay Ahuja","email":"akshay.ahuja@mosaicwellness.in"},"FBA / Marketplace":{"name":"Rupesh Shelar","email":"rupesh.shelar@mosaicwellness.in"}};
@@ -746,9 +785,9 @@ function parseDate(s){
   if(!s) return null;
   s=String(s).trim();
   if(!s) return null;
-  // ISO format first (YYYY-MM-DD)
+  // Try native JS Date first — handles ISO, GMT strings, locale strings
   var d=new Date(s);
-  if(!isNaN(d) && s.indexOf('-')===4) return d;
+  if(!isNaN(d)) return d;
   // "20 Apr 2026" format (Apps Script default: dd MMM yyyy)
   var MONTHS={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
   var sp=s.split(/[\s]+/);
@@ -787,7 +826,7 @@ function showErr(t,s){document.getElementById('boot').style.display='none';var e
 function fetchJ(url){return fetch(url+'&t='+Date.now()).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(d){if(d&&d.error)throw new Error(d.error);if(d&&d.headers&&d.rows){var h=d.headers;return d.rows.map(function(row){var o={};for(var i=0;i<h.length;i++)o[h[i]]=String(row[i]===null||row[i]===undefined?'':row[i]).trim();return o;});}if(Array.isArray(d))return d.map(function(row){var o={};Object.keys(row).forEach(function(k){o[k]=String(row[k]===null||row[k]===undefined?'':row[k]).trim();});return o;});throw new Error('Unexpected response format');});}
 
 // GLOBAL STATE
-var R=null,histData=[],allRemarks=[];
+var R=null,histData=[],allRemarks=[],allEventsData=[],facHistData=[];
 var invFacRows=[],invBizRows=[],brandRows=[];
 var expZone1=[],expZone2=[],expZone3=[],expNearRows=[];
 var invKPIs={};
@@ -1240,11 +1279,11 @@ function renderImpact(r){
     +'<div class="imp-sub">Positive / Negative ratio</div></div>';
 
   document.getElementById('mv-today').innerHTML=
-    mvC('Negative Qty / COGS',  fq(r.totNeg),fv(r.totVal),      'var(--re)','c-re')+
-    mvC('Positive Qty / COGS',  fq(r.posQty),fv(r.posVal),      'var(--gn)','c-gn')+
-    mvC('Net Qty / Net COGS',   fq(r.totNeg-r.posQty),fv(r.netVal),'var(--am)','c-am')+
+    mvC('Negative COGS / Qty',  fv(r.totVal),fq(r.totNeg)+' units',  'var(--re)','c-re')+
+    mvC('Positive COGS / Qty',  fv(r.posVal),fq(r.posQty)+' units',  'var(--gn)','c-gn')+
+    mvC('Net COGS / Net Qty',   fv(r.netVal),fq(r.totNeg-r.posQty)+' units','var(--am)','c-am')+
     mvC('Good to Bad',          fq(r.neg.g2b.reduce(function(s,x){return s+x.qty;},0)),fv(r.neg.g2b.reduce(function(s,x){return s+x.cogsVal;},0)),'var(--re)','c-re')+
-    mvC('Expiry Risk',          fq(r.neg.a2ne.length+r.neg.ne2e.length+r.neg.a2e.length)+' ev',fv(r.neg.a2ne.concat(r.neg.ne2e,r.neg.a2e).reduce(function(s,x){return s+x.cogsVal;},0)),'var(--yw)','c-tx')+
+    mvC('Expiry Risk',          fq(r.neg.a2ne.length+r.neg.ne2e.length+r.neg.a2e.length)+' events',fv(r.neg.a2ne.concat(r.neg.ne2e,r.neg.a2e).reduce(function(s,x){return s+x.cogsVal;},0)),'var(--yw)','c-tx')+
     mvC('Total Events',         String(r.totEv),'Unique movements','var(--tx2)','c-tx');
   document.getElementById('nb-today').textContent=r.totEv;
   document.getElementById('neg-badge').textContent=r.totEv+' events';
@@ -1289,11 +1328,68 @@ function renderImpact(r){
       +'</div></div>';
   }).join('')+'</div>';
 
-  // All negative events flat sorted by COGS — top 5 visible, rest collapsible
+  // Build movement summary table (per category) + flat list for collapsible
+  var CAT_META={
+    g2b: {label:'Good to Bad Inventory', dir:'Negative', src:'Warehouse Adjustment', icon:'&#128308;', col:'var(--re)'},
+    g2q: {label:'Good to QC Rejected',   dir:'Negative', src:'QC Triggered',         icon:'&#128993;', col:'var(--am)'},
+    g2rc:{label:'Good to Recalled',       dir:'Negative', src:'QC Triggered',         icon:'&#128680;', col:'var(--re)'},
+    a2ne:{label:'Active to Near Expiry',  dir:'Negative', src:'System Triggered',     icon:'&#9203;',   col:'var(--yw)'},
+    ne2e:{label:'Near Expiry to Expired', dir:'Negative', src:'System Triggered',     icon:'&#128128;', col:'var(--re)'},
+    a2e: {label:'Active to Expired',      dir:'Negative', src:'System Triggered',     icon:'&#10060;',  col:'var(--re)'},
+    a2rc:{label:'Recalled',               dir:'Negative', src:'Compliance',           icon:'&#128680;', col:'var(--re)'},
+    newBad:{label:'Direct Bad GRN',       dir:'Negative', src:'Warehouse Adjustment', icon:'&#128442;', col:'var(--re)'},
+    newQC: {label:'Direct QC GRN',        dir:'Negative', src:'QC Triggered',         icon:'&#9888;',   col:'var(--am)'},
+  };
   var allNegFlat = [].concat(r.neg.g2b,r.neg.g2q,r.neg.g2rc,r.neg.a2ne,r.neg.ne2e,
                              r.neg.a2e,r.neg.a2rc,r.neg.newBad,r.neg.newQC)
                      .sort(function(a,b){return b.cogsVal-a.cogsVal;});
   document.getElementById('neg-badge').textContent=allNegFlat.length+' events';
+
+  // Movement summary table
+  var catSummaryRows = Object.keys(CAT_META).map(function(cat){
+    var rows=r.neg[cat]||[];
+    if(!rows.length) return null;
+    var m=CAT_META[cat];
+    var totCogs=rows.reduce(function(s,x){return s+x.cogsVal;},0);
+    var totQty=rows.reduce(function(s,x){return s+x.qty;},0);
+    return {cat:cat,label:m.label,dir:m.dir,src:m.src,icon:m.icon,col:m.col,
+            records:rows.length,qty:totQty,cogs:totCogs,rows:rows};
+  }).filter(Boolean).sort(function(a,b){return b.cogs-a.cogs;});
+
+  // Render summary table above detailed list
+  var summaryTable='<div style="overflow-x:auto;margin-bottom:0"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">Movement Type</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Direction</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Source</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Records</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS Impact</th>'
+    +'</tr></thead><tbody>'
+    +catSummaryRows.map(function(c){
+      return '<tr data-cat="'+c.cat+'" class="cat-tbl-row">'
+        +'<td style="padding:8px 12px;font-weight:600"><span style="margin-right:6px">'+c.icon+'</span>'+c.label+'</td>'
+        +'<td style="padding:8px 12px;text-align:center"><span style="background:var(--re-bg);color:var(--re);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px">'+c.dir+'</span></td>'
+        +'<td style="padding:8px 12px;font-size:10px;color:var(--tx2)">'+c.src+'</td>'
+        +'<td style="padding:8px 12px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--mu)">'+c.records+'</td>'
+        +'<td style="padding:8px 12px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--tx2)">'+fq(c.qty)+'</td>'
+        +'<td style="padding:8px 12px;font-family:var(--mono);font-size:11px;font-weight:800;text-align:right;color:var(--re)">'+fv(c.cogs)+'</td>'
+        +'</tr>'
+        +'<tr id="cat-detail-'+c.cat+'" style="display:none"><td colspan="6" style="padding:0;background:var(--sf)">'
+        +'<div style="max-height:200px;overflow-y:auto">'
+        +c.rows.slice(0,20).map(function(x){
+          return '<div style="display:flex;align-items:center;padding:7px 16px 7px 32px;border-top:1px solid rgba(228,232,240,.5)">'
+            +'<div style="flex:1;min-width:0"><div style="font-family:var(--mono);font-size:10px;font-weight:600">'+x.sku+'</div>'
+            +'<div style="font-size:9px;color:var(--tl)">'+( x.name||'')+'</div>'
+            +'<div style="font-size:9px;color:var(--mu)">'+(x.fac||'')+(x.city?' — '+x.city:'')+'&nbsp;<span class="biz '+btCls(x.bt)+'">'+x.bt+'</span></div></div>'
+            +'<div style="text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(x.cogsVal)+'</div>'
+            +(allNegFlat.indexOf(x)<5?'<button class="rmk-btn" style="margin-left:8px" onclick="event.stopPropagation();openRmk(this)" data-sku="'+x.sku+'" data-batch="'+(x.batch||'')+'" data-fac="'+(x.fac||'')+'" data-bt="'+x.bt+'" data-ev="'+x.event+'" data-cogs="'+Math.round(x.cogsVal)+'">+ Remark</button>':'')
+            +'</div>';
+        }).join('')
+        +(c.rows.length>20?'<div style="padding:8px 16px;font-size:10px;color:var(--mu);text-align:center">+ '+(c.rows.length-20)+' more — download report for full list</div>':'')
+        +'</div></td></tr>';
+    }).join('')
+    +'</tbody></table></div>';
 
   function evRow(x,showRmk){
     return '<div class="ev-row">'
@@ -1320,14 +1416,96 @@ function renderImpact(r){
       +'<span class="cat-arr">&#9660;</span></div>'
       +'<div class="cat-body">'+negRest.map(function(x){return evRow(x, false);}).join('')+'</div></div>';
   }
+  // Add toggle function for category detail rows
+  if(typeof toggleCatDetail==='undefined'){
+    window.toggleCatDetail=function(cat){
+      var el=document.getElementById('cat-detail-'+cat);
+      if(el) el.style.display=el.style.display==='none'?'table-row':'none';
+    };
+    // Handle data-cat click delegation
+    document.addEventListener('click',function(e){
+      var tr=e.target.closest('tr[data-cat]');
+      if(tr){ toggleCatDetail(tr.getAttribute('data-cat')); }
+    });
+    // Handle business type filter toggle in remarks
+    document.addEventListener('click',function(e){
+      // BT filter
+      var btn=e.target.closest('button[data-rmkbt]');
+      if(btn && R){
+        var togEl=document.getElementById('rmk-biz-toggle');
+        var currentDf=(togEl&&togEl.dataset.df)||'today';
+        renderRemarksView(R, btn.getAttribute('data-rmkbt'), currentDf);
+      }
+      // Date filter
+      var dfBtn=e.target.closest('button[data-rmkdf]');
+      if(dfBtn && R){
+        var togEl=document.getElementById('rmk-biz-toggle');
+        var currentBt=(togEl&&togEl.dataset.active)||'All';
+        var df=dfBtn.getAttribute('data-rmkdf');
+        if(togEl) togEl.dataset.df=df;
+        renderRemarksView(R, currentBt, df);
+      }
+    });
+  }
+  var negHtml = summaryTable;
   document.getElementById('neg-card').innerHTML=negHtml||'<div class="empty">No negative movements today</div>';
 
   // Positive
   document.getElementById('pos-badge').textContent=r.pos.length+(r.pos.length===1?' recovery':' recoveries');
-  // Positive — top 5 by COGS visible, rest collapsible
-  var posTop5 = r.pos.slice(0,5);
-  var posRest  = r.pos.slice(5);
+  // Positive Movements — structured table matching negative side
+  var posAll = r.pos.slice().sort(function(a,b){return b.cogsVal-a.cogsVal;});
+  var posTop5 = posAll.slice(0,5);
+  var posRest  = posAll.slice(5);
   document.getElementById('pos-badge').textContent=r.pos.length+(r.pos.length===1?' recovery':' recoveries');
+
+  // Build positive summary table
+  var posByType={
+    b2g: {label:'Bad to Good',      icon:'&#8679;', col:'var(--gn)', rows:[]},
+    q2g: {label:'QC to Good',       icon:'&#10003;',col:'var(--tl)', rows:[]},
+    rc2a:{label:'Recalled to Active',icon:'&#9654;', col:'var(--bl)', rows:[]},
+    other:{label:'Other Recovery',  icon:'&#8679;', col:'var(--gn)', rows:[]},
+  };
+  posAll.forEach(function(x){
+    var ev=(x.event||'').toLowerCase();
+    if(ev.includes('bad')&&ev.includes('good')) posByType.b2g.rows.push(x);
+    else if(ev.includes('qc')) posByType.q2g.rows.push(x);
+    else if(ev.includes('recall')) posByType.rc2a.rows.push(x);
+    else posByType.other.rows.push(x);
+  });
+  var posCatRows=Object.values(posByType).filter(function(c){return c.rows.length>0;});
+  var posTableHtml='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">Movement Type</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Direction</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Source</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Records</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>'
+    +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS Recovered</th>'
+    +'</tr></thead><tbody>'
+    +posCatRows.map(function(c){
+      var totC=c.rows.reduce(function(s,x){return s+x.cogsVal;},0);
+      var totQ=c.rows.reduce(function(s,x){return s+x.qty;},0);
+      return '<tr class="cat-tbl-row" data-cat="pos-'+c.label.replace(/ /g,'_')+'">'
+        +'<td style="padding:8px 12px;font-weight:600"><span style="margin-right:6px">'+c.icon+'</span>'+c.label+'</td>'
+        +'<td style="padding:8px 12px;text-align:center"><span style="background:var(--gn-bg);color:var(--gn);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px">Positive</span></td>'
+        +'<td style="padding:8px 12px;font-size:10px;color:var(--tx2)">Warehouse Adjustment</td>'
+        +'<td style="padding:8px 12px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--mu)">'+c.rows.length+'</td>'
+        +'<td style="padding:8px 12px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--tx2)">'+fq(totQ)+'</td>'
+        +'<td style="padding:8px 12px;font-family:var(--mono);font-size:11px;font-weight:800;text-align:right;color:var(--gn)">+'+fv(totC)+'</td>'
+        +'</tr>'
+        +'<tr id="pos-cat-'+c.label.replace(/ /g,'_')+'" style="display:none"><td colspan="6" style="padding:0;background:var(--sf)">'
+        +'<div style="max-height:180px;overflow-y:auto">'
+        +c.rows.slice(0,15).map(function(x){
+          return '<div style="display:flex;align-items:center;padding:7px 16px 7px 32px;border-top:1px solid rgba(228,232,240,.5)">'
+            +'<div style="flex:1;min-width:0"><div style="font-family:var(--mono);font-size:10px;font-weight:600">'+x.sku+'</div>'
+            +'<div style="font-size:9px;color:var(--tl)">'+(x.name||'')+'</div>'
+            +'<div style="font-size:9px;color:var(--mu)">'+(x.fac||'')+(x.city?' — '+x.city:'')+'</div></div>'
+            +'<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gn)">+'+fv(x.cogsVal)+'</div>'
+            +'</div>';
+        }).join('')
+        +'</div></td></tr>';
+    }).join('')
+    +'</tbody></table></div>';
 
   function posRow(x){
     return '<div class="pos-row"><div class="pos-ic">&#8679;</div>'
@@ -1352,45 +1530,18 @@ function renderImpact(r){
       +'<div class="cat-body">'+posRest.map(posRow).join('')+'</div></div>';
   }
 
-    document.getElementById('pos-card').innerHTML=posHtml||'<div class="empty" style="color:var(--gn)">No recoveries today</div>';
+    document.getElementById('pos-card').innerHTML=posTableHtml||posHtml||'<div class="empty" style="color:var(--gn)">No recoveries today</div>';
 }
 function mvC(l,v,s,ac,vc){return '<div class="mv-cell"><div class="mv-accent" style="background:'+ac+'"></div><div class="mv-lbl">'+l+'</div><div class="mv-val '+vc+'">'+v+'</div><div class="mv-sub">'+s+'</div></div>';}
 function togCat(el){var b=el.parentElement.querySelector('.cat-body'),a=el.querySelector('.cat-arr');b.classList.toggle('open');a.classList.toggle('open');}
 
 // ── RENDER WTD & MTD — CEO View ──
 function renderHistory(){
-  // ── DEBUG: show raw histData in console and panel ──
-  var dbg = document.getElementById('debug-panel');
-  if(dbg){
-    dbg.style.display = 'block';
-    if(!histData.length){
-      dbg.textContent = 'DEBUG: histData is EMPTY — NI_History sheet has no rows OR fetch failed';
-    } else {
-      var lines = ['DEBUG: histData has '+histData.length+' rows'];
-      lines.push('First row keys: '+Object.keys(histData[0]).join(', '));
-      lines.push('');
-      // Show first 5 rows
-      histData.slice(0,5).forEach(function(r,i){
-        lines.push('Row '+i+': BizType='+r['Business Type']+
-          ' | Date='+r['Date']+
-          ' | parseDate result='+parseDate(r['Date'])+
-          ' | PosVal='+r['Pos Value']+
-          ' | NegVal='+(r['Total Neg Value']||r['Total Value']));
-      });
-      lines.push('');
-      // Show TOTAL rows only
-      var totals = histData.filter(function(r){return r['Business Type']==='TOTAL';});
-      lines.push('TOTAL rows: '+totals.length);
-      totals.slice(0,5).forEach(function(r){
-        lines.push('  '+r['Date']+' PosQty='+r['Pos Qty']+' PosVal='+r['Pos Value']+' NetVal='+r['Net Value']);
-      });
-      dbg.textContent = lines.join('\n');
-    }
-  }
+
   if(!histData.length){
     ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
      'wtd-trend','mtd-trend','wtd-gauge','mtd-gauge',
-     'wtd-drivers','mtd-drivers','wtd-fac-rank','mtd-fac-rank',
+     'wtd-fac-rank','mtd-fac-rank',
      'wtd-biz-bars','mtd-biz-bars'].forEach(function(id){
        var e=document.getElementById(id); if(e) e.innerHTML='<div class="empty">No history yet</div>';
     });
@@ -1422,9 +1573,33 @@ function renderHistory(){
         bizMap[bt].negQ+=n(row['Total Neg Qty']||row['Total Qty']);
         bizMap[bt].pV+=n(row['Pos Value']); bizMap[bt].posQ+=n(row['Pos Qty']);
         bizMap[bt].netV+=n(row['Net Value']);
+        // Per-BT daily neg COGS for multi-line trend
+        var dk2=row['Date'];
+        if(!a.btDaily) a.btDaily={};
+        if(!a.btDaily[bt]) a.btDaily[bt]={};
+        if(!a.btDaily[bt][dk2]) a.btDaily[bt][dk2]=0;
+        a.btDaily[bt][dk2]+=n(row['Total Neg Value']||row['Total Value']);
       }
     });
     a.recoveryRate=a.negV>0?(a.posV/a.negV*100):0;
+    // ── Facility ranking from NI_FacHistory filtered by period ──
+    var facAcc={};
+    (facHistData||[]).forEach(function(row){
+      var d=parseDate(row['Date']); if(!d||d<startDate) return;
+      var fac=row['Facility']||''; if(!fac) return;
+      var nv=parseFloat(row['NegValue'])||0;
+      var nq=parseFloat(row['NegQty'])||0;
+      var pv=parseFloat(row['PosValue'])||0;
+      var pq=parseFloat(row['PosQty'])||0;
+      var bt=row['BizType']||getBT(fac);
+      var city=row['City']||getCity(fac);
+      if(!facAcc[fac]) facAcc[fac]={name:fac,bt:bt,city:city,negVal:0,posVal:0,negQty:0,posQty:0};
+      facAcc[fac].negVal+=nv; facAcc[fac].negQty+=nq;
+      facAcc[fac].posVal+=pv; facAcc[fac].posQty+=pq;
+    });
+    a.facRanked=Object.values(facAcc).map(function(f){
+      f.netVal=f.negVal-f.posVal; return f;
+    }).sort(function(a,b){return b.netVal-a.netVal;});
     a.bizMap=bizMap; a.daily=daily;
     return a;
   }
@@ -1436,19 +1611,28 @@ function renderHistory(){
     var rateLabel=acc.recoveryRate>=30?'STRONG':acc.recoveryRate>=10?'MODERATE':'LOW';
     var rateColor=acc.recoveryRate>=30?'var(--gn)':acc.recoveryRate>=10?'var(--am)':'var(--re)';
 
-    // ── 3 KPI TILES ──
+    // ── 4 HERO TILES — matches Today's Impact style ──
     document.getElementById(pfx+'-kpis').innerHTML=
-      kpiTile('NET IMPACT LOSS', fv(acc.netV),
-              'Effective loss, '+fq(acc.negQ-acc.posQ)+' units involved.',
-              'var(--re)', true) +
-      kpiTile('TOTAL NEGATIVE IMPACT', fv(acc.negV),
-              'Loss from '+fq(acc.negQ)+' units, '+acc.days+' days.',
-              'var(--tx)', false) +
-      kpiTile('POSITIVE IMPACT', fv(acc.posV),
-              'Gains from '+fq(acc.posQ)+' recovered units.',
-              'var(--gn)', false,
-              '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:4px 10px;border-radius:20px;background:'+(acc.recoveryRate>=30?'var(--gn-bg)':acc.recoveryRate>=10?'var(--am-bg)':'var(--re-bg)')+'">'
-              +'<span style="font-size:9px;font-weight:800;color:'+(acc.recoveryRate>=30?'var(--gn)':acc.recoveryRate>=10?'var(--am)':'var(--re)')+'">'+rateLabel+' &nbsp; '+acc.recoveryRate.toFixed(1)+'% RECOVERY RATE</span></div>');
+      '<div class="imp-tile imp-net">'+
+        '<div class="imp-lbl">&#9650; Net Impact</div>'+
+        '<div class="imp-big">'+fv(acc.netV)+'</div>'+
+        '<div class="imp-sub">Effective loss &middot; <span class="mono">'+fq(acc.negQ-acc.posQ)+'</span> units</div>'+
+      '</div>'+
+      '<div class="imp-tile imp-neg">'+
+        '<div class="imp-lbl">&#9660; Negative Impact</div>'+
+        '<div class="imp-big">'+fv(acc.negV)+'</div>'+
+        '<div class="imp-sub"><span class="mono">'+fq(acc.negQ)+'</span> units &middot; '+acc.days+' days</div>'+
+      '</div>'+
+      '<div class="imp-tile imp-pos">'+
+        '<div class="imp-lbl">&#9650; Positive Impact</div>'+
+        '<div class="imp-big">'+fv(acc.posV)+'</div>'+
+        '<div class="imp-sub"><span class="mono">+'+fq(acc.posQ)+'</span> units recovered</div>'+
+      '</div>'+
+      '<div class="imp-tile imp-rate">'+
+        '<div class="imp-lbl">&#9678; Recovery Rate <span class="imp-pill '+rateClass+'">'+rateLabel+'</span></div>'+
+        '<div class="imp-big">'+acc.recoveryRate.toFixed(1)+'%</div>'+
+        '<div class="imp-sub">Positive / Negative ratio</div>'+
+      '</div>';
 
     // ── INSIGHT ──
     var insightCls=acc.recoveryRate>=30?'ci-ok':acc.recoveryRate>=10?'ci-amber':'ci-warn';
@@ -1467,19 +1651,70 @@ function renderHistory(){
       +'<div class="ci-body"><div class="ci-title">'+insightTitle+'</div>'
       +'<div class="ci-text">'+insightText+'</div></div></div>';
 
-    // ── TREND CHART ──
-    var days=Object.keys(acc.daily).sort();
-    var show=days.slice(-14);
-    var mxT=Math.max.apply(null,show.map(function(d){return acc.daily[d]||0;}))||1;
-    document.getElementById(pfx+'-trend').innerHTML=show.map(function(dk){
-      var v=acc.daily[dk]||0; var h=Math.max(3,(v/mxT*108)).toFixed(0);
-      var col=v>mxT*.7?'var(--re)':v>mxT*.35?'var(--am)':'var(--tl)';
-      return '<div class="trend-col"><div class="trend-bar" style="height:'+h+'px;background:'+col+'" data-tip="'+dk+': '+fv(v)+'"></div><div class="trend-lbl">'+(dk.split(' ').slice(0,2).join(' ')||dk.slice(0,6))+'</div></div>';
-    }).join('');
-    if(show.length>=2){
-      var lblEl=document.getElementById(pfx+'-trend-labels');
-      if(lblEl) function fmtTrendLbl(s){var p=s.split(' ');return p.length>=2?p[0]+' '+p[1]:s.slice(0,6);}
-      lblEl.innerHTML='<span>'+fmtTrendLbl(show[0])+'</span><span>'+fmtTrendLbl(show[Math.floor(show.length/2)])+'</span><span>'+fmtTrendLbl(show[show.length-1])+'</span>';
+    // ── MULTI-LINE TREND CHART — one line per Business Type ──
+    var BT_LINE_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
+    var el=document.getElementById(pfx+'-trend');
+    if(el){
+      var btDaily=acc.btDaily||{};
+      var activeBTs=Object.keys(btDaily).filter(function(bt){return Object.keys(btDaily[bt]).length>0;});
+      if(!activeBTs.length){
+        el.innerHTML='<div class="empty" style="padding:20px;text-align:center;color:var(--mu)">No trend data yet</div>';
+      } else {
+        // Collect all unique dates across all BTs, sorted
+        var allDatesSet={};
+        activeBTs.forEach(function(bt){Object.keys(btDaily[bt]).forEach(function(d){allDatesSet[d]=1;});});
+        var allDates=Object.keys(allDatesSet).sort(function(a,b){
+          return (parseDate(a)||new Date(0))-(parseDate(b)||new Date(0));
+        });
+        var show=allDates.slice(-14);
+        var n=show.length;
+        // Find global max for Y axis
+        var allVals=[];
+        activeBTs.forEach(function(bt){show.forEach(function(d){allVals.push(btDaily[bt][d]||0);});});
+        var maxV=Math.max.apply(null,allVals)||1;
+        var W=Math.max(el.offsetWidth||0,360);
+        var LEGEND_H=activeBTs.length*18+8;
+        var H=180; var PAD={t:16,b:34,l:8,r:12};
+        var cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
+        function vy(v){return PAD.t+cH-(v/maxV)*cH*0.88;}
+        function vx(i){return PAD.l+(n===1?cW/2:i/(n-1)*cW);}
+        function fmtLbl(s){var p=s.split(' ');return p.length>=3?p[2]+' '+p[1]:s.slice(0,6);}
+        // Grid lines
+        var gridLines='';
+        [0.25,0.5,0.75,1].forEach(function(f){
+          var gy=vy(maxV*f);
+          gridLines+='<line x1="'+PAD.l+'" y1="'+gy.toFixed(1)+'" x2="'+(W-PAD.r)+'" y2="'+gy.toFixed(1)+'" stroke="#e4e8f0" stroke-width="1" stroke-dasharray="3,3"/>';
+          gridLines+='<text x="'+(PAD.l+2)+'" y="'+(gy-3)+'" font-size="8" fill="#b0b8cc" font-family="Inter,sans-serif">'+fv(maxV*f)+'</text>';
+        });
+        // Date tick labels
+        var tickIdxs=[], step=Math.max(1,Math.floor((n-1)/6));
+        for(var ti=0;ti<n;ti+=step) tickIdxs.push(ti);
+        if(tickIdxs[tickIdxs.length-1]!==n-1) tickIdxs.push(n-1);
+        var tickLabels=tickIdxs.map(function(ti){
+          return '<text x="'+vx(ti).toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle" font-size="10" font-family="Inter,sans-serif" fill="#7c85a0">'+fmtLbl(show[ti])+'</text>';
+        }).join('');
+        // Draw one line per BT
+        var lines=activeBTs.map(function(bt){
+          var col=BT_LINE_COL[bt]||'#7c85a0';
+          var pts=show.map(function(d,i){return vx(i).toFixed(1)+','+vy(btDaily[bt][d]||0).toFixed(1);});
+          var path='M'+pts.join(' L');
+          var lastVal=btDaily[bt][show[n-1]]||0;
+          var lx=vx(n-1),ly=vy(lastVal);
+          var dot=lastVal>0?'<circle cx="'+lx.toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="1.5"/>':'';
+          return '<path d="'+path+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>'+dot;
+        }).join('');
+        // Legend
+        var legendItems=activeBTs.map(function(bt,li){
+          var col=BT_LINE_COL[bt]||'#7c85a0';
+          var lx=PAD.l + li*(W/activeBTs.length);
+          return '<circle cx="'+(lx+6)+'" cy="'+(H+12+14)+'" r="4" fill="'+col+'"/>'
+            +'<text x="'+(lx+14)+'" y="'+(H+12+14+4)+'" font-size="10" font-family="Inter,sans-serif" fill="#374151">'+bt+'</text>';
+        }).join('');
+        var totalLegendH=activeBTs.length>3?32:18;
+        el.innerHTML='<svg width="100%" height="'+(H+totalLegendH)+'" viewBox="0 0 '+W+' '+(H+totalLegendH)+'" style="overflow:visible;display:block">'
+          +gridLines+lines+tickLabels+legendItems
+          +'</svg>';
+      }
     }
 
     // ── GAUGE ──
@@ -1502,42 +1737,51 @@ function renderHistory(){
       +'<div class="gauge-desc" style="margin-top:6px">Ratio of positive recoveries to total negative COGS</div>'
       +'</div></div>';
 
-    // ── HEALTH DRIVERS ──
-    var drivers=[
-      {icon:'&#8651;',bg:'var(--re-bg)',title:'Good to Bad Movements',
-       sub:'High-volume shift — COGS: '+fv(acc.g2bV),val:fq(acc.g2bQ)+' units',valCol:'var(--re)'},
-      {icon:'&#9203;',bg:'var(--am-bg)',title:'Expiry Risk',
-       sub:'Inventory at risk of expiry',val:fq(acc.expQ)+' units',valCol:'var(--am)'},
-      {icon:'&#8679;',bg:'var(--gn-bg)',title:'Negative vs Positive Movements',
-       sub:'For every '+fq(acc.negQ)+' lost, '+fq(acc.posQ)+' recovered',
-       val:fv(acc.negV-acc.posV),valCol:'var(--tl)'},
-    ];
-    document.getElementById(pfx+'-drivers').innerHTML=drivers.map(function(d){
-      return '<div class="driver-card">'
-        +'<div class="driver-icon" style="background:'+d.bg+'">'+d.icon+'</div>'
-        +'<div class="driver-body">'
-        +'<div class="driver-title">'+d.title+'</div>'
-        +'<div class="driver-sub">'+d.sub+'</div></div>'
-        +'<div class="driver-val" style="color:'+d.valCol+'">'+d.val+'</div>'
-        +'</div>';
-    }).join('');
-
-    // ── FACILITY RANK ──
-    // Use today's facRanked if available, otherwise show placeholder
-    var facRows = R&&R.facRanked ? R.facRanked.slice(0,5) : [];
+    // ── FACILITY RANK — Top 10 by Net COGS for this period ──
+    var facRows = (acc.facRanked&&acc.facRanked.length) ? acc.facRanked.slice(0,10)
+                : (R&&R.facRanked ? R.facRanked.slice(0,10) : []);
     document.getElementById(pfx+'-fac-rank').innerHTML=facRows.length
-      ?facRows.map(function(f,i){
+      ? facRows.map(function(f,i){
           var bt=f.bt||getBT(f.name); var city=f.city||getCity(f.name);
           return '<tr>'
-            +'<td class="rank-num">'+(i+1)+'</td>'
-            +'<td><div style="font-size:10px;font-weight:600">'+f.name+'</div>'
+            +'<td style="padding:6px 10px;font-size:9px;color:var(--mu);font-family:var(--mono)">'+(i+1)+'</td>'
+            +'<td style="padding:6px 10px"><div style="font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">'+f.name+'</div>'
             +'<div style="display:flex;gap:4px;margin-top:2px">'
             +'<span class="biz '+btCls(bt)+'">'+bt+'</span>'
             +(city?'<span style="font-size:8px;color:var(--mu)">'+city+'</span>':'')
             +'</div></td>'
-            +'<td class="rank-val">'+fv(f.netVal)+'</td></tr>';
+            +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:9px;color:var(--mu)">'+fq(f.negQty||0)+'</td>'
+            +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:800;color:var(--re)">'+fv(f.netVal)+'</td></tr>';
         }).join('')
-      :'<tr><td colspan="3" class="empty">Run testRunNow() first</td></tr>';
+      : '<tr><td colspan="4" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No facility data for this period</td></tr>';
+
+    // ── MOVEMENT BREAKDOWN TABLE ──
+    var movRows=[
+      {label:'Good to Bad',     icon:'&#128308;',qty:acc.g2bQ,val:acc.g2bV,src:'Warehouse Adj',col:'var(--re)'},
+      {label:'Expiry Events',   icon:'&#9203;',  qty:acc.expQ,val:acc.expV,src:'System Triggered',col:'var(--am)'},
+      {label:'Bad GRN',         icon:'&#128442;',qty:acc.grnQ,val:0,       src:'Warehouse Adj',col:'var(--re)'},
+      {label:'Recovery (Pos)',  icon:'&#8679;',  qty:acc.posQ,val:acc.posV, src:'Warehouse Adj',col:'var(--gn)'},
+    ].filter(function(r){return r.qty>0;});
+    var movEl=document.getElementById(pfx+'-mov-table');
+    if(movEl){
+      movEl.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<thead><tr>'
+        +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">Type</th>'
+        +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>'
+        +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>'
+        +'</tr></thead><tbody>'
+        +movRows.map(function(r){
+          return '<tr>'
+            +'<td style="padding:7px 10px"><span style="margin-right:5px">'+r.icon+'</span>'
+            +'<span style="font-size:10px;font-weight:600">'+r.label+'</span>'
+            +'<br><span style="font-size:8px;color:var(--mu)">'+r.src+'</span></td>'
+            +'<td style="padding:7px 10px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--tx2)">'+fq(r.qty)+'</td>'
+            +'<td style="padding:7px 10px;font-family:var(--mono);font-size:10px;font-weight:700;text-align:right;color:'+r.col+'">'+fv(r.val)+'</td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table>'
+        +(movRows.length===0?'<div class="empty" style="padding:14px">No movement data</div>':'');
+    }
 
     // ── BIZ BARS ──
     var bCols={'3PL B2C':'#1558a8','3PL B2B':'#37474f','Dark Store':'#4a148c','Self Warehouse':'#166534','FBA / Marketplace':'#b7410e','Other':'#7c85a0'};
@@ -1561,6 +1805,81 @@ function renderHistory(){
   renderPeriod(W,'wtd');
   renderPeriod(M,'mtd');
   var nb=document.getElementById('nb-wtd'); if(nb) nb.textContent=W.days+'d';
+  // Store acc objects for trend toggle
+  window._trendAcc={wtd:W, mtd:M};
+}
+
+function setTrendView(pfx, mode){
+  var el=document.getElementById(pfx+'-trend');
+  var el2=document.getElementById(pfx+'-trend-biz');
+  var togDate=document.getElementById(pfx+'-trend-tog-date');
+  var togBiz=document.getElementById(pfx+'-trend-tog-biz');
+  if(!el||!el2) return;
+  var isDate=mode==='date';
+  el.style.display=isDate?'block':'none';
+  el2.style.display=isDate?'none':'block';
+  if(togDate){togDate.classList.toggle('on',isDate);togDate.classList.toggle('on',isDate);}
+  if(togBiz){togBiz.classList.toggle('on',!isDate);}
+  if(!isDate && el2.innerHTML===''){
+    var acc=(window._trendAcc||{})[pfx]; if(!acc) return;
+    renderBizTrend(el2, acc);
+  }
+}
+
+function renderBizTrend(el, acc){
+  // Business-wise COGS breakdown: horizontal bars + per-BT daily sparklines
+  var BT_COL={'3PL B2C':'#1558a8','3PL B2B':'#37474f','Dark Store':'#4a148c','Self Warehouse':'#166534','FBA / Marketplace':'#b7410e','Other':'#7c85a0'};
+  var bzArr=Object.keys(acc.bizMap).map(function(k){return Object.assign({bt:k},acc.bizMap[k]);}).sort(function(a,b){return b.nV-a.nV;});
+  if(!bzArr.length){el.innerHTML='<div class="empty" style="padding:20px;text-align:center;color:var(--mu)">No business data</div>';return;}
+  var maxNeg=Math.max.apply(null,bzArr.map(function(b){return b.nV||0;}))||1;
+
+  // Build date-wise per-BT breakdown from histData
+  var btDays={};
+  histData.forEach(function(row){
+    var bt=row['Business Type']; if(!bt||bt==='TOTAL') return;
+    var dk=row['Date'];
+    if(!btDays[bt]) btDays[bt]={};
+    if(!btDays[bt][dk]) btDays[bt][dk]=0;
+    btDays[bt][dk]+=parseFloat(row['Total Neg Value']||row['Total Value'])||0;
+  });
+
+  el.innerHTML='<div style="overflow-x:auto">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr>'
+    +'<th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">Business</th>'
+    +'<th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Neg COGS</th>'
+    +'<th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Pos COGS</th>'
+    +'<th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>'
+    +'<th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Rcv %</th>'
+    +'<th style="padding:7px 64px 7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Trend</th>'
+    +'</tr></thead><tbody>'
+    +bzArr.map(function(b){
+      var col=BT_COL[b.bt]||'#7c85a0';
+      var pct=Math.max(3,(b.nV/maxNeg*100)).toFixed(0);
+      var rcv=b.nV>0?(b.pV/b.nV*100).toFixed(1)+'%':'—';
+      var rcvCol=parseFloat(rcv)>=30?'var(--gn)':parseFloat(rcv)>=10?'var(--am)':'var(--re)';
+      // Mini sparkline for this BT
+      var days=Object.keys(btDays[b.bt]||{}).sort();
+      var sparkVals=days.map(function(d){return btDays[b.bt][d]||0;});
+      var sparkMax=Math.max.apply(null,sparkVals)||1;
+      var sw=80,sh=28,pts=sparkVals.map(function(v,i){
+        var x=(sparkVals.length===1?sw/2:i/(sparkVals.length-1)*sw).toFixed(1);
+        var y=(sh-Math.round(v/sparkMax*sh*0.85)).toFixed(1);
+        return x+','+y;
+      });
+      var spark=sparkVals.length>1?'<svg width="80" height="28" viewBox="0 0 80 28" style="display:block">'
+        +'<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round"/>'
+        +'</svg>':'<span style="font-size:8px;color:var(--mu)">—</span>';
+      return '<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+        +'<td style="padding:8px 10px"><span class="biz '+btCls(b.bt)+'">'+b.bt+'</span></td>'
+        +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(b.nV)+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gn)">'+fv(b.pV||0)+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:800;color:'+col+'">'+fv(b.netV||0)+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:'+rcvCol+'">'+rcv+'</td>'
+        +'<td style="padding:8px 10px">'+spark+'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>';
 }
 
 function kpiTile(lbl,val,sub,valCol,highlight,extra){
@@ -1601,6 +1920,165 @@ function goPage(p){
   // If going to mtd, switch the inner tab
   if(p==='mtd') goWtdTab('mtd');
 }
+function switchView(v){
+  document.getElementById('view-movement').style.display = v==='movement'?'block':'none';
+  document.getElementById('view-remarks').style.display  = v==='remarks' ?'block':'none';
+  document.getElementById('tog-movement').classList.toggle('on', v==='movement');
+  document.getElementById('tog-remarks').classList.toggle('on', v==='remarks');
+  if(v==='remarks' && R) renderRemarksView(R);
+}
+
+function renderRemarksView(r, filterBt, rmkDateFilter){
+  // ── Global Top 10: ranked across ALL business types ──
+  var globalTop10 = r.flat.slice(0,10);
+
+  // ── Apply BT filter to global top 10 (not a re-rank) ──
+  var currentBt = filterBt||'All';
+  var currentDf = rmkDateFilter||'today';
+  var displayRows = currentBt==='All'
+    ? globalTop10
+    : globalTop10.filter(function(x){return x.bt===currentBt;});
+
+  // ── Remarks lookup map ──
+  var rmkMap = {};
+  (allRemarks||[]).forEach(function(rm){
+    var key=(rm['SKU']||'')+'||'+(rm['Facility']||'');
+    if(!rmkMap[key]) rmkMap[key]=[];
+    rmkMap[key].push(rm);
+  });
+
+  // ── Remarks summary: BT-wise + date-filtered ──
+  var today=new Date(); today.setHours(0,0,0,0);
+  var wkS=new Date(today); wkS.setDate(today.getDate()-((today.getDay()||7)-1));
+  var moS=new Date(today.getFullYear(),today.getMonth(),1);
+  function inPeriod(rmk){
+    var rd=parseDate(rmk['Date']); if(!rd) return true;
+    if(currentDf==='today') return rd>=today;
+    if(currentDf==='wtd')   return rd>=wkS;
+    if(currentDf==='mtd')   return rd>=moS;
+    return true;
+  }
+
+  // Build BT breakdown of remarks
+  var btOrder=['Self Warehouse','Dark Store','3PL B2C','3PL B2B'];
+  var btRmkMap={};
+  (allRemarks||[]).forEach(function(rm){
+    if(!inPeriod(rm)) return;
+    var bt=rm['Business Type']||'Other';
+    if(!btRmkMap[bt]) btRmkMap[bt]={pending:0,completed:0};
+    var s=rm['Status']||'';
+    if(s==='Resolved'||s==='Completed') btRmkMap[bt].completed++;
+    else btRmkMap[bt].pending++;
+  });
+  var allBTsWithRmks=Object.keys(btRmkMap);
+  var summaryBTs=btOrder.filter(function(bt){return btRmkMap[bt];}).concat(
+    allBTsWithRmks.filter(function(bt){return btOrder.indexOf(bt)===-1;})
+  );
+  var totalPending=0,totalCompleted=0;
+  summaryBTs.forEach(function(bt){totalPending+=(btRmkMap[bt]||{}).pending||0;totalCompleted+=(btRmkMap[bt]||{}).completed||0;});
+
+  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#4a148c','3PL B2C':'#1558a8','3PL B2B':'#37474f'};
+
+  document.getElementById('rmk-summary').innerHTML=
+    '<div class="card" style="padding:0;overflow:hidden">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--br)">'+
+    '<div style="font-size:12px;font-weight:700;color:var(--tx)">Remarks Summary</div>'+
+    '<div style="display:flex;gap:4px">'+
+    ['today','wtd','mtd'].map(function(df){
+      var lbl=df==='today'?'Today':df==='wtd'?'WTD':'MTD';
+      var on=df===currentDf;
+      return '<button data-rmkdf="'+df+'" style="padding:3px 10px;border-radius:12px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid '+(on?'var(--bl)':'var(--br)')+';background:'+(on?'var(--bl)':'var(--wh)')+';color:'+(on?'#fff':'var(--tx2)')+'">'
+        +lbl+'</button>';
+    }).join('')+
+    '</div></div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+
+    '<thead><tr>'+
+    '<th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">Business Type</th>'+
+    '<th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--am);text-align:right">Pending</th>'+
+    '<th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--gn);text-align:right">Completed</th>'+
+    '<th style="padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Total</th>'+
+    '</tr></thead><tbody>'+
+    (summaryBTs.length
+      ? summaryBTs.map(function(bt){
+          var c=btRmkMap[bt]||{pending:0,completed:0};
+          var col=BT_COL[bt]||'#7c85a0';
+          return '<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'+
+            '<td style="padding:8px 12px"><span class="biz '+btCls(bt)+'">'+bt+'</span></td>'+
+            '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--am)">'+c.pending+'</td>'+
+            '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--gn)">'+c.completed+'</td>'+
+            '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--tx2)">'+(c.pending+c.completed)+'</td>'+
+          '</tr>';
+        }).join('')+
+        '<tr style="border-top:2px solid var(--br);background:var(--sf)">'+
+        '<td style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--tx)">Total</td>'+
+        '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--am)">'+totalPending+'</td>'+
+        '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--gn)">'+totalCompleted+'</td>'+
+        '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--tx2)">'+(totalPending+totalCompleted)+'</td>'+
+        '</tr>'
+      : '<tr><td colspan="4" class="empty" style="padding:16px">No remarks in this period</td></tr>')+
+    '</tbody></table></div></div>';
+
+  // ── Business toggle filter buttons ──
+  var allBTs=['All'].concat(
+    r.flat.reduce(function(acc,x){
+      if(x.bt&&acc.indexOf(x.bt)===-1) acc.push(x.bt); return acc;
+    },[]).sort()
+  );
+  var togEl2=document.getElementById('rmk-biz-toggle');
+  if(togEl2){
+    togEl2.innerHTML=allBTs.map(function(bt){
+      var active=bt===currentBt;
+      var col=BT_COL[bt]||'#555';
+      // Badge = count within global top 10 (not from all events)
+      var countInTop10=bt==='All'?globalTop10.length:globalTop10.filter(function(x){return x.bt===bt;}).length;
+      return '<button data-rmkbt="'+bt+'" style="'
+        +'padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;'
+        +'border:2px solid '+(active?col:'var(--br)')+';'
+        +'background:'+(active?col:'var(--wh)')+';color:'+(active?'#fff':'var(--tx2)')+';transition:all .15s">'
+        +(bt==='All'?'&#9673; All':bt)
+        +'<span style="margin-left:5px;font-size:9px;opacity:.8">'+countInTop10+'</span></button>';
+    }).join('');
+  }
+
+  // ── Top 10 table ──
+  document.getElementById('rmk-top-cnt').textContent='Top '+globalTop10.length+(currentBt!=='All'?' · '+currentBt+' ('+displayRows.length+')':'');
+  document.getElementById('rmk-top-tbody').innerHTML=displayRows.length
+    ? displayRows.map(function(x,i){
+        // rank is position in globalTop10, not in displayRows
+        var rank=globalTop10.indexOf(x)+1;
+        var key=(x.sku||'')+'||'+(x.fac||'');
+        var existingRmks=rmkMap[key]||[];
+        var latestRmk=existingRmks[existingRmks.length-1];
+        var rmkStatus=latestRmk?(latestRmk['Status']||'Open'):'—';
+        var rmkText=latestRmk?(latestRmk['Remark']||''):'';
+        var statusCls=rmkStatus==='Resolved'||rmkStatus==='Completed'?'bdg-g':rmkStatus==='In Progress'?'bdg-a':'bdg-r';
+        return '<tr style="border-bottom:1px solid rgba(228,232,240,.7)">'
+          +'<td style="padding:9px 10px;font-family:var(--mono);font-size:10px;color:var(--mu);font-weight:700">'+rank+'</td>'
+          +'<td style="padding:9px 10px"><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--tx)">'+x.sku+'</div>'
+          +'<div style="font-size:8px;color:var(--mu);font-family:var(--mono)">#'+(x.batch||'—')+'</div></td>'
+          +'<td style="padding:9px 10px;max-width:150px"><div style="font-size:10px;font-weight:500;color:var(--tl);white-space:normal;line-height:1.4">'+(x.name||'—')+'</div></td>'
+          +'<td style="padding:9px 10px"><div style="font-size:10px;font-weight:600;color:var(--tx2)">'+x.event+'</div></td>'
+          +'<td style="padding:9px 10px"><div style="font-size:10px;font-weight:600;white-space:nowrap">'+x.fac+'</div>'
+          +'<div style="font-size:8px;color:var(--mu)">'+(x.city||'')+'</div></td>'
+          +'<td style="padding:9px 10px"><span class="biz '+btCls(x.bt)+'">'+x.bt+'</span></td>'
+          +'<td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re);white-space:nowrap">−'+fq(x.qty)+'</td>'
+          +'<td style="padding:9px 10px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--re);white-space:nowrap">'+fv(x.cogsVal)+'</td>'
+          +'<td style="padding:9px 10px;min-width:180px">'
+          +'<div style="display:flex;flex-direction:column;gap:5px">'
+          +(rmkText?'<div style="font-size:10px;color:var(--tx2);line-height:1.5;white-space:normal">"'+rmkText+'"</div>':'')
+          +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<span class="badge '+statusCls+'" style="font-size:8px">'+rmkStatus+'</span>'
+          +'<button class="rmk-btn" style="font-size:9px" onclick="openRmk(this)" '
+          +'data-sku="'+x.sku+'" data-batch="'+(x.batch||'')+'" data-fac="'+(x.fac||'')+'" '
+          +'data-bt="'+x.bt+'" data-ev="'+x.event+'" data-cogs="'+Math.round(x.cogsVal)+'">'
+          +(rmkText?'Edit':'+ Add')+'</button>'
+          +'</div></div></td>'
+          +'</tr>';
+      }).join('')
+    : '<tr><td colspan="9" class="empty" style="padding:20px">'+(currentBt==='All'?'No negative movements today':'No Top 10 entries belong to '+currentBt)+'</td></tr>';
+}
+
+
 function goWtdTab(t){
   document.querySelectorAll('[id^="wtdtab-"]').forEach(function(el){el.classList.remove('on');});
   document.getElementById('wtdtab-'+t).classList.add('on');
@@ -1614,7 +2092,8 @@ function goWtdTab(t){
 var _rmk={};
 function openRmk(btn){_rmk={sku:btn.getAttribute('data-sku'),batch:btn.getAttribute('data-batch'),fac:btn.getAttribute('data-fac'),bt:btn.getAttribute('data-bt'),ev:btn.getAttribute('data-ev'),cogs:btn.getAttribute('data-cogs')};var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};document.getElementById('rmk-sku-d').textContent=_rmk.sku+' #'+_rmk.batch;document.getElementById('rmk-ev-d').textContent=_rmk.ev+' - COGS: INR '+parseFloat(_rmk.cogs).toLocaleString();document.getElementById('rmk-loc-d').textContent=_rmk.fac+' ('+_rmk.bt+')';document.getElementById('rmk-asn-d').textContent=a.name;document.getElementById('rmk-asn-s-d').textContent=a.email+' - included in tomorrow morning report';document.getElementById('rmk-txt').value='';document.getElementById('rmk-modal').classList.add('show');}
 function closeRmk(){document.getElementById('rmk-modal').classList.remove('show');}
-function saveRmk(){var t=document.getElementById('rmk-txt').value.trim();if(!t){alert('Please enter a remark.');return;}var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};var btn=document.getElementById('rmk-save-btn');btn.disabled=true;btn.textContent='Saving...';var p={action:'saveRemark',sku:_rmk.sku,batch:_rmk.batch,facility:_rmk.fac,bizType:_rmk.bt,event:_rmk.ev,cogsVal:parseFloat(_rmk.cogs)||0,remark:t,assignedTo:a.name,assignedEmail:a.email,date:new Date().toLocaleDateString('en-IN')};fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'}).then(function(){allRemarks.push({ID:'RMK-'+Date.now(),Date:p.date,SKU:p.sku,Batch:p.batch,Facility:p.facility,'Business Type':p.bizType,Event:p.event,Remark:p.remark,'Assigned To':p.assignedTo,Status:'Open'});renderRemarks();closeRmk();btn.disabled=false;btn.textContent='Save Remark';alert('Saved. Will appear in '+a.name+' morning report tomorrow.');}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';alert('Error: '+e.message);});}
+function saveRmk(){var t=document.getElementById('rmk-txt').value.trim();if(!t){alert('Please enter a remark.');return;}var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};var btn=document.getElementById('rmk-save-btn');btn.disabled=true;btn.textContent='Saving...';var p={action:'saveRemark',sku:_rmk.sku,batch:_rmk.batch,facility:_rmk.fac,bizType:_rmk.bt,event:_rmk.ev,cogsVal:parseFloat(_rmk.cogs)||0,remark:t,assignedTo:a.name,assignedEmail:a.email,date:new Date().toLocaleDateString('en-IN')};fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'}).then(function(){allRemarks.push({ID:'RMK-'+Date.now(),Date:p.date,SKU:p.sku,Batch:p.batch,Facility:p.facility,'Business Type':p.bizType,Event:p.event,Remark:p.remark,'Assigned To':p.assignedTo,Status:'Open'});
+    if(R) renderRemarksView(R);renderRemarks();closeRmk();btn.disabled=false;btn.textContent='Save Remark';alert('Saved. Will appear in '+a.name+' morning report tomorrow.');}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';alert('Error: '+e.message);});}
 function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'updateStatus',id:id,status:status}),mode:'no-cors'}).catch(function(){});allRemarks.forEach(function(r){if(r['ID']===id)r['Status']=status;});renderRemarks();}
 
 // DOWNLOAD
@@ -1652,7 +2131,7 @@ function boot(){
     step('Building analysis...',45);
     if(!evData.length && !stockData.length){showErr('No data found','Run testRunNow() in Apps Script first to populate sheets.');return;}
     setTimeout(function(){
-      R=buildRFromEvents(evData);
+      allEventsData=evData; R=buildRFromEvents(evData);
       step('Processing inventory...',65);
       // Prefer NI_TodayStock (accurate), fall back to NI_Inventory if unavailable
       if(stockData && stockData.length){
@@ -1668,6 +2147,7 @@ function boot(){
         renderImpact(R);
         document.getElementById('boot').style.display='none';
         document.getElementById('pages').style.display='block';
+        goPage('today');
         document.getElementById('ref-btn').disabled=false;
         fetchJ(EXPIRY_URL).then(function(d){buildExpiry(d);}).catch(function(){});
         fetch(HIST_URL+'&t='+Date.now()).then(function(r){return r.json();}).then(function(d){
@@ -1707,6 +2187,27 @@ function boot(){
         });
         renderHistory();
       }).catch(function(e){console.warn('History fetch failed:',e);histData=[];renderHistory();});
+        // Fetch per-facility history for WTD/MTD ranking
+        fetch(FAC_URL+'&t='+Date.now()).then(function(r){return r.json();}).then(function(d){
+          if(d&&d.headers&&d.rows){
+            var h=d.headers;
+            facHistData=d.rows.map(function(row){
+              var o={};
+              h.forEach(function(k,i){o[k]=String(row[i]===null||row[i]===undefined?'':row[i]).trim();});
+              o['Date']     = o['Date']     || String(row[0]||'').trim();
+              o['Facility'] = o['Facility'] || String(row[1]||'').trim();
+              o['BizType']  = o['BizType']  || String(row[2]||'').trim();
+              o['City']     = o['City']     || String(row[3]||'').trim();
+              o['NegQty']   = o['NegQty']   || String(row[4]||0);
+              o['NegValue'] = o['NegValue'] || String(row[5]||0);
+              o['PosQty']   = o['PosQty']   || String(row[6]||0);
+              o['PosValue'] = o['PosValue'] || String(row[7]||0);
+              o['NetValue'] = o['NetValue'] || String(row[8]||0);
+              return o;
+            });
+            renderHistory(); // re-render now that fac data is available
+          }
+        }).catch(function(){facHistData=[];});
               },80);
     },200);
   })
