@@ -520,8 +520,8 @@ tbody tr:hover td{background:var(--sf)}
     <div class="sub-tabs">
       <div class="sub-tab on" onclick="goExpTab('nearexp')" id="exptab-nearexp">&#9432; Near Expiry Logic</div>
       <div class="sub-tab" onclick="goExpTab('zone1')" id="exptab-zone1">Window 1 &mdash; 30 to 60 Days</div>
-      <div class="sub-tab" onclick="goExpTab('zone2')" id="exptab-zone2">Window 2 &mdash; 60 to 120 Days</div>
-      <div class="sub-tab" onclick="goExpTab('zone3')" id="exptab-zone3">Window 3 &mdash; Above 120 Days</div>
+      <div class="sub-tab" onclick="goExpTab('zone2')" id="exptab-zone2">Window 2 &mdash; 60 to 90 Days</div>
+      <div class="sub-tab" onclick="goExpTab('zone3')" id="exptab-zone3">Window 3 &mdash; 90 to 120 Days</div>
     </div>
     <!-- Near Expiry Logic explanation panel -->
     <div id="nearexp-panel" class="card" style="margin-bottom:14px">
@@ -1070,15 +1070,15 @@ function buildExpiry(expData){
       shelfLifeDays=Math.round((expDate-mfgDate)/(1000*60*60*24));
       shelfLifeMonths=Math.floor(shelfLifeDays/30);
       cutoffDays=getCutoffDays(shelfLifeMonths);
-      if(state==='Active'&&dl<=cutoffDays&&dl>=0) isNearExpiry=true;
+      if(state==='Active'&&dl<=Math.min(cutoffDays,120)&&dl>=0) isNearExpiry=true;
     }
 
     var r2={sku:sku,name:name,batch:batch,fac:fac,city:city,bt:bt,brand:brand,qty:qty,cp:cp,cogsVal:cv,mfgDate:mfgDate,expDate:expDate,mfgStr:mfgStr,expStr:expStr,daysLeft:dl,shelfLifeDays:shelfLifeDays,shelfLifeMonths:shelfLifeMonths,cutoffDays:cutoffDays,isNearExpiry:isNearExpiry,state:state};
 
-    // 3 windows per user spec: 30-60d, 60-120d, >120d
+    // 3 windows: 30-60d, 60-90d, 90-120d
     if(dl>=30&&dl<=60)      expZone1.push(r2);
-    else if(dl>60&&dl<=120) expZone2.push(r2);
-    else if(dl>120)         expZone3.push(r2);
+    else if(dl>60&&dl<=90)  expZone2.push(r2);
+    else if(dl>90&&dl<=120) expZone3.push(r2);
 
     if(isNearExpiry) expNearRows.push(r2);
 
@@ -1099,6 +1099,16 @@ function buildExpiry(expData){
   // Default to nearexp logic tab (first tab)
   goExpTab('nearexp');
   renderBrand();
+
+  // ── Override invKPIs.totNE with our window-capped count (30–120 days) ──
+  // This ensures "About to Expire" in Operational Exception Metrics
+  // only shows items within our defined 30–120 day window.
+  if(invKPIs){
+    var neQty=0;
+    expNearRows.forEach(function(r){ neQty+=r.qty; });
+    invKPIs.totNE=neQty;
+    renderInventoryOverview(); // re-render the table with corrected value
+  }
 }
 
 // ── RENDER INVENTORY OVERVIEW ──
@@ -1305,7 +1315,7 @@ function goExpTab(t){
   _expActive=t;
   document.querySelectorAll('[id^="exptab-"]').forEach(function(el){el.classList.remove('on');});
   document.getElementById('exptab-'+t).classList.add('on');
-  var titles={zone1:'Window 1 — 30 to 60 Days',zone2:'Window 2 — 60 to 120 Days',zone3:'Window 3 — Above 120 Days'};
+  var titles={zone1:'Window 1 — 30 to 60 Days',zone2:'Window 2 — 60 to 90 Days',zone3:'Window 3 — 90 to 120 Days'};
   // Show/hide the logic panel vs the data table
   var panel=document.getElementById('nearexp-panel');
   var tableCard=document.querySelector('#pg-expiry .card:not(#nearexp-panel)');
