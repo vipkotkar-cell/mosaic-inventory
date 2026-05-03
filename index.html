@@ -366,6 +366,7 @@ tbody tr:hover td{background:var(--sf)}
   <div class="sb-foot">
     <a class="sb-sheet-btn" href="https://docs.google.com/spreadsheets/d/1Jz1cCR6f8anX4y3O9bn3lRQsyx5bYy2OUxhZcgmgjvY" target="_blank">&#128202; View Data Sheet</a>
     <button class="ref-btn" id="ref-btn" onclick="reload()" disabled>&#8635; Refresh Data</button>
+    <button class="ref-btn" id="archive-btn" onclick="runArchive()" style="margin-top:6px;background:#1e3a5f;font-size:10px" title="Archive current month data and clear sheets for next month">&#128230; Archive Month</button>
   </div>
 </aside>
 
@@ -2279,6 +2280,25 @@ function boot(){
   .catch(function(e){showErr('Failed to load data',e.message.indexOf('Failed to fetch')>=0?'Cannot reach Apps Script Web App.':e.message);});
 }
 function reload(){document.getElementById('pages').style.display='none';document.getElementById('err-box').style.display='none';document.getElementById('boot').style.display='flex';document.getElementById('ref-btn').disabled=true;step('Refreshing...',5);boot();}
+
+function runArchive(){
+  var btn=document.getElementById('archive-btn');
+  if(!confirm('Archive this month\'s data and clear main sheets for next month?\n\nThis will:\n• Copy current data to _Archive tabs\n• Clear NI_History, NI_FacHistory, NI_EventHistory, NI_Remarks\n• Send you a confirmation email')) return;
+  btn.disabled=true; btn.textContent='Archiving...';
+  fetch(PROXY, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'archiveMonth'})
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    btn.disabled=false; btn.textContent='&#128230; Archive Month';
+    if(d.success) showToast('&#10003; Archive complete — sheets cleared for next month');
+    else showToast('&#9888; Archive failed: '+(d.error||'unknown error'), true);
+  }).catch(function(){
+    btn.disabled=false; btn.textContent='&#128230; Archive Month';
+    showToast('&#9888; Archive request failed — run archiveMonthlyData() in Apps Script', true);
+  });
+}
 boot();
 
 // ═══════════════════════════════════════════════════════
