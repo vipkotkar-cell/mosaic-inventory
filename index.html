@@ -360,9 +360,8 @@ tbody tr:hover td{background:var(--sf)}
     <button class="nav-item" onclick="goPage('wtd')" id="nav-wtd"><span class="nav-icon">&#128200;</span>WTD &amp; MTD<span class="nav-bdg nav-bdg-g" id="nb-wtd">-</span></button>
     <button class="nav-item" onclick="goPage('remarks')" id="nav-remarks"><span class="nav-icon">&#128203;</span>Remarks Tracker<span class="nav-bdg nav-bdg-a" id="nb-remarks">-</span></button>
 
-    <div class="sb-grp">Inventory Reference</div>
-    <button class="nav-item" onclick="goPage('overview')" id="nav-overview"><span class="nav-icon">&#9635;</span>Inventory Overview</button>
-    <button class="nav-item" onclick="goPage('expiry')" id="nav-expiry"><span class="nav-icon">&#9203;</span>Expiry Watch<span class="nav-bdg nav-bdg-a" id="nb-expiry">-</span></button>
+    
+    
   </nav>
   <div class="sb-foot">
     <a class="sb-sheet-btn" href="https://docs.google.com/spreadsheets/d/1Jz1cCR6f8anX4y3O9bn3lRQsyx5bYy2OUxhZcgmgjvY" target="_blank">&#128202; View Data Sheet</a>
@@ -395,222 +394,121 @@ tbody tr:hover td{background:var(--sf)}
 
   <div id="pages" style="display:none">
 
+  <!-- ═══ MONTH SELECTOR BAR (shown on Today + WTD pages) ═══ -->
+  <div id="month-bar" style="display:none;padding:10px 20px 0;background:var(--wh);border-bottom:1px solid var(--br);position:sticky;top:0;z-index:100">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:700;color:var(--mu);white-space:nowrap">VIEW MONTH:</span>
+      <div id="month-tabs" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+      <span id="month-loading" style="font-size:10px;color:var(--mu);display:none">Loading months...</span>
+    </div>
+  </div>
+
+
   <!-- ═══ REMARKS TRACKER ═══ -->
   <div class="pg content" id="pg-remarks">
-    <!-- Header -->
-    <div class="pg-head">
+
+    <!-- Page Header -->
+    <div class="pg-head" style="margin-bottom:16px">
       <div>
         <div class="pg-title">&#128203; Remarks Tracker</div>
         <div class="pg-sub">Business-wise remarks status from 14 Apr 2026 onwards</div>
       </div>
-      <!-- Date filter -->
-      <div style="display:flex;gap:6px;align-items:center">
-        <span style="font-size:10px;color:var(--mu);font-weight:600">Period:</span>
-        <div style="display:flex;gap:0;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:2px" id="rmkp-period-tog">
-          <button data-rmkperiod="all"   class="sub-tab on"  style="padding:4px 12px;font-size:10px;min-width:auto">All (Apr 14+)</button>
-          <button data-rmkperiod="mtd"   class="sub-tab"     style="padding:4px 12px;font-size:10px;min-width:auto">MTD</button>
-          <button data-rmkperiod="wtd"   class="sub-tab"     style="padding:4px 12px;font-size:10px;min-width:auto">WTD</button>
-          <button data-rmkperiod="today" class="sub-tab"     style="padding:4px 12px;font-size:10px;min-width:auto">Today</button>
+      <div style="display:flex;gap:0;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:2px">
+        <button data-rmkperiod="today" class="sub-tab on" style="padding:5px 16px;font-size:10px;min-width:auto">Today</button>
+        <button data-rmkperiod="wtd"   class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">WTD</button>
+        <button data-rmkperiod="mtd"   class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">MTD</button>
+        <button data-rmkperiod="all"   class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">All</button>
+      </div>
+    </div>
+
+    <!-- View Toggle -->
+    <div style="display:flex;gap:0;margin-bottom:20px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;width:fit-content">
+      <button class="sub-tab on" id="rmk-tog-tracker" onclick="switchRmkView('tracker')" style="min-width:200px">&#128202; Tracker Overview</button>
+      <button class="sub-tab" id="rmk-tog-top5"    onclick="switchRmkView('top5')"    style="min-width:200px">&#128203; Today Top 5 Remarks</button>
+    </div>
+
+    <!-- VIEW A: Tracker Overview -->
+    <div id="rmk-view-tracker">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px" id="rmkp-kpi-strip"></div>
+      <div class="card" style="margin-bottom:16px">
+        <div id="rmkp-bt-table-wrap"></div>
+        <div style="padding:10px 16px;border-top:1px solid var(--br);font-size:10px;color:var(--mu)">
+          &#9432; Resolution progress is calculated as (Remarked / Events Tracked) &times; 100
+        </div>
+      </div>
+      <div id="rmkp-bt-cards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px"></div>
+      <!-- Remarks by period summary -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-h">
+          <div class="card-t">&#128203; Remarks by Business Type</div>
+          <div style="display:flex;gap:4px">
+            <button data-sumperiod="today" class="sub-tab on" style="padding:3px 10px;font-size:9px;min-width:auto">Today</button>
+            <button data-sumperiod="wtd"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">WTD</button>
+            <button data-sumperiod="mtd"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">MTD</button>
+            <button data-sumperiod="all"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">All</button>
+          </div>
+        </div>
+        <div id="rmk-sum-table"></div>
+      </div>
+      <div id="rmkp-detail" style="display:none">
+        <div class="card" style="border:none;box-shadow:0 0 0 2px var(--br)">
+          <div class="card-h" style="padding:14px 18px;border-bottom:2px solid var(--br)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <button onclick="closeRmkDetail()" style="background:var(--sf);border:1px solid var(--br);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:var(--tx2)">&#8592; Back</button>
+              <div class="card-t" id="rmkp-detail-title" style="font-size:14px">Remarks</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <div style="display:flex;gap:0;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:2px">
+                <button data-detailstatus="all"       class="sub-tab on" style="padding:4px 12px;font-size:9px;min-width:auto">All</button>
+                <button data-detailstatus="pending"   class="sub-tab"    style="padding:4px 12px;font-size:9px;min-width:auto">Pending</button>
+                <button data-detailstatus="completed" class="sub-tab"    style="padding:4px 12px;font-size:9px;min-width:auto">Remarked</button>
+              </div>
+              <span class="badge bdg-n" id="rmkp-detail-cnt">-</span>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:11px">
+              <thead id="rmkp-detail-thead"></thead>
+              <tbody id="rmkp-detail-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Summary KPI strip -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px" id="rmkp-kpi-strip"></div>
-
-    <!-- BT Cards grid -->
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px" id="rmkp-bt-cards"></div>
-
-    <!-- Business-wise Remarks Summary -->
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-h">
-        <div class="card-t">&#128203; Remarks Summary</div>
-        <div style="display:flex;gap:4px">
-          <button data-sumperiod="today" class="sub-tab on" style="padding:3px 10px;font-size:9px;min-width:auto">Today</button>
-          <button data-sumperiod="wtd"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">WTD</button>
-          <button data-sumperiod="mtd"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">MTD</button>
-          <button data-sumperiod="all"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">All</button>
-        </div>
-      </div>
-      <div id="rmk-sum-table"></div>
-    </div>
-
-    <!-- Detail panel — shown when a BT card is clicked -->
-    <div id="rmkp-detail" style="display:none">
+    <!-- VIEW B: Today Top 5 Remarks -->
+    <div id="rmk-view-top5" style="display:none">
+      <div id="rmk-summary" style="margin-bottom:14px"></div>
+      <div id="rmk-biz-toggle" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" data-active="All"></div>
       <div class="card">
         <div class="card-h">
-          <div style="display:flex;align-items:center;gap:10px">
-            <button onclick="closeRmkDetail()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--mu);padding:0;line-height:1">&#8592;</button>
-            <div class="card-t" id="rmkp-detail-title">Remarks</div>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <div style="display:flex;gap:0;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:2px" id="rmkp-detail-status-tog">
-              <button data-detailstatus="all"       class="sub-tab on" style="padding:3px 10px;font-size:9px;min-width:auto">All</button>
-              <button data-detailstatus="pending"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">Pending</button>
-              <button data-detailstatus="completed" class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">Completed</button>
-            </div>
-            <span class="badge bdg-n" id="rmkp-detail-cnt">-</span>
-          </div>
+          <div class="card-t">Top 5 Negative Movements — Remarks</div>
+          <span class="badge bdg-r" id="rmk-top-cnt">Top 5</span>
         </div>
-        <div class="tbl-wrap" style="max-height:480px;overflow-y:auto">
+        <div class="tbl-wrap" style="max-height:600px;overflow-y:auto">
           <table style="width:100%;border-collapse:collapse;font-size:11px">
             <thead><tr>
-              <th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);position:sticky;top:0;z-index:2">Date</th>
-              <th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);position:sticky;top:0;z-index:2">SKU</th>
-              <th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);position:sticky;top:0;z-index:2">Event</th>
-              <th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);position:sticky;top:0;z-index:2">Facility</th>
-              <th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right;position:sticky;top:0;z-index:2">COGS</th>
-              <th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);min-width:160px;position:sticky;top:0;z-index:2">Remark</th>
-              <th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);position:sticky;top:0;z-index:2">Assigned</th>
-              <th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);position:sticky;top:0;z-index:2">Status</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">#</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">SKU ID</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Item Type Name</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Movement Type</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Business</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>
+              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);min-width:200px">Remarks</th>
             </tr></thead>
-            <tbody id="rmkp-detail-tbody"></tbody>
+            <tbody id="rmk-top-tbody"></tbody>
           </table>
         </div>
       </div>
     </div>
-  </div>
 
-
-  <!-- ═══ INVENTORY OVERVIEW (consolidated) ═══ -->
-  <div class="pg on content" id="pg-overview">
-    <!-- Executive KPIs -->
-    <div class="exec-grid" id="exec-cards"></div>
-    <!-- Donut + Stacked Bar -->
-    <div class="two-col">
-      <div class="card">
-        <div class="card-h"><div class="card-t">Inventory Quality Composition</div></div>
-        <div id="donut-chart"></div>
-      </div>
-
-    </div>
-    <!-- Operational Exception Table -->
-    <div class="sec-title">Operational Exception Metrics</div>
-    <div class="card">
-      <div class="tbl-wrap"><table><thead><tr>
-        <th>Dashboard Status</th><th>Total Qty</th><th>COGS Value</th><th>Not Found</th><th>Blocked</th><th>Key Management Action</th>
-      </tr></thead><tbody id="ex-tbody"></tbody></table></div>
-    </div>
-    <!-- Brand-wise -->
-    <div class="sec-title">Brand-wise Inventory</div>
-    <div class="card">
-      <div class="tbl-wrap"><table><thead><tr>
-        <th>Brand</th><th>SKUs</th><th>Good Qty</th><th>Bad Qty</th><th>QC Rejected</th><th>Near Expiry</th><th>Total Qty</th><th>COGS Value</th>
-      </tr></thead><tbody id="brand-tbody"></tbody></table></div>
-    </div>
-    <!-- Facility / Business -->
-    <div class="sub-tabs">
-      <div class="sub-tab on" onclick="goInvTab('facility')" id="invtab-facility">By Facility</div>
-      <div class="sub-tab" onclick="goInvTab('biztype')" id="invtab-biztype">By Business Type</div>
-    </div>
-    <div id="inv-facility">
-      <div class="card">
-        <div class="card-h"><div class="card-t">All Facilities &mdash; Stock Summary</div><input class="tbl-search" type="text" placeholder="Search facility..." oninput="filterInvFac(this.value)"></div>
-        <div class="tbl-wrap" style="max-height:500px;overflow-y:auto"><table><thead><tr>
-          <th>Facility</th><th>Good Qty</th><th>Bad Qty</th><th>QC Rejected</th><th>Near Expiry</th><th>Expired</th><th>Total Qty</th><th>COGS Value</th><th>% Good</th>
-        </tr></thead><tbody id="inv-fac-tbody"></tbody></table></div>
-      </div>
-    </div>
-    <div id="inv-biztype" style="display:none">
-      <div class="card">
-        <div class="card-h"><div class="card-t">Business Type &mdash; Stock Summary</div></div>
-        <div class="tbl-wrap"><table><thead><tr>
-          <th>Business Type</th><th>Facilities</th><th>Good Qty</th><th>Bad Qty</th><th>QC</th><th>Near Expiry</th><th>Expired</th><th>Total</th><th>COGS Value</th>
-        </tr></thead><tbody id="inv-biz-tbody"></tbody></table></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ EXPIRY WATCH ═══ -->
-  <div class="pg content" id="pg-expiry">
-    <div class="insight-banner">
-      <div class="insight-icon">&#128276;</div>
-      <div class="insight-content">
-        <div class="insight-t">Near Expiry Logic</div>
-        <div class="insight-s">Items classified using shelf-life cutoffs per product specification. Filter: GOOD + ACTIVE only.</div>
-      </div>
-    </div>
-    <div class="exp-zones" id="exp-zones"></div>
-    <div class="sub-tabs">
-      <div class="sub-tab on" onclick="goExpTab('nearexp')" id="exptab-nearexp">&#9432; Near Expiry Logic</div>
-      <div class="sub-tab" onclick="goExpTab('zone1')" id="exptab-zone1">Window 1 &mdash; 30 to 60 Days</div>
-      <div class="sub-tab" onclick="goExpTab('zone2')" id="exptab-zone2">Window 2 &mdash; 60 to 90 Days</div>
-      <div class="sub-tab" onclick="goExpTab('zone3')" id="exptab-zone3">Window 3 &mdash; 90 to 120 Days</div>
-    </div>
-    <!-- Near Expiry Logic explanation panel -->
-    <div id="nearexp-panel" class="card" style="margin-bottom:14px">
-      <div class="card-h"><div class="card-t">&#9432; Near to Expiry — Calculation Logic</div><span class="badge bdg-t">GOOD + ACTIVE only</span></div>
-      <div style="padding:18px 20px;font-size:12px;line-height:1.8;color:var(--tx2)">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:10px">How it works</div>
-            <div style="margin-bottom:6px"><span style="font-weight:700;color:var(--tl)">Step 1 — Filter:</span> Only records where <code style="background:var(--sf);padding:1px 5px;border-radius:3px">Inventory Type = GOOD</code> and <code style="background:var(--sf);padding:1px 5px;border-radius:3px">Batch Status = Active</code></div>
-            <div style="margin-bottom:6px"><span style="font-weight:700;color:var(--tl)">Step 2 — Shelf Life:</span> <code style="background:var(--sf);padding:1px 5px;border-radius:3px">shelf_life_days = Expiry − Manufacturing</code><br>Then: <code style="background:var(--sf);padding:1px 5px;border-radius:3px">shelf_life_months = floor(days ÷ 30)</code></div>
-            <div style="margin-bottom:6px"><span style="font-weight:700;color:var(--tl)">Step 3 — Cutoff Days</span> (based on shelf life):</div>
-            <table style="font-size:10px;border-collapse:collapse;width:100%">
-              <tr style="background:var(--sf)"><th style="padding:4px 8px;text-align:left;border:1px solid var(--br)">Shelf Life (months)</th><th style="padding:4px 8px;text-align:left;border:1px solid var(--br)">Cutoff (days)</th></tr>
-              <tr><td style="padding:3px 8px;border:1px solid var(--br)">≤ 5 months</td><td style="padding:3px 8px;border:1px solid var(--br);color:var(--re);font-weight:700">30 days</td></tr>
-              <tr style="background:var(--sf)"><td style="padding:3px 8px;border:1px solid var(--br)">≤ 6 months</td><td style="padding:3px 8px;border:1px solid var(--br);color:var(--re);font-weight:700">60 days</td></tr>
-              <tr><td style="padding:3px 8px;border:1px solid var(--br)">≤ 9 months</td><td style="padding:3px 8px;border:1px solid var(--br);color:var(--am);font-weight:700">60 days</td></tr>
-              <tr style="background:var(--sf)"><td style="padding:3px 8px;border:1px solid var(--br)">≤ 12 months</td><td style="padding:3px 8px;border:1px solid var(--br);color:var(--am);font-weight:700">75 days</td></tr>
-              <tr><td style="padding:3px 8px;border:1px solid var(--br)">≤ 18 months</td><td style="padding:3px 8px;border:1px solid var(--br);color:var(--yw);font-weight:700">90 days</td></tr>
-              <tr style="background:var(--sf)"><td style="padding:3px 8px;border:1px solid var(--br)">≤ 24 months</td><td style="padding:3px 8px;border:1px solid var(--br);color:var(--yw);font-weight:700">90 days</td></tr>
-              <tr><td style="padding:3px 8px;border:1px solid var(--br)">&gt; 24 months</td><td style="padding:3px 8px;border:1px solid var(--br);color:var(--gn);font-weight:700">150 days</td></tr>
-            </table>
-            <div style="margin-top:8px"><span style="font-weight:700;color:var(--tl)">Step 4 — Status:</span><br>
-            If <code style="background:var(--sf);padding:1px 5px;border-radius:3px">(Expiry − Today) ≤ Cutoff</code> → <span style="color:var(--re);font-weight:700">NEAR_EXPIRY</span><br>
-            Otherwise → <span style="color:var(--gn);font-weight:700">OK</span></div>
-          </div>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:10px">Worked Example</div>
-            <div style="background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:14px;font-size:11px">
-              <div style="font-weight:700;color:var(--tl);margin-bottom:8px">SKU: MWMMHRP.0001.AAAA.B0_N</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
-                <div style="color:var(--mu)">Manufacturing:</div><div style="font-weight:600">01-06-2022</div>
-                <div style="color:var(--mu)">Expiry:</div><div style="font-weight:600">30-06-2024</div>
-                <div style="color:var(--mu)">Today:</div><div style="font-weight:600">20-04-2026</div>
-                <div style="color:var(--mu)">Shelf Life:</div><div style="font-weight:600">760 days = <strong>25 months</strong></div>
-                <div style="color:var(--mu)">Cutoff:</div><div style="font-weight:600;color:var(--gn)">150 days (>24 mo)</div>
-                <div style="color:var(--mu)">Days Left:</div><div style="font-weight:600;color:var(--re)">Already Expired (-661d)</div>
-                <div style="color:var(--mu)">Status:</div><div><span style="background:var(--re-bg);color:var(--re);font-weight:700;padding:2px 6px;border-radius:3px">EXPIRED (skipped)</span></div>
-              </div>
-              <div style="margin-top:12px;border-top:1px solid var(--br);padding-top:10px">
-                <div style="font-weight:700;color:var(--tl);margin-bottom:8px">Active product example:</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
-                  <div style="color:var(--mu)">Manufacturing:</div><div style="font-weight:600">01-08-2025</div>
-                  <div style="color:var(--mu)">Expiry:</div><div style="font-weight:600">01-08-2027</div>
-                  <div style="color:var(--mu)">Shelf Life:</div><div style="font-weight:600">730 days = <strong>24 months</strong></div>
-                  <div style="color:var(--mu)">Cutoff:</div><div style="font-weight:600;color:var(--yw)">90 days (≤24 mo)</div>
-                  <div style="color:var(--mu)">Days Left:</div><div style="font-weight:600">468 days</div>
-                  <div style="color:var(--mu)">468 ≤ 90?</div><div><span style="background:var(--gn-bg);color:var(--gn);font-weight:700;padding:2px 6px;border-radius:3px">NO → OK</span></div>
-                </div>
-              </div>
-            </div>
-            <div style="margin-top:12px;background:var(--tl-bg);border:1px solid var(--tl-bd);border-radius:var(--r);padding:12px;font-size:11px">
-              <div style="font-weight:700;color:var(--tl);margin-bottom:4px">&#128204; Date Format Note</div>
-              <div>All dates in the system use <strong>DD-MM-YYYY</strong>. Example: 05-03-2025 = <strong>5 March 2025</strong> (not May 3). This avoids silent calculation errors.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-h"><div class="card-t" id="exp-table-title">Window 1 &mdash; 30 to 60 Days</div><input class="tbl-search" type="text" placeholder="Search SKU / Facility..." oninput="filterExp(this.value)"></div>
-      <div class="tbl-wrap" style="max-height:480px;overflow-y:auto"><table><thead><tr>
-        <th>SKU</th><th>Product Name</th><th>Batch</th><th>Mfg Date</th><th>Expiry Date</th><th>Days Left</th><th>Near to Expiry Date</th><th>Shelf Life (mo)</th><th>Facility</th><th>Business Type</th><th>Brand</th><th>Qty</th><th>COGS Value</th>
-      </tr></thead><tbody id="exp-tbody"></tbody></table></div>
-    </div>
   </div>
 
   <!-- ═══ TODAY'S IMPACT ═══ -->
   <div class="pg content" id="pg-today">
-    <!-- View Toggle -->
-    <div style="display:flex;gap:0;margin-bottom:16px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;width:fit-content">
-      <button class="sub-tab on" id="tog-movement" onclick="switchView('movement')" style="min-width:180px">&#128200; Movement Analysis</button>
-      <button class="sub-tab" id="tog-remarks" onclick="switchView('remarks')" style="min-width:220px">&#128203; Top 5 Negative Remarks</button>
-    </div>
-
-    <!-- VIEW 1: Movement Analysis -->
+    <!-- Movement Analysis -->
     <div id="view-movement">
     <!-- Prominent Impact Summary Tiles -->
     <div class="impact-hero" id="impact-hero"></div>
@@ -652,39 +550,7 @@ tbody tr:hover td{background:var(--sf)}
         <div class="card"><div id="biz-bars"></div></div>
       </div>
     </div>
-    </div><!-- /view-movement -->
-
-    <!-- VIEW 2: Top 10 Negative Remarks -->
-    <div id="view-remarks" style="display:none">
-      <!-- Remarks Summary -->
-      <div id="rmk-summary" style="margin-bottom:14px"></div>
-      <!-- Business Toggle Filter -->
-      <div id="rmk-biz-toggle" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" data-active="All"></div>
-
-      <!-- Top 10 Table -->
-      <div class="card">
-        <div class="card-h">
-          <div class="card-t">Top 5 Negative Movements — Remarks</div>
-          <span class="badge bdg-r" id="rmk-top-cnt">Top 10</span>
-        </div>
-        <div class="tbl-wrap" style="max-height:600px;overflow-y:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:11px">
-            <thead><tr>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);white-space:nowrap">#</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)"">SKU ID</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Item Type Name</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Movement Type</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Business</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);min-width:200px">Remarks</th>
-            </tr></thead>
-            <tbody id="rmk-top-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div><!-- /view-remarks -->
+    
   </div>
 
     <!-- ═══ WTD & MTD — CEO Review ═══ -->
@@ -761,8 +627,14 @@ tbody tr:hover td{background:var(--sf)}
 
     </div><!-- /pages -->
 </main>
+
+
+</div><!-- /pages -->
+
 <script>
-const PROXY     = "https://script.google.com/macros/s/AKfycbxYQ3BfSuEjfRaKGJ1pLCMe9H7E-VgMj9kOqipWkY9ChJuWFjxKtH3UAFryQ8-LBQY1/exec";
+// ← UPDATE THIS after deploying inventory_impact_script.gs
+const PROXY = "https://script.google.com/macros/s/YOUR_NEW_IMPACT_DEPLOYMENT_ID/exec";
+const ARCHIVE_URL = PROXY + "?action=listArchives";
 const EVENTS_URL= PROXY + "?sheet=NI_Events";
 const INV_URL   = PROXY + "?sheet=NI_Inventory";
 const STOCK_URL = PROXY + "?sheet=NI_TodayStock";
@@ -952,399 +824,36 @@ function buildRFromEvents(evData){
 }
 
 // BUILD INVENTORY from NI_TodayStock (full data with preserved splits)
-function buildInvFromStock(stockData){
-  function n(v){return parseFloat(v)||0;}
-  var totGoodActive=0, totGoodNE=0, totGoodExp=0, totGoodRec=0;
-  var totBadActive=0,  totBadNE=0,  totBadExp=0,  totBadRec=0;
-  var totQCActive=0,   totQCNE=0,   totQCExp=0,   totQCRec=0;
-  var totBlocked=0, totNotFound=0, totDamaged=0;
-  var byFac={}, byBiz={}, byBrand={};
-  var skuSet=new Set();
 
-  stockData.forEach(function(row){
-    var sku=row['SKU']||'', fac=row['Facility']||'';
-    if(!sku||!fac) return;
-    var bt=row['BizType']||getBT(fac), city=row['City']||getCity(fac);
-    var brand=row['Brand']||getBrand(sku);
-
-    var ga=n(row['GoodActive']), gn=n(row['GoodNearExpiry']), ge=n(row['GoodExpired']), gr=n(row['GoodRecalled']);
-    var ba=n(row['BadActive']),  bn=n(row['BadNearExpiry']),  be=n(row['BadExpired']),  br=n(row['BadRecalled']);
-    var qa=n(row['QCActive']),   qn=n(row['QCNearExpiry']),   qe=n(row['QCExpired']),   qr=n(row['QCRecalled']);
-    var bl=n(row['Blocked']), nf=n(row['NotFound']), dm=n(row['Damaged']);
-
-    var tg=ga+gn+ge+gr, tb=ba+bn+be+br, tq=qa+qn+qe+qr;
-    var total=tg+tb+tq;
-    var cogsVal=n(row['COGSValue']);
-    if(total===0 && bl===0 && nf===0) return;
-
-    skuSet.add(sku);
-    totGoodActive+=ga; totGoodNE+=gn; totGoodExp+=ge; totGoodRec+=gr;
-    totBadActive+=ba;  totBadNE+=bn;  totBadExp+=be;  totBadRec+=br;
-    totQCActive+=qa;   totQCNE+=qn;   totQCExp+=qe;   totQCRec+=qr;
-    totBlocked+=bl; totNotFound+=nf; totDamaged+=dm;
-
-    if(!byFac[fac]) byFac[fac]={fac:fac,city:city,bt:bt,good:0,bad:0,qc:0,blocked:0,notFound:0,ne:0,exp:0,recalled:0,total:0,cogsVal:0};
-    byFac[fac].good+=tg; byFac[fac].bad+=tb; byFac[fac].qc+=tq;
-    byFac[fac].ne+=(gn+bn+qn); byFac[fac].exp+=(ge+be+qe); byFac[fac].recalled+=(gr+br+qr);
-    byFac[fac].blocked+=bl; byFac[fac].notFound+=nf;
-    byFac[fac].total+=total; byFac[fac].cogsVal+=cogsVal;
-
-    if(!byBiz[bt]) byBiz[bt]={bt:bt,facs:new Set(),good:0,bad:0,qc:0,blocked:0,notFound:0,ne:0,exp:0,recalled:0,total:0,cogsVal:0};
-    byBiz[bt].good+=tg; byBiz[bt].bad+=tb; byBiz[bt].qc+=tq;
-    byBiz[bt].ne+=(gn+bn+qn); byBiz[bt].exp+=(ge+be+qe); byBiz[bt].recalled+=(gr+br+qr);
-    byBiz[bt].blocked+=bl; byBiz[bt].notFound+=nf;
-    byBiz[bt].total+=total; byBiz[bt].cogsVal+=cogsVal; byBiz[bt].facs.add(fac);
-
-    if(!byBrand[brand]) byBrand[brand]={brand:brand,skus:new Set(),good:0,bad:0,qc:0,ne:0,total:0,cogsVal:0};
-    byBrand[brand].good+=tg; byBrand[brand].bad+=tb; byBrand[brand].qc+=tq;
-    byBrand[brand].ne+=(gn+bn+qn); byBrand[brand].total+=total; byBrand[brand].cogsVal+=cogsVal;
-    byBrand[brand].skus.add(sku);
-  });
-
-  invFacRows=Object.values(byFac).sort(function(a,b){return b.cogsVal-a.cogsVal;});
-  invBizRows=Object.values(byBiz).map(function(b){b.facCount=b.facs.size;return b;}).sort(function(a,b){return b.cogsVal-a.cogsVal;});
-  brandRows=Object.values(byBrand).map(function(b){b.skuCount=b.skus.size;return b;}).sort(function(a,b){return b.cogsVal-a.cogsVal;});
-
-  // Per-product-doc KPIs
-  invKPIs={
-    totGoodActive: totGoodActive,  // Net Salable = GOOD × Active
-    totGood: totGoodActive+totGoodNE+totGoodExp+totGoodRec,
-    totBad: totBadActive+totBadNE+totBadExp+totBadRec,
-    totQC:  totQCActive+totQCNE+totQCExp+totQCRec,
-    totBlocked: totBlocked,
-    totNotFound: totNotFound,
-    totDamaged: totDamaged,
-    // Near Expiry = BAD × About_to_expire (per doc: 122,215 = 122,208 BAD + 7 GOOD)
-    totNE:  totGoodNE+totBadNE+totQCNE,
-    totExp: totGoodExp+totBadExp+totQCExp,
-    totRecalled: totGoodRec+totBadRec+totQCRec,
-    totSKU: skuSet.size,
-    totFac: invFacRows.length,
-    // Split values for lifecycle chart
-    goodActive: totGoodActive, goodNE: totGoodNE, goodExp: totGoodExp, goodRec: totGoodRec,
-    badActive: totBadActive, badNE: totBadNE, badExp: totBadExp, badRec: totBadRec,
-    qcActive: totQCActive, qcNE: totQCNE, qcExp: totQCExp, qcRec: totQCRec,
-  };
-
-  renderInventoryOverview();
-  renderBrand();
-}
 
 // BUILD INVENTORY from NI_Inventory (fallback if NI_TodayStock not available)
-function buildInvFromSheet(invData){
-  var totGood=0,totBad=0,totQC=0,totNE=0,totExp=0;
-  var bizMap={},brandAcc={};
-  invFacRows=[];
-  invData.forEach(function(row){
-    var fac=row['Facility']||'';
-    var bt=row['BizType']||getBT(fac);
-    var city=row['City']||getCity(fac);
-    var good=parseFloat(row['GoodQty'])||0;
-    var bad=parseFloat(row['BadQty'])||0;
-    var qc=parseFloat(row['QCQty'])||0;
-    var ne=parseFloat(row['NearExpiryQty'])||0;
-    var exp=parseFloat(row['ExpiredQty'])||0;
-    var total=parseFloat(row['TotalQty'])||0;
-    var cv=parseFloat(row['COGSValue'])||0;
-    if(!fac)return;
-    totGood+=good;totBad+=bad;totQC+=qc;totNE+=ne;totExp+=exp;
-    invFacRows.push({fac:fac,city:city,bt:bt,good:good,bad:bad,qc:qc,ne:ne,exp:exp,total:total,cogsVal:cv});
-    if(!bizMap[bt])bizMap[bt]={bt:bt,facs:new Set(),good:0,bad:0,qc:0,ne:0,exp:0,total:0,cogsVal:0};
-    bizMap[bt].good+=good;bizMap[bt].bad+=bad;bizMap[bt].qc+=qc;bizMap[bt].ne+=ne;
-    bizMap[bt].exp+=exp;bizMap[bt].total+=total;bizMap[bt].cogsVal+=cv;bizMap[bt].facs.add(fac);
-  });
-  invFacRows.sort(function(a,b){return b.cogsVal-a.cogsVal;});
-  invBizRows=Object.values(bizMap).map(function(b){b.facCount=b.facs.size;return b;}).sort(function(a,b){return b.cogsVal-a.cogsVal;});
-  invKPIs={totGood:totGood,totBad:totBad,totQC:totQC,totNE:totNE,totExp:totExp,totFac:invFacRows.length};
-}
+
 
 // BUILD EXPIRY from NI_Expiry with new windows + near-expiry logic
-function buildExpiry(expData){
-  expZone1=[];expZone2=[];expZone3=[];expNearRows=[];
-  var brandAcc={};
-  expData.forEach(function(row){
-    var sku=row['SKU']||'',name=row['Name']||'',batch=row['Batch']||'';
-    var fac=row['Facility']||'',bt=row['BizType']||getBT(fac),city=row['City']||getCity(fac);
-    var qty=parseFloat(row['Qty'])||0;
-    var mfgStr=row['Manufacturing']||'';
-    var expStr=row['Expiry']||'';
-    var state=row['BatchStatus']||'';
-    var brand=getBrand(sku);
-    if(!sku||!expStr)return;
-    var cp=getCOGS(sku),cv=cp*qty;
-    var expDate=parseDate(expStr);
-    var mfgDate=parseDate(mfgStr);
-    if(!expDate)return;
-    var dl=daysLeft(expDate);
-    if(dl===null)return;
 
-    // Near-Expiry logic from product doc
-    var shelfLifeDays=null,shelfLifeMonths=null,cutoffDays=null,isNearExpiry=false;
-    if(mfgDate){
-      shelfLifeDays=Math.round((expDate-mfgDate)/(1000*60*60*24));
-      shelfLifeMonths=Math.floor(shelfLifeDays/30);
-      cutoffDays=getCutoffDays(shelfLifeMonths);
-      if(state==='Active'&&dl>=0&&dl<=Math.min(cutoffDays,120)) isNearExpiry=true;
-    }
-
-    var r2={sku:sku,name:name,batch:batch,fac:fac,city:city,bt:bt,brand:brand,qty:qty,cp:cp,cogsVal:cv,mfgDate:mfgDate,expDate:expDate,mfgStr:mfgStr,expStr:expStr,daysLeft:dl,shelfLifeDays:shelfLifeDays,shelfLifeMonths:shelfLifeMonths,cutoffDays:cutoffDays,isNearExpiry:isNearExpiry,state:state};
-
-    // 3 windows per user spec: 30-60d, 60-120d, >120d
-    if(dl>=30&&dl<=60)       expZone1.push(r2);
-    else if(dl>60&&dl<=90)   expZone2.push(r2);
-    else if(dl>90&&dl<=120)  expZone3.push(r2);
-    // dl>120 excluded from all windows
-
-    if(isNearExpiry) expNearRows.push(r2);
-
-    // Brand accumulator
-    if(!brandAcc[brand]) brandAcc[brand]={brand:brand,skus:new Set(),good:0,bad:0,qc:0,ne:0,total:0,cogsVal:0};
-    brandAcc[brand].skus.add(sku);
-    brandAcc[brand].good+=qty;
-    brandAcc[brand].total+=qty;
-    brandAcc[brand].cogsVal+=cv;
-    if(isNearExpiry) brandAcc[brand].ne+=qty;
-  });
-  expZone1.sort(function(a,b){return b.cogsVal-a.cogsVal;});
-  expZone2.sort(function(a,b){return b.cogsVal-a.cogsVal;});
-  expZone3.sort(function(a,b){return b.cogsVal-a.cogsVal;});
-  expNearRows.sort(function(a,b){return a.daysLeft-b.daysLeft;});
-  brandRows=Object.values(brandAcc).map(function(b){b.skuCount=b.skus.size;return b;}).sort(function(a,b){return b.cogsVal-a.cogsVal;});
-  renderExpiry();
-  // Default to nearexp logic tab (first tab)
-  goExpTab('nearexp');
-  renderBrand();
-  if(invKPIs){
-    var _neQty=expZone1.reduce(function(s,x){return s+x.qty;},0)
-              +expZone2.reduce(function(s,x){return s+x.qty;},0)
-              +expZone3.reduce(function(s,x){return s+x.qty;},0);
-    invKPIs.totNE=_neQty;
-    renderInventoryOverview();
-  }
-}
 
 // ── RENDER INVENTORY OVERVIEW ──
-function renderInventoryOverview(){
-  // Per product documentation:
-  var netSalable=invKPIs.totGoodActive||0;   // GOOD × Active only = Total Active Good
-  var goodInv=invKPIs.totGood||0;
-  var badInv=invKPIs.totBad||0, qcRej=invKPIs.totQC||0;
-  var qualityRisk=badInv+qcRej;              // Bad + QC Rejected
-  var expired=invKPIs.totExp||0;
-  var opsRisk=(invKPIs.totBlocked||0)+(invKPIs.totNotFound||0);
-  var nearExp=invKPIs.totNE||0;
 
-  var cards=[
-    {lbl:'Total Active Good Inventory',val:fq(netSalable),sub:'Net salable units (GOOD + Active)',cls:'ec-gn'},
-    {lbl:'Total Quality Risk',val:fq(qualityRisk),sub:'Bad ('+fq(badInv)+') + QC ('+fq(qcRej)+')',cls:'ec-re'},
-    {lbl:'Financial Exposure',val:fq(expired),sub:'Expired units',cls:'ec-am'},
-    {lbl:'Operational Risk',val:fq(opsRisk),sub:'Blocked ('+fq(invKPIs.totBlocked||0)+') + Not Found ('+fq(invKPIs.totNotFound||0)+')',cls:'ec-yw'},
-  ];
-  document.getElementById('exec-cards').innerHTML=cards.map(function(c){
-    return '<div class="exec-card '+c.cls+'"><div class="exec-lbl">'+c.lbl+'</div>'
-      +'<div class="exec-val">'+c.val+'</div><div class="exec-sub">'+c.sub+'</div></div>';
-  }).join('');
 
-  // Donut - Good/Bad/QC composition
-  var total=goodInv+badInv+qcRej||1;
-  var pctGood=(goodInv/total*100);
-  var pctBad =(badInv /total*100);
-  var pctQC  =(qcRej  /total*100);
-  var R=72,C=2*Math.PI*R;
-  var offA=0, lenA=C*pctGood/100;
-  var offB=lenA, lenB=C*pctBad/100;
-  var offC=lenA+lenB, lenC=C*pctQC/100;
-  var svg='<div class="donut-wrap">'
-    +'<div class="donut-svg"><svg width="180" height="180" viewBox="0 0 180 180">'
-    +'<circle cx="90" cy="90" r="72" fill="none" stroke="#e4e8f0" stroke-width="22"/>'
-    +'<circle cx="90" cy="90" r="72" fill="none" stroke="#166534" stroke-width="22" stroke-dasharray="'+lenA+' '+C+'" stroke-dashoffset="0" transform="rotate(-90 90 90)"/>'
-    +'<circle cx="90" cy="90" r="72" fill="none" stroke="#c0392b" stroke-width="22" stroke-dasharray="'+lenB+' '+C+'" stroke-dashoffset="'+(-offB)+'" transform="rotate(-90 90 90)"/>'
-    +'<circle cx="90" cy="90" r="72" fill="none" stroke="#b7410e" stroke-width="22" stroke-dasharray="'+lenC+' '+C+'" stroke-dashoffset="'+(-offC)+'" transform="rotate(-90 90 90)"/>'
-    +'</svg><div class="donut-center"><div class="donut-big">'+pctGood.toFixed(1)+'%</div><div class="donut-small">Good</div></div></div>'
-    +'<div class="donut-legend">'
-    +'<div class="leg-item"><div class="leg-dot" style="background:#166534"></div><div class="leg-lbl">Good Inventory</div><div class="leg-val">'+pctGood.toFixed(1)+'%</div></div>'
-    +'<div class="leg-item"><div class="leg-dot" style="background:#c0392b"></div><div class="leg-lbl">Bad Inventory</div><div class="leg-val">'+pctBad.toFixed(1)+'%</div></div>'
-    +'<div class="leg-item"><div class="leg-dot" style="background:#b7410e"></div><div class="leg-lbl">QC Rejected</div><div class="leg-val">'+pctQC.toFixed(1)+'%</div></div>'
-    +'</div></div>';
-  document.getElementById('donut-chart').innerHTML=svg;
 
-  // Lifecycle stacked chart removed per user request
 
-  // Operational exception table with real Blocked & Not Found
-  var blocked=invKPIs.totBlocked||0, notFound=invKPIs.totNotFound||0, recalled=invKPIs.totRecalled||0;
-  // COGS values from facility table aggregation
-  var totalCogsAll=invFacRows.reduce(function(s,f){return s+f.cogsVal;},0);
-  var goodCogsEst=totalCogsAll*(goodInv/(goodInv+badInv+qcRej||1));
-  var badCogsEst=totalCogsAll*(badInv/(goodInv+badInv+qcRej||1));
-  var qcCogsEst=totalCogsAll*(qcRej/(goodInv+badInv+qcRej||1));
-  var rows=[
-    {s:'Good Inventory',t:goodInv,cv:goodCogsEst,nf:notFound,bl:blocked,action:'Audit blocked stock to increase salable inventory.'},
-    {s:'About to Expire',t:nearExp,cv:window._neCogsActual||0,nf:0,bl:0,action:'Prioritise sales/movement to prevent reaching Expired.'},
-    {s:'Expired',t:expired,cv:(goodInv>0?goodCogsEst/goodInv:0)*expired,nf:0,bl:0,action:'Write-off &amp; disposal. Clear physical space.'},
-    {s:'Recalled',t:recalled,cv:(goodInv>0?goodCogsEst/goodInv:0)*recalled,nf:0,bl:0,action:'Compliance tracking. Ensure isolation from good stock.'},
-    {s:'QC Reject',t:qcRej,cv:qcCogsEst,nf:0,bl:0,action:'Quality inspection. Remediate if possible.'},
-    {s:'Bad Inventory',t:badInv,cv:badCogsEst,nf:0,bl:0,action:'Investigate root cause and reclassify.'},
-  ];
-  document.getElementById('ex-tbody').innerHTML=rows.map(function(r){
-    return '<tr><td style="font-weight:600">'+r.s+'</td>'
-      +'<td class="mono" style="font-weight:700">'+fq(r.t)+'</td>'
-      +'<td class="ta mono" style="font-weight:800">'+fv(r.cv||0)+'</td>'
-      +'<td class="mono tm">'+(r.nf>0?fq(r.nf):'-')+'</td>'
-      +'<td class="mono tm">'+(r.bl>0?fq(r.bl):'-')+'</td>'
-      +'<td style="font-size:10px;color:var(--tx2)">'+r.action+'</td></tr>';
-  }).join('');
 
-  // Facility table
-  renderInvFacTable(invFacRows);
-  renderInvBizTable(invBizRows);
-}
 
-function stackRow(label,active,nearExp,expired,recalled,total){
-  var t=total||1;
-  var pa=(active/t*100),pn=(nearExp/t*100),pe=(expired/t*100),pr=(recalled/t*100);
-  return '<div class="stacked-row">'
-    +'<div class="stacked-lbl"><div class="stacked-lbl-t">'+label+'</div><div class="stacked-lbl-v">'+fq(total)+'</div></div>'
-    +'<div class="stacked-bar">'
-    +(pa>0?'<div class="stacked-seg" style="width:'+pa+'%;background:#1558a8" data-tip="Active: '+fq(active)+'"></div>':'')
-    +(pn>0?'<div class="stacked-seg" style="width:'+pn+'%;background:#b45309" data-tip="Near Expiry: '+fq(nearExp)+'"></div>':'')
-    +(pe>0?'<div class="stacked-seg" style="width:'+pe+'%;background:#c0392b" data-tip="Expired: '+fq(expired)+'"></div>':'')
-    +(pr>0?'<div class="stacked-seg" style="width:'+pr+'%;background:#7c85a0" data-tip="Recalled: '+fq(recalled)+'"></div>':'')
-    +'</div></div>';
-}
 
-function renderInvFacTable(rows){
-  document.getElementById('inv-fac-tbody').innerHTML=rows.map(function(f){
-    var pgd=pct(f.good,f.total);var pn=parseFloat(pgd);
-    var col=pn>90?'var(--gn)':pn>70?'var(--am)':'var(--re)';
-    return '<tr>'
-      +'<td style="font-weight:600">'+f.fac+(f.city?' <span style="font-size:9px;color:var(--mu)">&mdash; '+f.city+'</span>':'')+'<br><span class="biz '+btCls(f.bt)+'">'+f.bt+'</span></td>'
-      +'<td class="tg mono">'+fq(f.good)+'</td>'
-      +'<td class="tr mono">'+fq(f.bad)+'</td>'
-      +'<td class="ta mono">'+fq(f.qc)+'</td>'
-      +'<td class="ty mono">'+fq(f.ne)+'</td>'
-      +'<td class="tm mono">'+fq(f.exp)+'</td>'
-      +'<td class="mono" style="font-weight:700">'+fq(f.total)+'</td>'
-      +'<td class="ta mono" style="font-weight:800">'+fv(f.cogsVal)+'</td>'
-      +'<td><span style="font-size:10px;font-weight:700;color:'+col+'">'+pgd+'</span></td>'
-      +'</tr>';
-  }).join('')||'<tr><td colspan="9" class="empty">No data</td></tr>';
-}
-function renderInvBizTable(rows){
-  document.getElementById('inv-biz-tbody').innerHTML=rows.map(function(b){
-    return '<tr><td><span class="biz '+btCls(b.bt)+'">'+b.bt+'</span></td>'
-      +'<td class="tm">'+b.facCount+'</td>'
-      +'<td class="tg mono">'+fq(b.good)+'</td>'
-      +'<td class="tr mono">'+fq(b.bad)+'</td>'
-      +'<td class="ta mono">'+fq(b.qc)+'</td>'
-      +'<td class="ty mono">'+fq(b.ne)+'</td>'
-      +'<td class="tm mono">'+fq(b.exp)+'</td>'
-      +'<td class="mono" style="font-weight:700">'+fq(b.total)+'</td>'
-      +'<td class="ta mono" style="font-weight:800">'+fv(b.cogsVal)+'</td></tr>';
-  }).join('')||'<tr><td colspan="9" class="empty">No data</td></tr>';
-}
-function filterInvFac(q){
-  var lq=q.toLowerCase();
-  renderInvFacTable(invFacRows.filter(function(f){return f.fac.toLowerCase().includes(lq)||(f.city||'').toLowerCase().includes(lq)||(f.bt||'').toLowerCase().includes(lq);}));
-}
-function goInvTab(t){
-  document.querySelectorAll('[id^="invtab-"]').forEach(function(el){el.classList.remove('on');});
-  document.getElementById('invtab-'+t).classList.add('on');
-  document.getElementById('inv-facility').style.display=t==='facility'?'block':'none';
-  document.getElementById('inv-biztype').style.display=t==='biztype'?'block':'none';
-}
+
 
 // ── RENDER BRAND ──
-function renderBrand(){
-  document.getElementById('brand-tbody').innerHTML=brandRows.map(function(b){
-    return '<tr><td style="font-weight:700">'+b.brand+'</td>'
-      +'<td class="tm">'+b.skuCount+'</td>'
-      +'<td class="tg mono">'+fq(b.good)+'</td>'
-      +'<td class="tr mono">'+fq(b.bad)+'</td>'
-      +'<td class="ta mono">'+fq(b.qc)+'</td>'
-      +'<td class="ty mono">'+fq(b.ne)+'</td>'
-      +'<td class="mono" style="font-weight:700">'+fq(b.total)+'</td>'
-      +'<td class="ta mono" style="font-weight:800">'+fv(b.cogsVal)+'</td></tr>';
-  }).join('')||'<tr><td colspan="8" class="empty">No brand data</td></tr>';
-}
+
 
 // ── RENDER EXPIRY ──
 var _expActive='zone1';
-function renderExpiry(){
-  var z1v=expZone1.reduce(function(s,x){return s+x.cogsVal;},0);
-  var z2v=expZone2.reduce(function(s,x){return s+x.cogsVal;},0);
-  var z3v=expZone3.reduce(function(s,x){return s+x.cogsVal;},0);
-  window._neCogsActual=z1v+z2v+z3v;
-  document.getElementById('exp-zones').innerHTML=
-    expZone('Window 1','30 to 60 days','var(--re)','ez-critical',expZone1.length,z1v)+
-    expZone('Window 2','60 to 90 days','var(--am)','ez-near',expZone2.length,z2v)+
-    expZone('Window 3','90 to 120 days','var(--gn)','ez-stock',expZone3.length,z3v);
-  var total=expZone1.length+expZone2.length+expZone3.length;
-  var nb=document.getElementById('nb-expiry'); if(nb) nb.textContent=total;
-  renderExpTable(expZone1);
-}
-function expZone(lbl,sub,col,cls,cnt,val){
-  return '<div class="exp-zone '+cls+'"><div class="ez-label" style="color:'+col+'">'+lbl+'</div>'
-    +'<div class="ez-val" style="color:'+col+'">'+cnt+'<span style="font-size:12px;font-weight:400"> batches</span></div>'
-    +'<div class="ez-sub">'+sub+' &nbsp;&middot;&nbsp; '+fv(val)+' COGS</div></div>';
-}
+
+
 
 var _expCurrent=[];
-function renderExpTable(rows){
-  _expCurrent=rows;
-  document.getElementById('exp-tbody').innerHTML=rows.map(function(x){
-    var col=x.daysLeft<30?'var(--re)':x.daysLeft<90?'var(--am)':x.daysLeft<120?'var(--yw)':'var(--gn)';
-    var nearDate='';
-    if(x.expDate&&x.cutoffDays){
-      var nd=new Date(x.expDate); nd.setDate(nd.getDate()-x.cutoffDays);
-      nearDate=fmtDate(nd);
-    } else if(x.expDate){
-      var nd2=new Date(x.expDate); nd2.setDate(nd2.getDate()-90);
-      nearDate=fmtDate(nd2)+' <span style="font-size:8px;color:var(--mu)">(no mfg)</span>';
-    }
-    var shelfDisp=x.shelfLifeMonths!=null?x.shelfLifeMonths+' mo':'-';
-    return '<tr>'
-      +'<td class="mono" style="font-size:10px;font-weight:600">'+x.sku+'</td>'
-      +'<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px">'+x.name+'</td>'
-      +'<td class="mono tm">'+x.batch+'</td>'
-      +'<td class="mono tm" style="font-size:10px">'+(x.mfgDate?fmtDate(x.mfgDate):'-')+'</td>'
-      +'<td class="mono" style="color:'+col+'">'+fmtDate(x.expDate)+'</td>'
-      +'<td class="mono" style="font-weight:800;color:'+col+'">'+x.daysLeft+'d</td>'
-      +'<td class="mono" style="color:var(--yw);font-size:10px">'+nearDate+'</td>'
-      +'<td class="mono tm">'+shelfDisp+'</td>'
-      +'<td style="font-size:10px;font-weight:600">'+x.fac+(x.city?'<br><span style="font-size:9px;color:var(--mu)">'+x.city+'</span>':'')+'</td>'
-      +'<td><span class="biz '+btCls(x.bt)+'">'+x.bt+'</span></td>'
-      +'<td style="font-size:10px">'+x.brand+'</td>'
-      +'<td class="mono">'+fq(x.qty)+'</td>'
-      +'<td class="ta mono" style="font-weight:700">'+fv(x.cogsVal)+'</td>'
-      +'</tr>';
-  }).join('')||'<tr><td colspan="13" class="empty">No items in this window</td></tr>';
-}
-function filterExp(q){
-  var lq=q.toLowerCase();
-  var src=_expCurrent.filter(function(x){return !lq||x.sku.toLowerCase().includes(lq)||(x.fac||'').toLowerCase().includes(lq)||(x.name||'').toLowerCase().includes(lq);});
-  renderExpTable(src);
-}
-function goExpTab(t){
-  _expActive=t;
-  document.querySelectorAll('[id^="exptab-"]').forEach(function(el){el.classList.remove('on');});
-  document.getElementById('exptab-'+t).classList.add('on');
-  var titles={zone1:'Window 1 — 30 to 60 Days',zone2:'Window 2 — 60 to 120 Days',zone3:'Window 3 — Above 120 Days'};
-  // Show/hide the logic panel vs the data table
-  var panel=document.getElementById('nearexp-panel');
-  var tableCard=document.querySelector('#pg-expiry .card:not(#nearexp-panel)');
-  if(t==='nearexp'){
-    if(panel) panel.style.display='block';
-    if(tableCard) tableCard.style.display='none';
-  } else {
-    if(panel) panel.style.display='none';
-    if(tableCard) tableCard.style.display='block';
-    document.getElementById('exp-table-title').textContent=titles[t]||t;
-    document.querySelector('#pg-expiry .tbl-search').value='';
-    if(t==='zone1') renderExpTable(expZone1);
-    else if(t==='zone2') renderExpTable(expZone2);
-    else renderExpTable(expZone3);
-  }
-}
+
+
+
 
 // ── RENDER TODAY'S IMPACT ──
 function renderImpact(r){
@@ -2037,6 +1546,7 @@ var PGN={overview:'Inventory Overview',expiry:'Expiry Watch',today:"Today's Impa
 function goPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('on');});
   document.querySelectorAll('.pg').forEach(function(el){el.classList.remove('on');});
+  updateMonthBarVisibility(p);
   // Map mtd to wtd page (merged)
   var navId = p==='mtd'?'wtd':p;
   document.getElementById('nav-'+navId).classList.add('on');
@@ -2046,15 +1556,9 @@ function goPage(p){
   // If going to mtd, switch the inner tab
   if(p==='mtd') goWtdTab('mtd');
   // Render remarks tracker on navigate
-  if(p==='remarks') renderRemarksTracker('all','all');
+  if(p==='remarks') switchRmkView('tracker');
 }
-function switchView(v){
-  document.getElementById('view-movement').style.display = v==='movement'?'block':'none';
-  document.getElementById('view-remarks').style.display  = v==='remarks' ?'block':'none';
-  document.getElementById('tog-movement').classList.toggle('on', v==='movement');
-  document.getElementById('tog-remarks').classList.toggle('on', v==='remarks');
-  if(v==='remarks' && R) renderRemarksView(R);
-}
+
 
 function renderRemarksView(r, filterBt, rmkDateFilter){
   // ── Global Top 10: ranked across ALL business types ──
@@ -2207,6 +1711,15 @@ function renderRemarksView(r, filterBt, rmkDateFilter){
 }
 
 
+function switchRmkView(v){
+  document.getElementById('rmk-view-tracker').style.display = v==='tracker'?'block':'none';
+  document.getElementById('rmk-view-top5').style.display    = v==='top5'   ?'block':'none';
+  document.getElementById('rmk-tog-tracker').classList.toggle('on', v==='tracker');
+  document.getElementById('rmk-tog-top5').classList.toggle('on',    v==='top5');
+  if(v==='top5' && R) renderRemarksView(R);
+  if(v==='tracker') renderRemarksTracker('today','all');
+}
+
 function goWtdTab(t){
   document.querySelectorAll('[id^="wtdtab-"]').forEach(function(el){el.classList.remove('on');});
   document.getElementById('wtdtab-'+t).classList.add('on');
@@ -2229,8 +1742,11 @@ function showToast(msg,err){
   clearTimeout(t._t); t._t=setTimeout(function(){t.style.opacity='0';},3500);
 }
 function closeRmk(){document.getElementById('rmk-modal').classList.remove('show');}
-function saveRmk(){var t=document.getElementById('rmk-txt').value.trim();if(!t){showToast('Please enter a remark first.',true);return;}var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};var btn=document.getElementById('rmk-save-btn');btn.disabled=true;btn.textContent='Saving...';var todayEhDate=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-    var ehId=[todayEhDate,_rmk.sku,_rmk.batch||'',_rmk.fac,_rmk.ev].join('|');
+function saveRmk(){var t=document.getElementById('rmk-txt').value.trim();if(!t){showToast('Please enter a remark first.',true);return;}var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};var btn=document.getElementById('rmk-save-btn');btn.disabled=true;btn.textContent='Saving...';// Use stable EH_ID from event button (event date) — prevents duplicates on different save days
+    var _evDate=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    var ehId=(_rmk.ehId&&_rmk.ehId.trim())
+      ? _rmk.ehId.trim()
+      : [_evDate,_rmk.sku,_rmk.batch||'',_rmk.fac,_rmk.ev].join('|');
     var p={action:'saveRemark',sku:_rmk.sku,batch:_rmk.batch,facility:_rmk.fac,bizType:_rmk.bt,event:_rmk.ev,cogsVal:parseFloat(_rmk.cogs)||0,remark:t,assignedTo:a.name,assignedEmail:a.email,date:new Date().toLocaleDateString('en-IN'),ehId:ehId,status:'Completed'};fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'}).then(function(){// Remove any existing entry with same EH_ID or composite key (dedup)
     var _ehId=(p.ehId||'').trim();
     var _ck=[p.date,p.sku,p.batch||'',p.facility,p.event].join('|');
@@ -2246,30 +1762,222 @@ function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'ap
 
 // DOWNLOAD
 function dlReport(){
-  if(!R)return;
-  var neg=R.flat||[], pos=R.pos||[];
-  if(!neg.length && !pos.length){alert('No data to download.');return;}
-  var csv='Direction,SKU,Product Name,Batch,Facility,City,Business Type,Brand,Qty,COGS/Unit,COGS Value,Event,Severity\n';
-  neg.forEach(function(x){
-    csv+='"NEGATIVE","'+x.sku+'","'+(x.name||'')+'","'+(x.batch||'')+'","'+(x.fac||'')+'","'+(x.city||'')+'","'+x.bt+'","'+getBrand(x.sku)+'",'+x.qty+','+(x.cp||0).toFixed(2)+','+(x.cogsVal||0).toFixed(2)+',"'+x.event+'","'+(x.sev||'')+'"\n';
-  });
-  pos.forEach(function(x){
-    csv+='"POSITIVE","'+x.sku+'","'+(x.name||'')+'","'+(x.batch||'')+'","'+(x.fac||'')+'","'+(x.city||'')+'","'+x.bt+'","'+getBrand(x.sku)+'",'+x.qty+','+(x.cp||0).toFixed(2)+','+(x.cogsVal||0).toFixed(2)+',"'+x.event+'","Positive"\n';
-  });
-  // Summary row
-  csv+='\n"SUMMARY","","","","","","","","","","","",""\n';
-  csv+='"Negative Total","","","","","","","",'+R.totNeg+',"",'+R.totVal.toFixed(2)+',"",""\n';
-  csv+='"Positive Total","","","","","","","",'+R.posQty+',"",'+R.posVal.toFixed(2)+',"",""\n';
-  csv+='"Net Impact","","","","","","","",'+(R.totNeg-R.posQty)+',"",'+R.netVal.toFixed(2)+',"",""\n';
+  if(!R) return;
+  if(typeof XLSX === 'undefined'){
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=function(){ dlReport(); };
+    document.head.appendChild(s); return;
+  }
+  var wb=XLSX.utils.book_new(), today=new Date().toISOString().slice(0,10);
+
+  // ── Sheet 1: Today's Impact ──
+  var s1=[['Direction','SKU','Item Type Name','Batch','Facility','City','Business Type','Brand','Qty','COGS/Unit','COGS Value (₹)','Event','Severity']];
+  (R.flat||[]).forEach(function(x){ s1.push(['NEGATIVE',x.sku,x.name||'',x.batch||'',x.fac||'',x.city||'',x.bt,getBrand(x.sku),x.qty,parseFloat(x.cp||0),parseFloat(x.cogsVal||0),x.event,x.sev||'']); });
+  (R.pos||[]).forEach(function(x){ s1.push(['POSITIVE',x.sku,x.name||'',x.batch||'',x.fac||'',x.city||'',x.bt,getBrand(x.sku),x.qty,parseFloat(x.cp||0),parseFloat(x.cogsVal||0),x.event,'Positive']); });
+  s1.push([]);
+  s1.push(['Negative Total','','','','','','','',R.totNeg,'',parseFloat(R.totVal||0),'','']);
+  s1.push(['Positive Total','','','','','','','',R.posQty,'',parseFloat(R.posVal||0),'','']);
+  s1.push(['Net Impact','','','','','','','',(R.totNeg-R.posQty),'',parseFloat(R.netVal||0),'','']);
   var rate=R.totVal>0?(R.posVal/R.totVal*100).toFixed(2):0;
-  csv+='"Recovery Rate %","","","","","","","","","",'+rate+',"",""\n';
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='inventory_impact_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
+  s1.push(['Recovery Rate %','','','','','','','','','',parseFloat(rate),'','']);
+  var ws1=XLSX.utils.aoa_to_sheet(s1);
+  ws1['!cols']=[{wch:10},{wch:22},{wch:28},{wch:14},{wch:22},{wch:14},{wch:16},{wch:16},{wch:8},{wch:10},{wch:14},{wch:24},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws1,"Today's Impact");
+
+  // ── Sheet 2: Operational Exception Metrics ──
+  var goodInvL=invKPIs.totGood||0,badInvL=invKPIs.totBad||0,qcRejL=invKPIs.totQC||0;
+  var expiredL=invKPIs.totExp||0,recalledL=invKPIs.totRecalled||0;
+  var notFoundL=invKPIs.totNotFound||0,blockedL=invKPIs.totBlocked||0,nearExpL=invKPIs.totNE||0;
+  var totalCogsL=invFacRows.reduce(function(s,f){return s+f.cogsVal;},0);
+  var goodCogs=totalCogsL*(goodInvL/(goodInvL+badInvL+qcRejL||1));
+  var badCogs=totalCogsL*(badInvL/(goodInvL+badInvL+qcRejL||1));
+  var qcCogs=totalCogsL*(qcRejL/(goodInvL+badInvL+qcRejL||1));
+  var avgUnit=goodInvL>0?goodCogs/goodInvL:0;
+  var neCogs=window._neCogsActual||0;
+  var s2=[['Dashboard Status','Total Qty','COGS Value (₹)','Not Found','Blocked','Avg COGS/Unit (₹)','Key Management Action'],
+    ['Good Inventory', goodInvL,goodCogs,  notFoundL,blockedL,avgUnit,'Audit blocked stock to increase salable inventory.'],
+    ['About to Expire',nearExpL,neCogs,    0,0,avgUnit,'Prioritise sales/movement to prevent reaching Expired.'],
+    ['Expired',        expiredL,avgUnit*expiredL, 0,0,avgUnit,'Write-off & disposal. Clear physical space.'],
+    ['Recalled',       recalledL,avgUnit*recalledL,0,0,avgUnit,'Compliance tracking. Ensure isolation from good stock.'],
+    ['QC Reject',      qcRejL,qcCogs,     0,0,avgUnit,'Quality inspection. Remediate if possible.'],
+    ['Bad Inventory',  badInvL,badCogs,   0,0,avgUnit,'Investigate root cause and reclassify.']];
+  var ws2=XLSX.utils.aoa_to_sheet(s2);
+  ws2['!cols']=[{wch:18},{wch:12},{wch:16},{wch:10},{wch:10},{wch:16},{wch:52}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Ops Exception Metrics');
+
+  // ── Sheet 3: About to Expire – Detail ──
+  var allNE=(expZone1||[]).concat(expZone2||[]).concat(expZone3||[]).sort(function(a,b){return a.daysLeft-b.daysLeft;});
+  var s3=[['SKU','Item Type Name','Batch','Facility','City','Business Type','Brand','Qty','COGS/Unit (₹)','COGS Value (₹)','Days Left','Mfg Date','Expiry Date','Shelf Life (Months)','Cutoff Days','NE Cutoff Date','Ageing (Days)','Window']];
+  allNE.forEach(function(x){
+    var win=x.daysLeft<=60?'Window 1 (30-60d)':x.daysLeft<=90?'Window 2 (60-90d)':'Window 3 (90-120d)';
+    var mfgD=x.mfgDate instanceof Date?x.mfgDate:null;
+    var expD=x.expDate instanceof Date?x.expDate:null;
+    var ageing=mfgD?Math.floor((new Date()-mfgD)/864e5):'';
+    var cutoDate=(expD&&x.cutoffDays)?new Date(expD.getTime()-x.cutoffDays*864e5).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'';
+    s3.push([x.sku,x.name||'',x.batch||'',x.fac||'',x.city||'',x.bt||'',getBrand(x.sku),
+      x.qty,parseFloat(x.cogsPerUnit||x.cp||0),parseFloat(x.cogsVal||0),
+      x.daysLeft,x.mfgStr||'',x.expStr||'',x.shelfLifeMonths||'',x.cutoffDays||'',cutoDate,ageing,win]);
+  });
+  var ws3=XLSX.utils.aoa_to_sheet(s3);
+  ws3['!cols']=[{wch:22},{wch:30},{wch:14},{wch:22},{wch:12},{wch:14},{wch:14},{wch:8},{wch:12},{wch:14},{wch:10},{wch:12},{wch:12},{wch:14},{wch:12},{wch:16},{wch:10},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws3,'About to Expire - Detail');
+
+  XLSX.writeFile(wb,'Inventory_Report_'+today+'.xlsx');
 }
 
 // BOOT
+// ════════════════════════════════════════════════════════
+// MONTH SELECTOR — load archived or current month data
+// ════════════════════════════════════════════════════════
+
+var _activeMonth = 'current';   // 'current' or 'MMMyyyy' e.g. 'Apr2026'
+var _availableMonths = [];      // populated on boot
+
+// Fetch available archive months from GS and build toggle tabs
+function loadMonthBar() {
+  fetchJ(ARCHIVE_URL+'&t='+Date.now()).then(function(d){
+    if (!d || !d.months) return;
+    _availableMonths = d.months || [];
+
+    // Build current month label
+    var now = new Date();
+    var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var currentLabel = mo[now.getMonth()] + now.getFullYear();
+
+    // Tabs: current month first, then archives oldest→newest
+    var tabs = [{label: currentLabel + ' (Current)', val: 'current'}];
+    _availableMonths.forEach(function(m){
+      tabs.push({label: m, val: m});
+    });
+
+    var tabsEl = document.getElementById('month-tabs');
+    if (!tabsEl) return;
+    tabsEl.innerHTML = tabs.map(function(t){
+      return '<button class="sub-tab'+(t.val==='current'?' on':'')+'" '
+        +'data-month="'+t.val+'" '
+        +'onclick="switchMonth(\''+t.val+'\')" '
+        +'style="padding:4px 14px;font-size:10px;min-width:auto;white-space:nowrap">'
+        +t.label+'</button>';
+    }).join('');
+
+    // Show bar only if there are archives (or always show for month awareness)
+    document.getElementById('month-bar').style.display = 'block';
+  }).catch(function(){ /* silent fail — bar stays hidden */ });
+}
+
+// Switch to a month — reload data for that month
+function switchMonth(month) {
+  if (_activeMonth === month) return;
+  _activeMonth = month;
+
+  // Update tab active state
+  document.querySelectorAll('[data-month]').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('data-month') === month);
+  });
+
+  // Show loading state
+  var suffix = month === 'current' ? '' : '_' + month;
+  var evUrl   = PROXY + '?sheet=NI_Events'    + suffix;
+  var histUrl = PROXY + '?sheet=NI_History'   + suffix;
+  var facUrl  = PROXY + '?sheet=NI_FacHistory'+ suffix;
+  var ehUrl   = PROXY + '?sheet=NI_EventHistory' + suffix;
+  var rmkUrl  = PROXY + '?sheet=NI_Remarks'   + suffix;
+
+  // Show month badge on sidebar
+  var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var now = new Date();
+  var badge = month === 'current'
+    ? mo[now.getMonth()] + ' ' + now.getFullYear()
+    : month.replace(/([A-Za-z]+)(\d{4})/, '$1 $2');
+  var pgName = document.getElementById('pg-name');
+  if (pgName) pgName.textContent = pgName.textContent.replace(/ \| .+$/, '') + ' | ' + badge;
+
+  // Grey out while loading
+  ['panel-wtd','panel-mtd','rmk-view-tracker','rmk-view-top5'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.opacity = '0.4';
+  });
+
+  // Fetch new data
+  var t = '&t=' + Date.now();
+  Promise.all([
+    fetchJ(evUrl   + t),
+    fetchJ(histUrl + t),
+    fetchJ(facUrl  + t),
+    fetchJ(ehUrl   + t),
+    fetchJ(rmkUrl  + t),
+  ]).then(function(results){
+    var evData   = results[0];
+    var histRaw  = results[1];
+    var facRaw   = results[2];
+    var ehRaw    = results[3];
+    var rmkRaw   = results[4];
+
+    // Re-build R from events
+    if (evData && evData.headers && evData.rows) {
+      R = buildRFromEvents(evData);
+      renderImpact(R);
+    }
+
+    // Re-build histData
+    if (histRaw && histRaw.headers && histRaw.rows) {
+      histData = histRaw.rows.map(function(row){
+        var obj = {}; histRaw.headers.forEach(function(h,i){ obj[h]=row[i]||''; }); return obj;
+      });
+    }
+
+    // Re-build facHistData
+    if (facRaw && facRaw.headers && facRaw.rows) {
+      facHistData = facRaw.rows.map(function(row){
+        var obj = {}; facRaw.headers.forEach(function(h,i){ obj[h]=row[i]||''; }); return obj;
+      });
+    }
+
+    // Re-build allEventHistory
+    if (ehRaw && ehRaw.headers && ehRaw.rows) {
+      allEventHistory = ehRaw.rows.map(function(row){
+        var obj = {}; ehRaw.headers.forEach(function(h,i){ obj[h]=row[i]||''; }); return obj;
+      }).filter(function(r){ return r['EH_ID']||r['SKU']; });
+    }
+
+    // Re-build allRemarks
+    if (rmkRaw && rmkRaw.headers && rmkRaw.rows) {
+      allRemarks = rmkRaw.rows.map(function(row){
+        var obj = {}; rmkRaw.headers.forEach(function(h,i){ obj[h]=row[i]||''; }); return obj;
+      });
+    }
+
+    renderHistory();
+
+    // Restore opacity
+    ['panel-wtd','panel-mtd','rmk-view-tracker','rmk-view-top5'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.style.opacity = '1';
+    });
+
+    // Re-render open tracker if visible
+    var rmkPg = document.getElementById('pg-remarks');
+    if (rmkPg && rmkPg.classList.contains('on')) {
+      renderRemarksTracker('all','all');
+    }
+
+  }).catch(function(e){
+    console.error('switchMonth error:', e);
+    ['panel-wtd','panel-mtd'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.style.opacity='1';
+    });
+  });
+}
+
+// Show/hide month bar based on current page
+function updateMonthBarVisibility(page) {
+  var bar = document.getElementById('month-bar');
+  if (!bar) return;
+  bar.style.display = (page==='today'||page==='wtd'||page==='remarks') ? 'block' : 'none';
+}
+
+
 function boot(){
   step('Connecting to Apps Script...',10);
   // Fetch events + today's full stock in parallel
@@ -2296,6 +2004,7 @@ function boot(){
         document.getElementById('boot').style.display='none';
         document.getElementById('pages').style.display='block';
         goPage('today');
+        loadMonthBar(); // fetch available archive months
         document.getElementById('ref-btn').disabled=false;
         fetchJ(EXPIRY_URL).then(function(d){buildExpiry(d);}).catch(function(){});
 
@@ -2402,183 +2111,157 @@ boot();
 // REMARKS TRACKER PAGE
 // ═══════════════════════════════════════════════════════
 function renderRemarksTracker(period, statusFilter){
-  period       = period||'all';
+  period       = period||'today';
   statusFilter = statusFilter||'all';
 
-  var today    = new Date(); today.setHours(0,0,0,0);
-  var apr14    = new Date(2026,3,14);
-  var wkStart  = new Date(today); wkStart.setDate(today.getDate()-((today.getDay()||7)-1));
-  var moStart  = new Date(today.getFullYear(), today.getMonth(), 1);
-  var startDate= period==='today'?today:period==='wtd'?wkStart:period==='mtd'?moStart:apr14;
+  var today   = new Date(); today.setHours(0,0,0,0);
+  var apr14   = new Date(2026,3,14);
+  var wkStart = new Date(today); wkStart.setDate(today.getDate()-((today.getDay()||7)-1));
+  var moStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  var startDate = period==='today'?today:period==='wtd'?wkStart:period==='mtd'?moStart:apr14;
 
-  // ── Build remark lookup from allRemarks (keyed by EH_ID + fallback composite) ──
-  var rmkByEhId = {}, rmkByComposite = {};
+  document.querySelectorAll('[data-rmkperiod]').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('data-rmkperiod')===period);
+  });
+
+  // Build remark lookup
+  var rmkByEhId={}, rmkByComposite={};
   allRemarks.forEach(function(r){
-    if(r['EH_ID']) rmkByEhId[r['EH_ID']] = r;
-    // fallback key: date|sku|batch|fac|event
-    var ck = [r['Date']||'', r['SKU']||'', r['Batch']||'', r['Facility']||'', r['Event']||''].join('|');
-    rmkByComposite[ck] = r;
+    if(r['EH_ID']) rmkByEhId[r['EH_ID']]=r;
+    rmkByComposite[[r['Date']||'',r['SKU']||'',r['Batch']||'',r['Facility']||'',r['Event']||''].join('|')]=r;
   });
 
-  // ── Source events: allEventHistory (historical) + today's allEventsData ──
-  // Merge both, deduplicate by EH_ID
-  var todayStr = today.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-  var eventMap = {};
-
-  // 1. Historical events from NI_EventHistory
+  // Merge event sources
+  var todayStr=today.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  var eventMap={};
   allEventHistory.forEach(function(ev){
-    var d = parseDate(ev['Date']); if(!d||d<startDate) return;
-    var ehId = ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
-    if(!eventMap[ehId]) eventMap[ehId] = {
-      ehId:ehId, date:ev['Date'], sku:ev['SKU'], name:ev['Name']||'',
-      batch:ev['Batch']||'', fac:ev['Facility'], city:ev['City']||'',
-      bt:ev['BizType']||ev['Business Type']||'', event:ev['Event'],
-      qty:parseFloat(ev['Qty']||ev['COGSValue'])||0,
-      cogs:parseFloat(ev['COGSValue'])||0, rank:parseInt(ev['Rank'])||99
-    };
+    var d=parseDate(ev['Date']); if(!d||d<startDate) return;
+    var ehId=ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
+    if(!eventMap[ehId]) eventMap[ehId]={ehId:ehId,date:ev['Date'],sku:ev['SKU'],name:ev['Name']||'',
+      batch:ev['Batch']||'',fac:ev['Facility'],city:ev['City']||'',
+      bt:ev['BizType']||ev['Business Type']||'',event:ev['Event'],
+      qty:parseFloat(ev['Qty']||0),cogs:parseFloat(ev['COGSValue']||0),rank:parseInt(ev['Rank'])||99};
+  });
+  if(R&&R.flat) R.flat.forEach(function(x,i){
+    var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
+    if(!eventMap[ehId]) eventMap[ehId]={ehId:ehId,date:todayStr,sku:x.sku,name:x.name||'',
+      batch:x.batch||'',fac:x.fac,city:x.city||'',bt:x.bt,event:x.event,qty:x.qty,cogs:x.cogsVal,rank:i+1};
   });
 
-  // 2. Today's live events from allEventsData (if not already in map)
-  if(allEventsData && allEventsData.length){
-    var negCats = ['g2b','g2q','g2rc','a2ne','ne2e','a2e','a2rc','newBad','newQC'];
-    // allEventsData is raw NI_Events rows — filter negative
-    allEventsData.forEach(function(row){
-      if(row['Direction']!=='Negative'&&row['Type']!=='NEG') return;
-      var sku=row['SKU']||'', batch=row['Batch']||'', fac=row['Facility']||'';
-      var ev=row['Event']||'', bt=row['BizType']||'';
-      var cogs=parseFloat(row['COGSValue'])||0;
-      var ehId=[todayStr,sku,batch,fac,ev].join('|');
-      if(!eventMap[ehId]) eventMap[ehId]={
-        ehId:ehId, date:todayStr, sku:sku, name:row['Name']||'',
-        batch:batch, fac:fac, city:row['City']||'', bt:bt, event:ev,
-        qty:parseFloat(row['Qty'])||0, cogs:cogs, rank:99
-      };
-    });
-    // Also add from R.flat if available (processed today events)
-    if(R && R.flat){
-      R.flat.forEach(function(x,i){
-        var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
-        if(!eventMap[ehId]) eventMap[ehId]={
-          ehId:ehId, date:todayStr, sku:x.sku, name:x.name||'',
-          batch:x.batch||'', fac:x.fac, city:x.city||'', bt:x.bt,
-          event:x.event, qty:x.qty, cogs:x.cogsVal, rank:i+1
-        };
-      });
-    }
-  }
-
-  // ── Join events with remarks ──
-  var allEvents = Object.values(eventMap).sort(function(a,b){
-    var da=parseDate(a.date)||new Date(0), db=parseDate(b.date)||new Date(0);
-    return db-da || a.rank-b.rank;
+  var allEvents=Object.values(eventMap).sort(function(a,b){
+    return (parseDate(b.date)||0)-(parseDate(a.date)||0)||a.rank-b.rank;
   });
-
   function getRemark(ev){
-    return rmkByEhId[ev.ehId] || rmkByComposite[[ev.date,ev.sku,ev.batch,ev.fac,ev.event].join('|')] || null;
+    return rmkByEhId[ev.ehId]||rmkByComposite[[ev.date,ev.sku,ev.batch,ev.fac,ev.event].join('|')]||null;
   }
-
-  // ── KPI tiles ──
-  var pending=0, updated=0;
-  allEvents.forEach(function(ev){
-    var r=getRemark(ev);
-    if(r && (r['Status']==='Resolved'||r['Status']==='Completed'||r['Status']==='In Progress')) updated++;
-    else pending++;
-  });
-  var total=allEvents.length;
-  var resRate=total>0?(updated/total*100).toFixed(0):0;
+  window._rmkpEvents=allEvents; window._rmkpGetRemark=getRemark;
 
   var BT_LIST=['Self Warehouse','Dark Store','3PL B2C','3PL B2B'];
   var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569'};
-  var BT_BG ={'Self Warehouse':'#f0fdf4','Dark Store':'#faf5ff','3PL B2C':'#eff6ff','3PL B2B':'#f8fafc'};
   var BT_ICON={'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;'};
 
-  document.getElementById('rmkp-kpi-strip').innerHTML =
-    '<div class="imp-tile" style="background:var(--am-bg);border:1px solid var(--am-bd)">'+
-      '<div class="imp-lbl" style="color:var(--am)">&#9888; Pending Remarks</div>'+
-      '<div class="imp-big" style="color:var(--am)">'+pending+'</div>'+
-      '<div class="imp-sub">Events with no remark yet</div>'+
-    '</div>'+
-    '<div class="imp-tile" style="background:var(--gn-bg);border:1px solid var(--gn-bd)">'+
-      '<div class="imp-lbl" style="color:var(--gn)">&#10003; Remarked</div>'+
-      '<div class="imp-big" style="color:var(--gn)">'+updated+'</div>'+
-      '<div class="imp-sub">Events with remarks logged</div>'+
-    '</div>'+
-    '<div class="imp-tile">'+
-      '<div class="imp-lbl">&#9678; Resolution Rate</div>'+
-      '<div class="imp-big">'+resRate+'%</div>'+
-      '<div class="imp-sub">'+total+' total events tracked</div>'+
-    '</div>';
-
-  // ── BT cards ──
   var btMap={};
-  BT_LIST.forEach(function(bt){btMap[bt]={pending:0,updated:0,total:0};});
+  BT_LIST.forEach(function(bt){btMap[bt]={tracked:0,pending:0,remarked:0};});
   allEvents.forEach(function(ev){
-    var bt=ev.bt||'Other';
-    if(!btMap[bt]) btMap[bt]={pending:0,updated:0,total:0};
-    var r=getRemark(ev);
-    btMap[bt].total++;
-    if(r&&(r['Status']==='Resolved'||r['Status']==='Completed'||r['Status']==='In Progress')) btMap[bt].updated++;
-    else btMap[bt].pending++;
+    var bt=ev.bt||'Other'; if(!btMap[bt]) btMap[bt]={tracked:0,pending:0,remarked:0};
+    btMap[bt].tracked++;
+    if(getRemark(ev)&&getRemark(ev)['Remark']) btMap[bt].remarked++; else btMap[bt].pending++;
   });
 
-  var btHtml='';
+  var totT=0,totP=0,totR=0;
+  BT_LIST.forEach(function(bt){totT+=btMap[bt].tracked;totP+=btMap[bt].pending;totR+=btMap[bt].remarked;});
+  var resRate=totT>0?(totR/totT*100).toFixed(0):0;
+
+  // KPI tiles
+  var kpiEl=document.getElementById('rmkp-kpi-strip');
+  if(kpiEl) kpiEl.innerHTML=
+    '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px">'
+      +'<div style="width:48px;height:48px;background:#ffedd5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px">&#8987;</div>'
+      +'<div><div style="font-size:10px;font-weight:700;color:#c2410c;letter-spacing:.5px;margin-bottom:4px">PENDING REMARKS</div>'
+      +'<div style="font-size:36px;font-weight:800;color:#c2410c;line-height:1">'+totP+'</div>'
+      +'<div style="font-size:11px;color:#9a3412;margin-top:4px">Events with no remark yet</div></div></div>'
+    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px">'
+      +'<div style="width:48px;height:48px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px">&#10004;&#65039;</div>'
+      +'<div><div style="font-size:10px;font-weight:700;color:#16a34a;letter-spacing:.5px;margin-bottom:4px">REMARKED</div>'
+      +'<div style="font-size:36px;font-weight:800;color:#16a34a;line-height:1">'+totR+'</div>'
+      +'<div style="font-size:11px;color:#15803d;margin-top:4px">Events with remarks logged</div></div></div>'
+    +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px">'
+      +'<div style="width:48px;height:48px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px">&#9685;</div>'
+      +'<div><div style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:.5px;margin-bottom:4px">RESOLUTION RATE</div>'
+      +'<div style="font-size:36px;font-weight:800;color:#1d4ed8;line-height:1">'+resRate+'%</div>'
+      +'<div style="font-size:11px;color:#1e40af;margin-top:4px">'+totR+' of '+totT+' events resolved</div></div></div>';
+
+  // BT Summary Table
+  var TH='padding:10px 16px;background:var(--sf);border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--mu)';
+  var tbl='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr>'
+    +'<th style="'+TH+';text-align:left">Business Unit</th>'
+    +'<th style="'+TH+';text-align:center">Events Tracked</th>'
+    +'<th style="'+TH+';text-align:center;color:#c2410c" colspan="2">Pending Remarks</th>'
+    +'<th style="'+TH+';text-align:center;color:#16a34a" colspan="2">Remarked</th>'
+    +'<th style="'+TH+';text-align:center">Resolution Progress</th>'
+    +'<th style="'+TH+';text-align:center">Action</th>'
+    +'</tr><tr style="background:var(--sf)">'
+    +'<th style="padding:4px 16px;font-size:8px;color:var(--mu);border-bottom:1px solid var(--br)"></th>'
+    +'<th style="padding:4px 16px;font-size:8px;color:var(--mu);border-bottom:1px solid var(--br)"></th>'
+    +'<th style="padding:4px 12px;font-size:8px;font-weight:600;color:#c2410c;text-align:center;border-bottom:1px solid var(--br)">Count</th>'
+    +'<th style="padding:4px 12px;font-size:8px;font-weight:600;color:#c2410c;text-align:center;border-bottom:1px solid var(--br)">% of Total</th>'
+    +'<th style="padding:4px 12px;font-size:8px;font-weight:600;color:#16a34a;text-align:center;border-bottom:1px solid var(--br)">Count</th>'
+    +'<th style="padding:4px 12px;font-size:8px;font-weight:600;color:#16a34a;text-align:center;border-bottom:1px solid var(--br)">% of Total</th>'
+    +'<th style="padding:4px 12px;border-bottom:1px solid var(--br)"></th>'
+    +'<th style="padding:4px 12px;border-bottom:1px solid var(--br)"></th>'
+    +'</tr></thead><tbody>';
+
   BT_LIST.forEach(function(bt){
-    var s=btMap[bt]||{pending:0,updated:0,total:0};
-    var col=BT_COL[bt]||'#7c85a0';
-    var bg=BT_BG[bt]||'#f8f9fa';
-    var icon=BT_ICON[bt]||'&#128203;';
-    var pct=s.total>0?(s.updated/s.total*100).toFixed(0):0;
-    btHtml+=
-      '<div class="card" style="border-top:3px solid '+col+';cursor:pointer" onclick="openRmkDetail(\''+bt+'\')">'
-        +'<div style="padding:16px 18px 14px">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
-            +'<div style="display:flex;align-items:center;gap:8px">'
-              +'<span style="font-size:20px">'+icon+'</span>'
-              +'<div>'
-                +'<div style="font-size:12px;font-weight:800;color:'+col+'">'+bt+'</div>'
-                +'<div style="font-size:9px;color:var(--mu);margin-top:1px">'+s.total+' events tracked</div>'
-              +'</div>'
-            +'</div>'
-            +'<span style="font-size:9px;font-weight:700;color:'+col+';background:'+bg+';border:1px solid '+col+';padding:3px 10px;border-radius:10px">View &amp; Update ›</span>'
-          +'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
-            +'<div style="background:var(--am-bg);border:1px solid var(--am-bd);border-radius:8px;padding:10px 14px">'
-              +'<div style="font-size:9px;font-weight:700;color:var(--am);margin-bottom:4px">PENDING</div>'
-              +'<div style="font-size:26px;font-weight:800;color:var(--am);line-height:1">'+s.pending+'</div>'
-            +'</div>'
-            +'<div style="background:var(--gn-bg);border:1px solid var(--gn-bd);border-radius:8px;padding:10px 14px">'
-              +'<div style="font-size:9px;font-weight:700;color:var(--gn);margin-bottom:4px">REMARKED</div>'
-              +'<div style="font-size:26px;font-weight:800;color:var(--gn);line-height:1">'+s.updated+'</div>'
-            +'</div>'
-          +'</div>'
-          +'<div>'
-            +'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
-              +'<span style="font-size:9px;color:var(--mu)">Resolution progress</span>'
-              +'<span style="font-size:9px;font-weight:700;color:'+col+'">'+pct+'%</span>'
-            +'</div>'
-            +'<div style="height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
-              +'<div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:3px;transition:width .5s"></div>'
-            +'</div>'
-          +'</div>'
+    var s=btMap[bt],col=BT_COL[bt]||'#555',icon=BT_ICON[bt]||'&#128203;';
+    var pctP=s.tracked>0?(s.pending/s.tracked*100).toFixed(1):0;
+    var pctR=s.tracked>0?(s.remarked/s.tracked*100).toFixed(1):0;
+    var resPct=s.tracked>0?(s.remarked/s.tracked*100).toFixed(0):0;
+    var barCol=parseInt(resPct)>=50?'#16a34a':parseInt(resPct)>=20?'#d97706':'#dc2626';
+    tbl+='<tr style="border-bottom:1px solid rgba(228,232,240,.6)">'
+      +'<td style="padding:14px 16px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">'+icon+'</span><span style="font-size:12px;font-weight:600">'+bt+'</span></div></td>'
+      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:700;font-size:13px">'+s.tracked+'</td>'
+      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+s.pending+'</td>'
+      +'<td style="padding:14px 16px;text-align:center;font-size:11px;color:#c2410c">'+pctP+'%</td>'
+      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+s.remarked+'</td>'
+      +'<td style="padding:14px 16px;text-align:center;font-size:11px;color:#16a34a">'+pctR+'%</td>'
+      +'<td style="padding:14px 24px"><div style="display:flex;align-items:center;gap:10px">'
+        +'<span style="font-size:11px;font-weight:700;color:'+barCol+';min-width:32px">'+resPct+'%</span>'
+        +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
+          +'<div style="height:100%;width:'+resPct+'%;background:'+barCol+';border-radius:3px"></div>'
         +'</div>'
-      +'</div>';
+        +'<span style="font-size:10px;color:var(--mu);white-space:nowrap">'+s.remarked+' / '+s.tracked+'</span>'
+      +'</div></td>'
+      +'<td style="padding:14px 16px"><button onclick="openRmkDetail(\''+bt+'\')" style="padding:6px 16px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">View &amp; Update &#8250;</button></td>'
+      +'</tr>';
   });
-  document.getElementById('rmkp-bt-cards').innerHTML = btHtml||
-    '<div class="empty" style="grid-column:span 2;padding:40px;text-align:center">'+
-    (allEventHistory.length===0&&(!R||!R.flat||!R.flat.length)
-      ?'No event data yet. Run <code>testRunNow()</code> in Apps Script to populate NI_EventHistory.<br>'
-       +'<span style="font-size:10px;color:var(--mu)">Then run <code>backfillEventHistoryFromRemarks()</code> once to import past remarks.</span>'
-      :'No events match the selected period.'
-    )+'</div>';
 
-  // Update nav badge
+  var totResPct=totT>0?(totR/totT*100).toFixed(1):0;
+  var totBarCol=parseFloat(totResPct)>=50?'#16a34a':parseFloat(totResPct)>=20?'#d97706':'#dc2626';
+  tbl+='<tr style="background:var(--sf);border-top:2px solid var(--br)">'
+    +'<td style="padding:12px 16px;font-size:12px;font-weight:800">Total</td>'
+    +'<td style="padding:12px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:13px">'+totT+'</td>'
+    +'<td style="padding:12px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+totP+'</td>'
+    +'<td style="padding:12px 16px;text-align:center;font-size:11px;color:#c2410c">'+(totT>0?(totP/totT*100).toFixed(1):0)+'%</td>'
+    +'<td style="padding:12px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+totR+'</td>'
+    +'<td style="padding:12px 16px;text-align:center;font-size:11px;color:#16a34a">'+(totT>0?(totR/totT*100).toFixed(1):0)+'%</td>'
+    +'<td style="padding:12px 24px"><div style="display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:11px;font-weight:700;color:'+totBarCol+';min-width:32px">'+totResPct+'%</span>'
+      +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
+        +'<div style="height:100%;width:'+totResPct+'%;background:'+totBarCol+';border-radius:3px"></div>'
+      +'</div>'
+      +'<span style="font-size:10px;color:var(--mu);white-space:nowrap">'+totR+' / '+totT+'</span>'
+    +'</div></td><td style="padding:12px 16px;text-align:center;color:var(--mu)">—</td></tr>'
+    +'</tbody></table></div>';
+
+  var wrap=document.getElementById('rmkp-bt-table-wrap');
+  if(wrap) wrap.innerHTML=totT>0?tbl:'<div class="empty" style="padding:40px;text-align:center">No event data yet. Run testRunNow() in Apps Script to populate NI_EventHistory.</div>';
+
   var nb=document.getElementById('nb-remarks');
-  if(nb) nb.textContent=pending>0?pending:'✓';
-
-  // Store events for openRmkDetail
-  window._rmkpEvents = allEvents;
-  window._rmkpGetRemark = getRemark;
+  if(nb) nb.textContent=totP>0?totP:'✓';
+  window._rmkpEvents=allEvents; window._rmkpGetRemark=getRemark;
 }
+
 
 function openRmkDetail(bt, statusFilter){
   statusFilter = statusFilter||'all';
