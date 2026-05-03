@@ -2299,18 +2299,32 @@ function renderRemarksTracker(period, statusFilter){
     b.classList.toggle('on', b.getAttribute('data-rmkperiod')===period);
   });
 
-  // Build remark lookup
+  // ── Hard current-month guard — year+month integers, no timezone/parseDate dependency ──
+  var _now=new Date(), _cy=_now.getFullYear(), _cm=_now.getMonth();
+  function isCurMonth_(dateStr){
+    var d=parseDate(dateStr); if(!d) return false;
+    return d.getFullYear()===_cy && d.getMonth()===_cm;
+  }
+  // DEBUG — remove after confirming fix
+  console.log('[RMK] allEventHistory rows:',allEventHistory.length,
+    '| sample dates:', allEventHistory.slice(0,3).map(function(e){return e['Date'];}),
+    '| allRemarks rows:',allRemarks.length,
+    '| sample:', allRemarks.slice(0,2).map(function(r){return r['Date']+'→'+isCurMonth_(r['Date']);}));
+
+  // Build remark lookup — current month only
   var rmkByEhId={}, rmkByComposite={};
   allRemarks.forEach(function(r){
+    if(!isCurMonth_(r['Date'])) return; // skip April remarks
     if(r['EH_ID']) rmkByEhId[r['EH_ID']]=r;
     rmkByComposite[[r['Date']||'',r['SKU']||'',r['Batch']||'',r['Facility']||'',r['Event']||''].join('|')]=r;
   });
 
-  // Merge event sources
+  // Merge event sources — current month only
   var todayStr=today.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
   var eventMap={};
   allEventHistory.forEach(function(ev){
-    var d=parseDate(ev['Date']); if(!d||d<startDate||!isCurrentMonth(ev['Date'])) return;
+    if(!isCurMonth_(ev['Date'])) return; // skip April events
+    var d=parseDate(ev['Date']); if(!d||d<startDate) return;
     var ehId=ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
     if(!eventMap[ehId]) eventMap[ehId]={ehId:ehId,date:ev['Date'],sku:ev['SKU'],name:ev['Name']||'',
       batch:ev['Batch']||'',fac:ev['Facility'],city:ev['City']||'',
@@ -2550,12 +2564,14 @@ function renderRmkSummaryTable(period){
   document.querySelectorAll('[data-sumperiod]').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-sumperiod')===period);
   });
+  var _now2=new Date(),_cy2=_now2.getFullYear(),_cm2=_now2.getMonth();
   var BT_LIST=['Self Warehouse','Dark Store','3PL B2C','3PL B2B'];
   var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569'};
   var btMap={};
   BT_LIST.forEach(function(bt){btMap[bt]={pending:0,completed:0};});
   (allRemarks||[]).forEach(function(r){
-    var rd=parseDate(r['Date']); if(!rd||rd<startDate||!isCurrentMonth(r['Date'])) return;
+    var rd=parseDate(r['Date']);
+    if(!rd||rd.getFullYear()!==_cy2||rd.getMonth()!==_cm2||rd<startDate) return;
     var bt=r['Business Type']||'Other';
     if(!btMap[bt]) btMap[bt]={pending:0,completed:0};
     if(r['Status']==='Completed'||r['Status']==='Resolved') btMap[bt].completed++;
