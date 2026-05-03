@@ -364,7 +364,7 @@ tbody tr:hover td{background:var(--sf)}
     
   </nav>
   <div class="sb-foot">
-    <a class="sb-sheet-btn" href="https://docs.google.com/spreadsheets/d/1Jz1cCR6f8anX4y3O9bn3lRQsyx5bYy2OUxhZcgmgjvY" target="_blank">&#128202; View Data Sheet</a>
+    <a class="sb-sheet-btn" href="https://docs.google.com/spreadsheets/d/1yOU97Zo_tNSA9MXC2doT4p9PNhH4KvmLdtlWj_UpSy8" target="_blank">&#128202; View Data Sheet</a>
     <button class="ref-btn" id="ref-btn" onclick="reload()" disabled>&#8635; Refresh Data</button>
     <button class="ref-btn" id="archive-btn" onclick="runArchive()" style="margin-top:6px;background:#1e3a5f;font-size:10px" title="Archive current month data and clear sheets for next month">&#128230; Archive Month</button>
   </div>
@@ -436,6 +436,7 @@ tbody tr:hover td{background:var(--sf)}
     <!-- VIEW B: Monthly Pending — Business Wise -->
     <div id="rmk-view-monthly" style="display:none">
       <div id="rmk-monthly-wrap"></div>
+      <div id="monthly-rmk-panel"></div>
     </div>
 
   </div>
@@ -648,6 +649,14 @@ function getCOGS(sku){if(!sku)return 0;if(COGS_DB[sku])return COGS_DB[sku];var b
 
 // FORMAT
 function fv(n){var v=n||0,a=Math.abs(v);if(a>=1e7)return '&#8377;'+(v/1e7).toFixed(2)+'Cr';if(a>=1e5)return '&#8377;'+(v/1e5).toFixed(2)+'L';if(a>=1e3)return '&#8377;'+(v/1e3).toFixed(1)+'K';return '&#8377;'+Math.round(v);}
+// Event display label — marks expiry transitions as System Triggered
+function fev(ev){
+  var e=String(ev||'');
+  var SYSEV=['Active to Near Expiry','Near Expiry to Expired','Active to Expired','a2ne','ne2e','a2e'];
+  if(SYSEV.some(function(s){return e.indexOf(s)>=0;}))
+    return e+' <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:var(--yw);color:#7c3a00;font-weight:600">System</span>';
+  return e;
+}
 function fq(n){
   var v=n||0;
   if(v>=1e7) return (v/1e7).toFixed(2)+' Cr';
@@ -1783,7 +1792,7 @@ function renderRemarksView(r, filterBt, rmkDateFilter){
           +'<td style="padding:9px 10px"><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--tx)">'+x.sku+'</div>'
           +'<div style="font-size:8px;color:var(--mu);font-family:var(--mono)">#'+(x.batch||'—')+'</div></td>'
           +'<td style="padding:9px 10px;max-width:150px"><div style="font-size:10px;font-weight:500;color:var(--tl);white-space:normal;line-height:1.4">'+(x.name||'—')+'</div></td>'
-          +'<td style="padding:9px 10px"><div style="font-size:10px;font-weight:600;color:var(--tx2)">'+x.event+'</div></td>'
+          +'<td style="padding:9px 10px"><div style="font-size:10px;font-weight:600;color:var(--tx2)">'+fev(x.event)+'</div></td>'
           +'<td style="padding:9px 10px"><div style="font-size:10px;font-weight:600;white-space:nowrap">'+x.fac+'</div>'
           +'<div style="font-size:8px;color:var(--mu)">'+(x.city||'')+'</div></td>'
           +'<td style="padding:9px 10px"><span class="biz '+btCls(x.bt)+'">'+x.bt+'</span></td>'
@@ -1840,6 +1849,30 @@ function renderRmkMonthlyBusiness(){
       event:ev['Event'],cogs:parseFloat(ev['COGSValue'])||0,
       ehId:ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|')});
   });
+
+  // ── Fallback: if NI_EventHistory empty, derive BT totals from NI_History ──
+  // NI_History has per-BT rows — use Total Neg Qty as event proxy count
+  // ── Fallback: if NI_EventHistory empty, use R.flat (today's real events) ──
+  // NI_History BT rows used only for the summary table counts, not for the panel
+  var usingHistFallback = Object.keys(byDate).length === 0 && histData.length > 0;
+  if(usingHistFallback){
+    // Derive BT event counts from NI_History for summary table
+    histData.forEach(function(row){
+      var bt=row['Business Type']; if(!bt||bt==='TOTAL') return;
+      var d=parseDate(row['Date']); if(!d||d.getFullYear()!==cy||d.getMonth()!==cm) return;
+      // Format date cleanly as DD Mon YYYY
+      var ds=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+      if(!byDate[ds]) byDate[ds]=[];
+      var negV=parseFloat(row['Total Neg Value'])||0;
+      var negQ=parseFloat(row['Total Neg Qty'])||0;
+      if(!negQ) return;
+      // One synthetic row per BT per day — deduped by ehId
+      var ehId=[ds,bt,'summary'].join('|');
+      if(byDate[ds].some(function(e){return e.ehId===ehId;})) return; // dedupe
+      byDate[ds].push({date:ds,sku:'—',name:'Run backfillFromSheets() to see SKU-level events',batch:'',
+        fac:'—',bt:bt,event:'NI_History total',cogs:negV,ehId:ehId});
+    });
+  }
   // Today from R.flat
   if(R&&R.flat){
     if(!byDate[todayStr]) byDate[todayStr]=[];
@@ -1857,18 +1890,36 @@ function renderRmkMonthlyBusiness(){
     byDate[ds].sort(function(a,b){return b.cogs-a.cogs;}).slice(0,5).forEach(function(e){events.push(e);});
   });
 
-  // Aggregate by BT
+  // Aggregate by BT — use histData totals when NI_EventHistory is empty (more accurate)
   var BT_LIST=['Self Warehouse','Dark Store','3PL B2C','3PL B2B'];
   var BT_COL ={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569'};
   var BT_ICON={'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;'};
   var btMap={};
   BT_LIST.forEach(function(bt){btMap[bt]={total:0,pending:0,completed:0};});
-  events.forEach(function(ev){
-    var bt=ev.bt||'Other'; if(!btMap[bt]) btMap[bt]={total:0,pending:0,completed:0};
-    btMap[bt].total++;
-    var rmk=getRmk(ev);
-    if(rmk&&rmk['Remark']) btMap[bt].completed++; else btMap[bt].pending++;
-  });
+
+  if(usingHistFallback){
+    // Use NI_History neg event counts per BT as Total Events
+    histData.forEach(function(row){
+      var bt=row['Business Type']; if(!bt||bt==='TOTAL') return;
+      var d=parseDate(row['Date']); if(!d||d.getFullYear()!==cy||d.getMonth()!==cm) return;
+      if(!btMap[bt]) btMap[bt]={total:0,pending:0,completed:0};
+      btMap[bt].total += parseFloat(row['Total Neg Qty'])||0; // Neg qty as proxy for events
+    });
+    // Remarks counts from allRemarks
+    allRemarks.forEach(function(r){
+      var bt=r['Business Type']||''; if(!btMap[bt]) return;
+      var d=parseDate(r['Date']); if(!d||d.getFullYear()!==cy||d.getMonth()!==cm) return;
+      if(r['Status']==='Completed'||r['Status']==='Resolved') btMap[bt].completed++;
+      else btMap[bt].pending++;
+    });
+  } else {
+    events.forEach(function(ev){
+      var bt=ev.bt||'Other'; if(!btMap[bt]) btMap[bt]={total:0,pending:0,completed:0};
+      btMap[bt].total++;
+      var rmk=getRmk(ev);
+      if(rmk&&rmk['Remark']) btMap[bt].completed++; else btMap[bt].pending++;
+    });
+  }
 
   // Totals
   var totT=0,totP=0,totC=0;
@@ -1884,12 +1935,14 @@ function renderRmkMonthlyBusiness(){
     +'<th style="'+TH+';color:#c2410c">Remarks Pending</th>'
     +'<th style="'+TH+';color:#16a34a">Remarks Completed</th>'
     +'<th style="'+TH+'">Completion %</th>'
+    +'<th style="'+TH+'">Action</th>'
     +'</tr></thead><tbody>';
 
   BT_LIST.forEach(function(bt){
     var s=btMap[bt], col=BT_COL[bt]||'#555', icon=BT_ICON[bt]||'&#128203;';
     var pct=s.total>0?Math.round(s.completed/s.total*100):0;
     var barCol=pct>=80?'#16a34a':pct>=40?'#d97706':'#dc2626';
+    var safeBt=bt.replace(/'/g,"\\'");
     html+='<tr style="border-bottom:1px solid rgba(228,232,240,.6)">'
       +'<td style="padding:14px 20px">'
         +'<div style="display:flex;align-items:center;gap:10px">'
@@ -1907,6 +1960,11 @@ function renderRmkMonthlyBusiness(){
           +'</div>'
           +'<span style="font-size:10px;color:var(--mu);white-space:nowrap">'+s.completed+' / '+s.total+'</span>'
         +'</div></td>'
+      +'<td style="padding:14px 16px;text-align:center">'
+        +(s.total>0
+          ?'<button onclick="openMonthlyRmkPanel(\''+safeBt+'\')" style="padding:6px 16px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">&#9998; Update Remarks</button>'
+          :'<span style="color:var(--mu);font-size:10px">—</span>')
+      +'</td>'
       +'</tr>';
   });
 
@@ -1926,11 +1984,124 @@ function renderRmkMonthlyBusiness(){
         +'</div>'
         +'<span style="font-size:10px;color:var(--mu);white-space:nowrap">'+totC+' / '+totT+'</span>'
       +'</div></td>'
+    +'<td style="padding:13px 16px;text-align:center;color:var(--mu)">—</td>'
     +'</tr>'
     +'</tbody></table></div>';
 
+  // Store real events for panel: prefer allEventHistory, fall back to R.flat top 5 (today)
+  var realEvents = [];
+  if(events.some(function(e){return e.sku!=='—';})){
+    realEvents = events; // NI_EventHistory has real data
+  } else if(R&&R.flat){
+    // Top 5 of today's live events by COGS — real SKU/name/event/facility
+    R.flat.slice().sort(function(a,b){return (b.cogsVal||0)-(a.cogsVal||0);}).slice(0,5)
+    .forEach(function(x){
+      realEvents.push({
+        date:todayStr,sku:x.sku,name:x.name||'',batch:x.batch||'',
+        fac:x.fac,bt:x.bt,event:x.event,cogs:x.cogsVal||0,
+        ehId:[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|')
+      });
+    });
+  }
+  window._monthlyEvents = realEvents;
+  window._monthlyRmkById = rmkById;
+
   var wrap=document.getElementById('rmk-monthly-wrap');
   if(wrap) wrap.innerHTML=html;
+
+  // Render panel if one was open
+  if(window._openMonthlyBt) openMonthlyRmkPanel(window._openMonthlyBt);
+}
+
+
+// ── Monthly Remarks Panel ──
+function openMonthlyRmkPanel(bt){
+  window._openMonthlyBt = bt;
+  var events   = (window._monthlyEvents||[]).filter(function(e){return e.bt===bt;});
+  var rmkById  = window._monthlyRmkById||{};
+  var col      = {'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569'}[bt]||'#555';
+  var icon     = {'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;'}[bt]||'&#128203;';
+
+  function getRmk(ev){
+    return rmkById[ev.ehId]||rmkById[[ev.date,ev.sku,ev.batch,ev.fac,ev.event].join('|')]||null;
+  }
+
+  // Top 5 per day by COGS for this BT
+  var byDay={};
+  events.forEach(function(e){
+    if(!byDay[e.date]) byDay[e.date]=[];
+    byDay[e.date].push(e);
+  });
+  var filteredEvents=[];
+  Object.keys(byDay).sort(function(a,b){return (parseDate(b)||0)-(parseDate(a)||0);})
+    .forEach(function(ds){
+      byDay[ds].sort(function(a,b){return (b.cogs||0)-(a.cogs||0);}).slice(0,5)
+        .forEach(function(e){filteredEvents.push(e);});
+    });
+  events = filteredEvents;
+
+  var TH='padding:9px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
+  var rows='';
+  events.forEach(function(ev){
+    var rmk=getRmk(ev);
+    var hasRmk=!!(rmk&&rmk['Remark']);
+    // Format date cleanly
+    var d=parseDate(ev.date); 
+    var dispDate=d?d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):ev.date;
+    var statusBadge=hasRmk
+      ?'<span style="padding:2px 8px;border-radius:10px;background:#dcfce7;color:#16a34a;font-size:9px;font-weight:700">&#10003; Done</span>'
+      :'<span style="padding:2px 8px;border-radius:10px;background:#fff7ed;color:#c2410c;font-size:9px;font-weight:700">&#8987; Pending</span>';
+    var rmkText=hasRmk
+      ?'<div style="font-size:10px;color:var(--tx);max-width:180px;line-height:1.4">'+rmk['Remark']+'</div>'
+      :'<span style="color:var(--mu);font-size:10px">—</span>';
+    var addBtn='<button onclick="openRmkModal(\''+ev.ehId+'\',\''+ev.sku+'\',\''+ev.name.replace(/'/g,'`')+'\',\''
+      +(ev.batch||'')+'\',\''+ev.fac+'\',\''+ev.bt+'\',\''+ev.event+'\','+(ev.cogs||0)+',\''+ev.date+'\')"'
+      +' style="padding:5px 12px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col
+      +';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">'
+      +(hasRmk?'&#9998; Edit':'+ Add Remark')+'</button>';
+    rows+='<tr style="border-bottom:1px solid rgba(228,232,240,.5);' +(hasRmk?'':' background:rgba(254,247,237,.3)')+'">'
+      +'<td style="padding:9px 10px;font-size:9px;color:var(--mu);white-space:nowrap">'+dispDate+'</td>'
+      +'<td style="padding:9px 12px"><div style="font-family:var(--mono);font-size:10px;font-weight:700">'+ev.sku+'</div>'
+        +(ev.batch?'<div style="font-size:8px;color:var(--mu)">#'+ev.batch+'</div>':'')+'</td>'
+      +'<td style="padding:9px 12px;font-size:10px;color:var(--tl);max-width:130px;line-height:1.4">' +(ev.name||'—')+'</td>'
+      +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">'+fev(ev.event||'—')+'</td>'
+      +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">' +(ev.fac||'—')+'</td>'
+      +'<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(ev.cogs||0)+'</td>'
+      +'<td style="padding:9px 12px">'+statusBadge+'</td>'
+      +'<td style="padding:9px 12px">'+rmkText+'</td>'
+      +'<td style="padding:9px 12px">'+addBtn+'</td>'
+      +'</tr>';
+  });
+
+  var pendCount=events.filter(function(e){return !getRmk(e);}).length;
+  var panel='<div style="margin-top:16px;border:1.5px solid '+col+';border-radius:12px;overflow:hidden">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--sf);border-bottom:1px solid var(--br)">'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<span style="font-size:20px">'+icon+'</span>'
+        +'<span style="font-size:13px;font-weight:700;color:'+col+'">'+bt+' — Pending Remarks</span>'
+        +'<span style="padding:2px 10px;border-radius:20px;background:#fff7ed;color:#c2410c;font-size:9px;font-weight:700">'+pendCount+' pending</span>'
+      +'</div>'
+      +'<button onclick="window._openMonthlyBt=null;document.getElementById(\'monthly-rmk-panel\').innerHTML=\'\';" '
+        +'style="background:var(--sf);border:1px solid var(--br);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;color:var(--mu)">&#10005; Close</button>'
+    +'</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+      +'<thead><tr>'
+        +'<th style="'+TH+'">Date</th>'
+        +'<th style="'+TH+'">SKU</th>'
+        +'<th style="'+TH+'">Item Name</th>'
+        +'<th style="'+TH+'">Event</th>'
+        +'<th style="'+TH+'">Facility</th>'
+        +'<th style="'+TH+';text-align:right">COGS</th>'
+        +'<th style="'+TH+'">Status</th>'
+        +'<th style="'+TH+'">Remark</th>'
+        +'<th style="'+TH+'">Action</th>'
+      +'</tr></thead>'
+      +'<tbody>'+(rows||'<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--mu)">No events for '+bt+'</td></tr>')+'</tbody>'
+    +'</table></div>'
+  +'</div>';
+
+  var panelEl=document.getElementById('monthly-rmk-panel');
+  if(panelEl){ panelEl.innerHTML=panel; panelEl.scrollIntoView({behavior:'smooth',block:'nearest'}); }
 }
 
 // ── Daily Review: pending remarks across all BTs, grouped by day (WTD/MTD) ──
@@ -2069,7 +2240,7 @@ function renderRmkDailyReview(period){
         +'<td style="padding:9px 12px"><div style="font-family:var(--mono);font-size:10px;font-weight:700">'+ev['SKU']+'</div>'
           +(ev['Batch']?'<div style="font-size:8px;color:var(--mu)">#'+ev['Batch']+'</div>':'')+'</td>'
         +'<td style="padding:9px 12px;font-size:10px;color:var(--tl);max-width:130px;line-height:1.4">'+(ev['Name']||'—')+'</td>'
-        +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">'+(ev['Event']||'—')+'</td>'
+        +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">'+fev(ev['Event']||'—')+'</td>'
         +'<td style="padding:9px 12px"><div style="display:flex;align-items:center;gap:5px">'
           +'<span>'+icon+'</span><span style="font-size:10px;font-weight:600;color:'+col+'">'+(ev['BizType']||ev['Business Type']||'—')+'</span></div></td>'
         +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">'+(ev['Facility']||'—')+'</td>'
@@ -2122,7 +2293,9 @@ function saveRmk(){var t=document.getElementById('rmk-txt').value.trim();if(!t){
       if((_ehId&&_rEh===_ehId)||_rCk===_ck){ allRemarks.splice(_i,1); break; }
     }
     allRemarks.push({ID:'RMK-'+Date.now(),Date:p.date,SKU:p.sku,Batch:p.batch,Facility:p.facility,'Business Type':p.bizType,'COGS Value':p.cogsVal,Event:p.event,Remark:p.remark,'Assigned To':p.assignedTo,Status:'Completed',EH_ID:p.ehId||''});
-    if(R) renderRemarksView(R);renderRmkSummaryTable('mtd');closeRmk();btn.disabled=false;btn.textContent='Save Remark';showToast('&#10003; Saved &mdash; will appear in '+a.name+"'s morning report");}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
+    if(R) renderRemarksView(R);renderRmkSummaryTable('mtd');closeRmk();btn.disabled=false;btn.textContent='Save Remark';showToast('&#10003; Saved &mdash; will appear in '+a.name+"'s morning report");
+    // Refresh monthly panel if open
+    if(window._openMonthlyBt){ renderRmkMonthlyBusiness(); }}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
 function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'updateStatus',id:id,status:status}),mode:'no-cors'}).catch(function(){});allRemarks.forEach(function(r){if(r['ID']===id)r['Status']=status;});if(R) renderRemarksView(R);}
 
 // DOWNLOAD
@@ -2596,6 +2769,7 @@ function renderRemarksTracker(period, statusFilter){
           +'<div style="font-size:9px;color:var(--mu);margin-top:3px">— '+(rmk['Assigned To']||'')+'</div>'
         : '<span style="font-size:10px;color:var(--mu)">—</span>';
       var evDate=x.date||todayStr;
+      var _pd=parseDate(evDate); if(_pd) evDate=_pd.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
       var ehId=x.ehId||[evDate,x.sku,x.batch||'',x.fac,x.event].join('|');
       var addBtn='<button onclick="openRmkModal(\''+ehId+'\',\''+x.sku+'\',\''+x.name.replace(/'/g,'`')+'\',\''
         +(x.batch||'')+'\',\''+x.fac+'\',\''+x.bt+'\',\''+x.event+'\','+(x.cogsVal||0)+',\''+evDate+'\')"\n'
@@ -2607,7 +2781,7 @@ function renderRemarksTracker(period, statusFilter){
         +'<td style="padding:12px 14px"><div style="font-family:var(--mono);font-size:10px;font-weight:700">'+x.sku+'</div>'
           +(x.batch?'<div style="font-size:8px;color:var(--mu)">#'+x.batch+'</div>':'')+'</td>'
         +'<td style="padding:12px 14px;max-width:150px;font-size:10px;color:var(--tl);line-height:1.4">'+(x.name||'—')+'</td>'
-        +'<td style="padding:12px 14px;font-size:10px;color:var(--tx2)">'+(x.event||'—')+'</td>'
+        +'<td style="padding:12px 14px;font-size:10px;color:var(--tx2)">'+fev(x.event||'—')+'</td>'
         +'<td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:6px">'
           +'<span style="font-size:15px">'+icon+'</span>'
           +'<span style="font-size:10px;font-weight:600;color:'+col+'">'+x.bt+'</span></div></td>'
@@ -2691,7 +2865,7 @@ function openRmkDetail(bt, statusFilter){
             +'<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--tx)">'+ev.sku+'</div>'
             +(ev.batch?'<div style="font-size:8px;color:var(--mu)">#'+ev.batch+'</div>':'')+'</td>'
           +'<td style="padding:9px 12px;max-width:130px;font-size:10px;color:var(--tl);line-height:1.4">'+(ev.name||'—')+'</td>'
-          +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">'+(ev.event||'—')+'</td>'
+          +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">'+fev(ev.event||'—')+'</td>'
           +'<td style="padding:9px 12px;font-size:10px;font-weight:600;white-space:nowrap">'+(ev.fac||'—')+'</td>'
           +'<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'
             +(cogs?'₹'+cogs.toLocaleString('en-IN'):'—')+'</td>'
