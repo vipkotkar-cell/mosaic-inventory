@@ -412,97 +412,30 @@ tbody tr:hover td{background:var(--sf)}
     <div class="pg-head" style="margin-bottom:16px">
       <div>
         <div class="pg-title">&#128203; Remarks Tracker</div>
-        <div class="pg-sub">Business-wise remarks status — current month</div>
-      </div>
-      <div style="display:flex;gap:0;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:2px">
-        <button data-rmkperiod="today" class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">Today</button>
-        <button data-rmkperiod="wtd"   class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">WTD</button>
-        <button data-rmkperiod="mtd"   class="sub-tab on" style="padding:5px 16px;font-size:10px;min-width:auto">MTD</button>
-        <button data-rmkperiod="all"   class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">All</button>
+        <div class="pg-sub">Top 5 negative events by COGS impact — add remarks for your team</div>
       </div>
     </div>
 
     <!-- View Toggle -->
     <div style="display:flex;gap:0;margin-bottom:20px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;width:fit-content">
-      <button class="sub-tab on" id="rmk-tog-tracker" onclick="switchRmkView('tracker')" style="min-width:200px">&#128202; Tracker Overview</button>
-      <button class="sub-tab" id="rmk-tog-top5"    onclick="switchRmkView('top5')"    style="min-width:200px">&#128203; Today Top 5 Remarks</button>
+      <button class="sub-tab on" id="rmk-tog-tracker" onclick="switchRmkView('tracker')" style="min-width:180px">&#128202; Top 5 Today</button>
+      <button class="sub-tab"    id="rmk-tog-monthly" onclick="switchRmkView('monthly')" style="min-width:220px">&#128197; Monthly Pending — Business Wise</button>
     </div>
 
-    <!-- VIEW A: Tracker Overview -->
+    <!-- VIEW A: Top 5 Today -->
     <div id="rmk-view-tracker">
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px" id="rmkp-kpi-strip"></div>
       <div class="card" style="margin-bottom:16px">
         <div id="rmkp-bt-table-wrap"></div>
         <div style="padding:10px 16px;border-top:1px solid var(--br);font-size:10px;color:var(--mu)">
-          &#9432; Resolution progress is calculated as (Remarked / Events Tracked) &times; 100
-        </div>
-      </div>
-      <div id="rmkp-bt-cards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px"></div>
-      <!-- Remarks by period summary -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-h">
-          <div class="card-t">&#128203; Remarks by Business Type</div>
-          <div style="display:flex;gap:4px">
-            <button data-sumperiod="today" class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">Today</button>
-            <button data-sumperiod="wtd"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">WTD</button>
-            <button data-sumperiod="mtd"   class="sub-tab on" style="padding:3px 10px;font-size:9px;min-width:auto">MTD</button>
-            <button data-sumperiod="all"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">All</button>
-          </div>
-        </div>
-        <div id="rmk-sum-table"></div>
-      </div>
-      <div id="rmkp-detail" style="display:none">
-        <div class="card" style="border:none;box-shadow:0 0 0 2px var(--br)">
-          <div class="card-h" style="padding:14px 18px;border-bottom:2px solid var(--br)">
-            <div style="display:flex;align-items:center;gap:12px">
-              <button onclick="closeRmkDetail()" style="background:var(--sf);border:1px solid var(--br);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:var(--tx2)">&#8592; Back</button>
-              <div class="card-t" id="rmkp-detail-title" style="font-size:14px">Remarks</div>
-            </div>
-            <div style="display:flex;gap:6px;align-items:center">
-              <div style="display:flex;gap:0;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:2px">
-                <button data-detailstatus="all"       class="sub-tab on" style="padding:4px 12px;font-size:9px;min-width:auto">All</button>
-                <button data-detailstatus="pending"   class="sub-tab"    style="padding:4px 12px;font-size:9px;min-width:auto">Pending</button>
-                <button data-detailstatus="completed" class="sub-tab"    style="padding:4px 12px;font-size:9px;min-width:auto">Remarked</button>
-              </div>
-              <span class="badge bdg-n" id="rmkp-detail-cnt">-</span>
-            </div>
-          </div>
-          <div style="overflow-x:auto">
-            <table style="width:100%;border-collapse:collapse;font-size:11px">
-              <thead id="rmkp-detail-thead"></thead>
-              <tbody id="rmkp-detail-tbody"></tbody>
-            </table>
-          </div>
+          &#9432; Showing top 5 negative events by COGS impact across all business units
         </div>
       </div>
     </div>
 
-    <!-- VIEW B: Today Top 5 Remarks -->
-    <div id="rmk-view-top5" style="display:none">
-      <div id="rmk-summary" style="margin-bottom:14px"></div>
-      <div id="rmk-biz-toggle" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" data-active="All"></div>
-      <div class="card">
-        <div class="card-h">
-          <div class="card-t">Top 5 Negative Movements — Remarks</div>
-          <span class="badge bdg-r" id="rmk-top-cnt">Top 5</span>
-        </div>
-        <div class="tbl-wrap" style="max-height:600px;overflow-y:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:11px">
-            <thead><tr>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">#</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">SKU ID</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Item Type Name</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Movement Type</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Business</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>
-              <th style="padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);min-width:200px">Remarks</th>
-            </tr></thead>
-            <tbody id="rmk-top-tbody"></tbody>
-          </table>
-        </div>
-      </div>
+    <!-- VIEW B: Monthly Pending — Business Wise -->
+    <div id="rmk-view-monthly" style="display:none">
+      <div id="rmk-monthly-wrap"></div>
     </div>
 
   </div>
@@ -1339,13 +1272,17 @@ function renderHistory(){
   var wkS=new Date(now); wkS.setDate(now.getDate()-db); wkS.setHours(0,0,0,0);
   var moS=new Date(now.getFullYear(),now.getMonth(),1);
   var wkSClamped = wkS < moS ? moS : wkS; // WTD never crosses into previous month
+  var _cy=now.getFullYear(), _cm=now.getMonth(); // current year/month for hard guard
 
   function calcPeriod(startDate){
     var a={negV:0,negQ:0,posV:0,posQ:0,netV:0,g2bQ:0,g2bV:0,expQ:0,expV:0,grnQ:0,days:0};
     var bizMap={}, facMap={}, daily={};
     histData.forEach(function(row){
       var bt=row['Business Type']; if(!bt) return;
-      var d=parseDate(row['Date']); if(!d||isNaN(d)||d<startDate) return;
+      var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
+      // Hard current-month guard — no data from previous months ever shown
+      if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
+      if(d<startDate) return;
       if(bt==='TOTAL'){
         var dk=row['Date'];
         a.negV+=n(row['Total Neg Value']||row['Total Value']);
@@ -1374,6 +1311,7 @@ function renderHistory(){
     var facAcc={};
     (facHistData||[]).forEach(function(row){
       var d=parseDate(row['Date']); if(!d||d<startDate) return;
+      if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
       var fac=row['Facility']||''; if(!fac) return;
       var nv=parseFloat(row['NegValue'])||0;
       var nq=parseFloat(row['NegQty'])||0;
@@ -1409,7 +1347,7 @@ function renderHistory(){
       '<div class="imp-tile imp-neg">'+
         '<div class="imp-lbl">&#9660; Negative Impact</div>'+
         '<div class="imp-big">'+fv(acc.negV)+'</div>'+
-        '<div class="imp-sub"><span class="mono">'+fq(acc.negQ)+'</span> units &middot; '+acc.days+' days</div>'+
+        '<div class="imp-sub"><span class="mono">'+fq(acc.negQ)+'</span> units &middot; 1 May onwards</div>'+
       '</div>'+
       '<div class="imp-tile imp-pos">'+
         '<div class="imp-lbl">&#9650; Positive Impact</div>'+
@@ -1868,12 +1806,283 @@ function renderRemarksView(r, filterBt, rmkDateFilter){
 
 
 function switchRmkView(v){
-  document.getElementById('rmk-view-tracker').style.display = v==='tracker'?'block':'none';
-  document.getElementById('rmk-view-top5').style.display    = v==='top5'   ?'block':'none';
+  document.getElementById('rmk-view-tracker').style.display  = v==='tracker' ?'block':'none';
+  document.getElementById('rmk-view-monthly').style.display  = v==='monthly' ?'block':'none';
   document.getElementById('rmk-tog-tracker').classList.toggle('on', v==='tracker');
-  document.getElementById('rmk-tog-top5').classList.toggle('on',    v==='top5');
-  if(v==='top5' && R) renderRemarksView(R);
-  if(v==='tracker') renderRemarksTracker('mtd','all');
+  document.getElementById('rmk-tog-monthly').classList.toggle('on', v==='monthly');
+  if(v==='tracker') renderRemarksTracker();
+  if(v==='monthly') renderRmkMonthlyBusiness();
+}
+
+// ── Monthly Pending Remarks — consolidated BT summary table ──
+function renderRmkMonthlyBusiness(){
+  var now=new Date(), cy=now.getFullYear(), cm=now.getMonth();
+  var todayStr=now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+  // Remark lookup
+  var rmkById={};
+  allRemarks.forEach(function(r){
+    if(r['EH_ID']) rmkById[r['EH_ID']]=r;
+    rmkById[[r['Date']||'',r['SKU']||'',r['Batch']||'',r['Facility']||'',r['Event']||''].join('|')]=r;
+  });
+  function getRmk(ev){
+    return rmkById[ev.ehId]||rmkById[[ev.date,ev.sku,ev.batch,ev.fac,ev.event].join('|')]||null;
+  }
+
+  // Collect events: top 5 per day by COGS across all sources
+  var byDate={};
+  allEventHistory.forEach(function(ev){
+    var d=parseDate(ev['Date']); if(!d||d.getFullYear()!==cy||d.getMonth()!==cm) return;
+    var ds=ev['Date'];
+    if(!byDate[ds]) byDate[ds]=[];
+    byDate[ds].push({date:ds,sku:ev['SKU'],name:ev['Name']||'',batch:ev['Batch']||'',
+      fac:ev['Facility'],bt:ev['BizType']||ev['Business Type']||'',
+      event:ev['Event'],cogs:parseFloat(ev['COGSValue'])||0,
+      ehId:ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|')});
+  });
+  // Today from R.flat
+  if(R&&R.flat){
+    if(!byDate[todayStr]) byDate[todayStr]=[];
+    R.flat.forEach(function(x){
+      var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
+      if(!byDate[todayStr].some(function(e){return e.ehId===ehId;}))
+        byDate[todayStr].push({date:todayStr,sku:x.sku,name:x.name||'',batch:x.batch||'',
+          fac:x.fac,bt:x.bt,event:x.event,cogs:x.cogsVal||0,ehId:ehId});
+    });
+  }
+
+  // Top 5 per day → flatten
+  var events=[];
+  Object.keys(byDate).forEach(function(ds){
+    byDate[ds].sort(function(a,b){return b.cogs-a.cogs;}).slice(0,5).forEach(function(e){events.push(e);});
+  });
+
+  // Aggregate by BT
+  var BT_LIST=['Self Warehouse','Dark Store','3PL B2C','3PL B2B'];
+  var BT_COL ={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569'};
+  var BT_ICON={'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;'};
+  var btMap={};
+  BT_LIST.forEach(function(bt){btMap[bt]={total:0,pending:0,completed:0};});
+  events.forEach(function(ev){
+    var bt=ev.bt||'Other'; if(!btMap[bt]) btMap[bt]={total:0,pending:0,completed:0};
+    btMap[bt].total++;
+    var rmk=getRmk(ev);
+    if(rmk&&rmk['Remark']) btMap[bt].completed++; else btMap[bt].pending++;
+  });
+
+  // Totals
+  var totT=0,totP=0,totC=0;
+  BT_LIST.forEach(function(bt){totT+=btMap[bt].total;totP+=btMap[bt].pending;totC+=btMap[bt].completed;});
+  var monthLabel=now.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  var TH='padding:11px 16px;background:var(--sf);border-bottom:2px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-align:center;white-space:nowrap';
+
+  var html='<div style="padding:14px 18px;border-bottom:1px solid var(--br);font-size:11px;color:var(--mu)">Top 5 events per day · '+monthLabel+'</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr>'
+    +'<th style="'+TH+';text-align:left;padding-left:20px">Business Unit</th>'
+    +'<th style="'+TH+'">Total Events</th>'
+    +'<th style="'+TH+';color:#c2410c">Remarks Pending</th>'
+    +'<th style="'+TH+';color:#16a34a">Remarks Completed</th>'
+    +'<th style="'+TH+'">Completion %</th>'
+    +'</tr></thead><tbody>';
+
+  BT_LIST.forEach(function(bt){
+    var s=btMap[bt], col=BT_COL[bt]||'#555', icon=BT_ICON[bt]||'&#128203;';
+    var pct=s.total>0?Math.round(s.completed/s.total*100):0;
+    var barCol=pct>=80?'#16a34a':pct>=40?'#d97706':'#dc2626';
+    html+='<tr style="border-bottom:1px solid rgba(228,232,240,.6)">'
+      +'<td style="padding:14px 20px">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+          +'<span style="font-size:20px">'+icon+'</span>'
+          +'<span style="font-size:12px;font-weight:700;color:'+col+'">'+bt+'</span>'
+        +'</div></td>'
+      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:var(--tx)">'+s.total+'</td>'
+      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+s.pending+'</td>'
+      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+s.completed+'</td>'
+      +'<td style="padding:14px 24px">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+          +'<span style="font-size:12px;font-weight:800;color:'+barCol+';min-width:36px">'+pct+'%</span>'
+          +'<div style="flex:1;height:7px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden">'
+            +'<div style="height:100%;width:'+pct+'%;background:'+barCol+';border-radius:4px"></div>'
+          +'</div>'
+          +'<span style="font-size:10px;color:var(--mu);white-space:nowrap">'+s.completed+' / '+s.total+'</span>'
+        +'</div></td>'
+      +'</tr>';
+  });
+
+  // Total row
+  var totPct=totT>0?Math.round(totC/totT*100):0;
+  var totBarCol=totPct>=80?'#16a34a':totPct>=40?'#d97706':'#dc2626';
+  html+='<tr style="background:var(--sf);border-top:2px solid var(--br)">'
+    +'<td style="padding:13px 20px;font-size:12px;font-weight:800;color:var(--tx)">Total</td>'
+    +'<td style="padding:13px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+totT+'</td>'
+    +'<td style="padding:13px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+totP+'</td>'
+    +'<td style="padding:13px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+totC+'</td>'
+    +'<td style="padding:13px 24px">'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<span style="font-size:12px;font-weight:800;color:'+totBarCol+';min-width:36px">'+totPct+'%</span>'
+        +'<div style="flex:1;height:7px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden">'
+          +'<div style="height:100%;width:'+totPct+'%;background:'+totBarCol+';border-radius:4px"></div>'
+        +'</div>'
+        +'<span style="font-size:10px;color:var(--mu);white-space:nowrap">'+totC+' / '+totT+'</span>'
+      +'</div></td>'
+    +'</tr>'
+    +'</tbody></table></div>';
+
+  var wrap=document.getElementById('rmk-monthly-wrap');
+  if(wrap) wrap.innerHTML=html;
+}
+
+// ── Daily Review: pending remarks across all BTs, grouped by day (WTD/MTD) ──
+function renderRmkDailyReview(period){
+  period = period||'mtd';
+  document.querySelectorAll('[data-dailyperiod]').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('data-dailyperiod')===period);
+  });
+
+  var today   = new Date(); today.setHours(0,0,0,0);
+  var moStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  var wkStart = new Date(today); wkStart.setDate(today.getDate()-((today.getDay()||7)-1));
+  if(wkStart<moStart) wkStart=new Date(moStart);
+  var startDate = period==='wtd' ? wkStart : moStart;
+
+  var BT_COL ={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569'};
+  var BT_ICON={'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;'};
+
+  // Build remark lookup from allRemarks
+  var rmkById={};
+  allRemarks.forEach(function(r){
+    var key=[r['Date']||'',r['SKU']||'',r['Batch']||'',r['Facility']||'',r['Event']||''].join('|');
+    if(r['EH_ID']) rmkById[r['EH_ID']]=r;
+    rmkById[key]=r;
+  });
+  function getRmk(ev){
+    return rmkById[ev['EH_ID']]||rmkById[[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|')]||null;
+  }
+
+  // Collect events from allEventHistory in range
+  var events=[];
+  allEventHistory.forEach(function(ev){
+    var d=parseDate(ev['Date']); if(!d) return;
+    if(d<startDate||d>today) return;
+    events.push(ev);
+  });
+
+  // Also include today from R.flat if not already in history
+  var todayStr=today.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  if(R&&R.flat){
+    R.flat.forEach(function(x){
+      var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
+      var alreadyIn=events.some(function(e){ return (e['EH_ID']&&e['EH_ID']===ehId)||
+        [e['Date'],e['SKU'],e['Batch']||'',e['Facility'],e['Event']].join('|')===ehId; });
+      if(!alreadyIn) events.push({'Date':todayStr,'EH_ID':ehId,'SKU':x.sku,'Name':x.name||'',
+        'Batch':x.batch||'','Facility':x.fac,'BizType':x.bt,'Event':x.event,
+        'Qty':x.qty,'COGSValue':x.cogsVal,'Rank':x.rank||99});
+    });
+  }
+
+  // Group by date, sort dates desc
+  var byDate={};
+  events.forEach(function(ev){
+    var ds=ev['Date']||''; if(!byDate[ds]) byDate[ds]=[];
+    byDate[ds].push(ev);
+  });
+  var dates=Object.keys(byDate).sort(function(a,b){
+    return (parseDate(b)||0)-(parseDate(a)||0);
+  });
+
+  // Overall KPIs
+  var totEv=events.length, totPend=0, totRmk=0;
+  events.forEach(function(ev){ getRmk(ev)?totRmk++:totPend++; });
+  var resRate=totEv>0?Math.round(totRmk/totEv*100):0;
+
+  var kpiEl=document.getElementById('daily-rmk-kpis');
+  if(kpiEl) kpiEl.innerHTML=
+    '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px">'
+      +'<div style="font-size:24px">&#8987;</div>'
+      +'<div><div style="font-size:9px;font-weight:700;color:#c2410c;letter-spacing:.5px">PENDING</div>'
+      +'<div style="font-size:28px;font-weight:800;color:#c2410c;line-height:1">'+totPend+'</div>'
+      +'<div style="font-size:10px;color:#9a3412">events without remark</div></div></div>'
+    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px">'
+      +'<div style="font-size:24px">&#10004;&#65039;</div>'
+      +'<div><div style="font-size:9px;font-weight:700;color:#16a34a;letter-spacing:.5px">REMARKED</div>'
+      +'<div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">'+totRmk+'</div>'
+      +'<div style="font-size:10px;color:#15803d">events with remarks</div></div></div>'
+    +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px">'
+      +'<div style="font-size:24px">&#9685;</div>'
+      +'<div><div style="font-size:9px;font-weight:700;color:#1d4ed8;letter-spacing:.5px">RESOLUTION</div>'
+      +'<div style="font-size:28px;font-weight:800;color:#1d4ed8;line-height:1">'+resRate+'%</div>'
+      +'<div style="font-size:10px;color:#1e40af">'+totRmk+' of '+totEv+' resolved</div></div></div>';
+
+  if(!dates.length){
+    var wrap=document.getElementById('daily-rmk-wrap');
+    if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">No event history yet for this period.<br>Data appears here after the daily trigger runs each morning.</div>';
+    return;
+  }
+
+  var TH='padding:9px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
+  var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr>'
+    +'<th style="'+TH+';text-align:left;min-width:90px">Date</th>'
+    +'<th style="'+TH+'">SKU</th>'
+    +'<th style="'+TH+'">Item Name</th>'
+    +'<th style="'+TH+'">Event</th>'
+    +'<th style="'+TH+'">Business</th>'
+    +'<th style="'+TH+'">Facility</th>'
+    +'<th style="'+TH+';text-align:right">COGS</th>'
+    +'<th style="'+TH+'">Status</th>'
+    +'<th style="'+TH+'">Remark</th>'
+    +'</tr></thead><tbody>';
+
+  dates.forEach(function(ds){
+    var dayEvs=byDate[ds].slice().sort(function(a,b){
+      return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0);
+    });
+    var dayPend=dayEvs.filter(function(e){return !getRmk(e);}).length;
+    var dayRmk=dayEvs.length-dayPend;
+    var isToday=ds===todayStr;
+
+    // Day header row
+    html+='<tr style="background:var(--sf)">'
+      +'<td colspan="9" style="padding:8px 14px;border-top:2px solid var(--br);border-bottom:1px solid var(--br)">'
+        +'<div style="display:flex;align-items:center;gap:12px">'
+          +'<span style="font-size:11px;font-weight:800;color:var(--tx)">'+(isToday?'&#128197; Today — ':'')+ds+'</span>'
+          +'<span style="padding:2px 8px;border-radius:10px;background:#fff7ed;color:#c2410c;font-size:9px;font-weight:700">'+dayPend+' pending</span>'
+          +'<span style="padding:2px 8px;border-radius:10px;background:#f0fdf4;color:#16a34a;font-size:9px;font-weight:700">'+dayRmk+' remarked</span>'
+        +'</div>'
+      +'</td></tr>';
+
+    // Event rows for this day
+    dayEvs.forEach(function(ev){
+      var rmk=getRmk(ev);
+      var hasRmk=!!(rmk&&rmk['Remark']);
+      var col=BT_COL[ev['BizType']||ev['Business Type']]||'#555';
+      var icon=BT_ICON[ev['BizType']||ev['Business Type']]||'&#128203;';
+      var statusBadge=hasRmk
+        ?'<span style="padding:2px 8px;border-radius:10px;background:#dcfce7;color:#16a34a;font-size:9px;font-weight:700">&#10003; Done</span>'
+        :'<span style="padding:2px 8px;border-radius:10px;background:#fff7ed;color:#c2410c;font-size:9px;font-weight:700">&#8987; Pending</span>';
+      var rmkText=hasRmk
+        ?'<div style="font-size:10px;color:var(--tx);max-width:180px;line-height:1.4">'+rmk['Remark']+'</div>'
+        :'<span style="color:var(--mu);font-size:10px">—</span>';
+      html+='<tr style="border-bottom:1px solid rgba(228,232,240,.5);'+(hasRmk?'':'background:rgba(254,247,237,.3)')+'">'
+        +'<td style="padding:9px 12px;font-size:10px;color:var(--mu)"></td>'
+        +'<td style="padding:9px 12px"><div style="font-family:var(--mono);font-size:10px;font-weight:700">'+ev['SKU']+'</div>'
+          +(ev['Batch']?'<div style="font-size:8px;color:var(--mu)">#'+ev['Batch']+'</div>':'')+'</td>'
+        +'<td style="padding:9px 12px;font-size:10px;color:var(--tl);max-width:130px;line-height:1.4">'+(ev['Name']||'—')+'</td>'
+        +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">'+(ev['Event']||'—')+'</td>'
+        +'<td style="padding:9px 12px"><div style="display:flex;align-items:center;gap:5px">'
+          +'<span>'+icon+'</span><span style="font-size:10px;font-weight:600;color:'+col+'">'+(ev['BizType']||ev['Business Type']||'—')+'</span></div></td>'
+        +'<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">'+(ev['Facility']||'—')+'</td>'
+        +'<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(parseFloat(ev['COGSValue'])||0)+'</td>'
+        +'<td style="padding:9px 12px">'+statusBadge+'</td>'
+        +'<td style="padding:9px 12px">'+rmkText+'</td>'
+        +'</tr>';
+    });
+  });
+
+  html+='</tbody></table>';
+  var wrap=document.getElementById('daily-rmk-wrap');
+  if(wrap) wrap.innerHTML=html;
 }
 
 function goWtdTab(t){
@@ -2050,7 +2259,7 @@ function switchMonth(month) {
   if (pgName) pgName.textContent = pgName.textContent.replace(/ \| .+$/, '') + ' | ' + badge;
 
   // Grey out while loading
-  ['panel-wtd','panel-mtd','rmk-view-tracker','rmk-view-top5'].forEach(function(id){
+  ['panel-wtd','panel-mtd','rmk-view-tracker','rmk-view-monthly'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.style.opacity = '0.4';
   });
@@ -2109,7 +2318,7 @@ function switchMonth(month) {
     renderHistory();
 
     // Restore opacity
-    ['panel-wtd','panel-mtd','rmk-view-tracker','rmk-view-top5'].forEach(function(id){
+    ['panel-wtd','panel-mtd','rmk-view-tracker','rmk-view-monthly'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.style.opacity = '1';
     });
@@ -2305,170 +2514,110 @@ boot();
 // REMARKS TRACKER PAGE
 // ═══════════════════════════════════════════════════════
 function renderRemarksTracker(period, statusFilter){
-  period       = period||'mtd';
-  statusFilter = statusFilter||'all';
-
-  var today   = new Date(); today.setHours(0,0,0,0);
-  var wkStart = new Date(today); wkStart.setDate(today.getDate()-((today.getDay()||7)-1));
-  var moStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  var wkStartClamped = wkStart < moStart ? moStart : wkStart;
-  // 'all' = this month (data was cleared on fresh start — no point showing pre-May events)
-  var startDate = period==='today'?today:period==='wtd'?wkStartClamped:moStart;
-
+  period = period||'mtd';
   document.querySelectorAll('[data-rmkperiod]').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-rmkperiod')===period);
   });
 
-  // ── Hard current-month guard — year+month integers, no timezone/parseDate dependency ──
-  var _now=new Date(), _cy=_now.getFullYear(), _cm=_now.getMonth();
-  function isCurMonth_(dateStr){
-    var d=parseDate(dateStr); if(!d) return false;
-    return d.getFullYear()===_cy && d.getMonth()===_cm;
-  }
-  // DEBUG — remove after confirming fix
-  console.log('[RMK] allEventHistory rows:',allEventHistory.length,
-    '| sample dates:', allEventHistory.slice(0,3).map(function(e){return e['Date'];}),
-    '| allRemarks rows:',allRemarks.length,
-    '| sample:', allRemarks.slice(0,2).map(function(r){return r['Date']+'→'+isCurMonth_(r['Date']);}));
+  // ── Source: Top 5 events by COGS across ALL BTs from today's R ──
+  var top5 = R && R.flat
+    ? R.flat.slice().sort(function(a,b){ return (b.cogsVal||0)-(a.cogsVal||0); }).slice(0,5)
+    : [];
 
-  // Build remark lookup — current month only
-  var rmkByEhId={}, rmkByComposite={};
-  allRemarks.forEach(function(r){
-    if(!isCurMonth_(r['Date'])) return; // skip April remarks
-    if(r['EH_ID']) rmkByEhId[r['EH_ID']]=r;
-    rmkByComposite[[r['Date']||'',r['SKU']||'',r['Batch']||'',r['Facility']||'',r['Event']||''].join('|')]=r;
-  });
-
-  // Merge event sources — current month only
-  var todayStr=today.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-  var eventMap={};
-  allEventHistory.forEach(function(ev){
-    if(!isCurMonth_(ev['Date'])) return; // skip April events
-    var d=parseDate(ev['Date']); if(!d||d<startDate) return;
-    var ehId=ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
-    if(!eventMap[ehId]) eventMap[ehId]={ehId:ehId,date:ev['Date'],sku:ev['SKU'],name:ev['Name']||'',
-      batch:ev['Batch']||'',fac:ev['Facility'],city:ev['City']||'',
-      bt:ev['BizType']||ev['Business Type']||'',event:ev['Event'],
-      qty:parseFloat(ev['Qty']||0),cogs:parseFloat(ev['COGSValue']||0),rank:parseInt(ev['Rank'])||99};
-  });
-  if(R&&R.flat) R.flat.forEach(function(x,i){
+  // Remark lookup from allRemarks
+  var todayStr = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  function getRmk(x){
     var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
-    if(!eventMap[ehId]) eventMap[ehId]={ehId:ehId,date:todayStr,sku:x.sku,name:x.name||'',
-      batch:x.batch||'',fac:x.fac,city:x.city||'',bt:x.bt,event:x.event,qty:x.qty,cogs:x.cogsVal,rank:i+1};
-  });
-
-  var allEvents=Object.values(eventMap).sort(function(a,b){
-    return (parseDate(b.date)||0)-(parseDate(a.date)||0)||a.rank-b.rank;
-  });
-  function getRemark(ev){
-    return rmkByEhId[ev.ehId]||rmkByComposite[[ev.date,ev.sku,ev.batch,ev.fac,ev.event].join('|')]||null;
+    return allRemarks.find(function(r){ return r['EH_ID']===ehId||
+      [r['Date']||'',r['SKU']||'',r['Batch']||'',r['Facility']||'',r['Event']||''].join('|')===ehId; })||null;
   }
-  window._rmkpEvents=allEvents; window._rmkpGetRemark=getRemark;
 
-  var BT_LIST=['Self Warehouse','Dark Store','3PL B2C','3PL B2B'];
+  var pending=0, remarked=0;
+  top5.forEach(function(x){ getRmk(x)?remarked++:pending++; });
+  var resRate=top5.length>0?Math.round(remarked/top5.length*100):0;
+
   var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569'};
   var BT_ICON={'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;'};
 
-  var btMap={};
-  BT_LIST.forEach(function(bt){btMap[bt]={tracked:0,pending:0,remarked:0};});
-  allEvents.forEach(function(ev){
-    var bt=ev.bt||'Other'; if(!btMap[bt]) btMap[bt]={tracked:0,pending:0,remarked:0};
-    btMap[bt].tracked++;
-    if(getRemark(ev)&&getRemark(ev)['Remark']) btMap[bt].remarked++; else btMap[bt].pending++;
-  });
-
-  var totT=0,totP=0,totR=0;
-  BT_LIST.forEach(function(bt){totT+=btMap[bt].tracked;totP+=btMap[bt].pending;totR+=btMap[bt].remarked;});
-  var resRate=totT>0?(totR/totT*100).toFixed(0):0;
-
-  // KPI tiles
+  // KPI strip
   var kpiEl=document.getElementById('rmkp-kpi-strip');
   if(kpiEl) kpiEl.innerHTML=
     '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px">'
       +'<div style="width:48px;height:48px;background:#ffedd5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px">&#8987;</div>'
       +'<div><div style="font-size:10px;font-weight:700;color:#c2410c;letter-spacing:.5px;margin-bottom:4px">PENDING REMARKS</div>'
-      +'<div style="font-size:36px;font-weight:800;color:#c2410c;line-height:1">'+totP+'</div>'
-      +'<div style="font-size:11px;color:#9a3412;margin-top:4px">Events with no remark yet</div></div></div>'
+      +'<div style="font-size:36px;font-weight:800;color:#c2410c;line-height:1">'+pending+'</div>'
+      +'<div style="font-size:11px;color:#9a3412;margin-top:4px">of top 5 events</div></div></div>'
     +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px">'
       +'<div style="width:48px;height:48px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px">&#10004;&#65039;</div>'
       +'<div><div style="font-size:10px;font-weight:700;color:#16a34a;letter-spacing:.5px;margin-bottom:4px">REMARKED</div>'
-      +'<div style="font-size:36px;font-weight:800;color:#16a34a;line-height:1">'+totR+'</div>'
-      +'<div style="font-size:11px;color:#15803d;margin-top:4px">Events with remarks logged</div></div></div>'
+      +'<div style="font-size:36px;font-weight:800;color:#16a34a;line-height:1">'+remarked+'</div>'
+      +'<div style="font-size:11px;color:#15803d;margin-top:4px">of top 5 events</div></div></div>'
     +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px">'
       +'<div style="width:48px;height:48px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px">&#9685;</div>'
       +'<div><div style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:.5px;margin-bottom:4px">RESOLUTION RATE</div>'
       +'<div style="font-size:36px;font-weight:800;color:#1d4ed8;line-height:1">'+resRate+'%</div>'
-      +'<div style="font-size:11px;color:#1e40af;margin-top:4px">'+totR+' of '+totT+' events resolved</div></div></div>';
+      +'<div style="font-size:11px;color:#1e40af;margin-top:4px">'+remarked+' of '+top5.length+' remarked</div></div></div>';
 
-  // BT Summary Table
-  var TH='padding:10px 16px;background:var(--sf);border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--mu)';
+  // Top 5 table
+  var TH='padding:10px 14px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
+  var rows='';
+  if(!top5.length){
+    rows='<tr><td colspan="8" style="padding:40px;text-align:center;color:var(--mu);font-size:12px">No events today — run testRunNow() in Apps Script</td></tr>';
+  } else {
+    top5.forEach(function(x,i){
+      var rmk=getRmk(x);
+      var hasRmk=!!(rmk&&rmk['Remark']);
+      var col=BT_COL[x.bt]||'#555', icon=BT_ICON[x.bt]||'&#128203;';
+      var statusBadge=hasRmk
+        ? '<span style="padding:3px 10px;border-radius:20px;background:#dcfce7;color:#16a34a;font-size:9px;font-weight:700">&#10003; Remarked</span>'
+        : '<span style="padding:3px 10px;border-radius:20px;background:#fff7ed;color:#c2410c;font-size:9px;font-weight:700">&#8987; Pending</span>';
+      var rmkText=hasRmk
+        ? '<div style="font-size:10px;color:var(--tx);line-height:1.4;max-width:200px">'+rmk['Remark']+'</div>'
+          +'<div style="font-size:9px;color:var(--mu);margin-top:3px">— '+(rmk['Assigned To']||'')+'</div>'
+        : '<span style="font-size:10px;color:var(--mu)">—</span>';
+      var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
+      var addBtn='<button onclick="openRmkModal(\''+ehId+'\',\''+x.sku+'\',\''+x.name.replace(/'/g,'`')+'\',\''
+        +(x.batch||'')+'\',\''+x.fac+'\',\''+x.bt+'\',\''+x.event+'\','+(x.cogsVal||0)+',\''+todayStr+'\')"'
+        +' style="padding:5px 14px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col
+        +';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">'
+        +(hasRmk?'&#9998; Edit':'+ Add Remark')+'</button>';
+      rows+='<tr style="border-bottom:1px solid rgba(228,232,240,.6);'+(hasRmk?'':'background:rgba(254,247,237,.4)')+'">'
+        +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;color:var(--mu);font-size:13px">'+(i+1)+'</td>'
+        +'<td style="padding:12px 14px"><div style="font-family:var(--mono);font-size:10px;font-weight:700">'+x.sku+'</div>'
+          +(x.batch?'<div style="font-size:8px;color:var(--mu)">#'+x.batch+'</div>':'')+'</td>'
+        +'<td style="padding:12px 14px;max-width:150px;font-size:10px;color:var(--tl);line-height:1.4">'+(x.name||'—')+'</td>'
+        +'<td style="padding:12px 14px;font-size:10px;color:var(--tx2)">'+(x.event||'—')+'</td>'
+        +'<td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:6px">'
+          +'<span style="font-size:15px">'+icon+'</span>'
+          +'<span style="font-size:10px;font-weight:600;color:'+col+'">'+x.bt+'</span></div></td>'
+        +'<td style="padding:12px 14px;font-size:10px;color:var(--tx2)">'+(x.fac||'—')+'</td>'
+        +'<td style="padding:12px 14px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--re)">'+fv(x.cogsVal||0)+'</td>'
+        +'<td style="padding:12px 14px">'+statusBadge+'</td>'
+        +'<td style="padding:12px 14px">'+rmkText+'</td>'
+        +'<td style="padding:12px 14px">'+addBtn+'</td>'
+        +'</tr>';
+    });
+  }
+
   var tbl='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
     +'<thead><tr>'
-    +'<th style="'+TH+';text-align:left">Business Unit</th>'
-    +'<th style="'+TH+';text-align:center">Events Tracked</th>'
-    +'<th style="'+TH+';text-align:center;color:#c2410c" colspan="2">Pending Remarks</th>'
-    +'<th style="'+TH+';text-align:center;color:#16a34a" colspan="2">Remarked</th>'
-    +'<th style="'+TH+';text-align:center">Resolution Progress</th>'
-    +'<th style="'+TH+';text-align:center">Action</th>'
-    +'</tr><tr style="background:var(--sf)">'
-    +'<th style="padding:4px 16px;font-size:8px;color:var(--mu);border-bottom:1px solid var(--br)"></th>'
-    +'<th style="padding:4px 16px;font-size:8px;color:var(--mu);border-bottom:1px solid var(--br)"></th>'
-    +'<th style="padding:4px 12px;font-size:8px;font-weight:600;color:#c2410c;text-align:center;border-bottom:1px solid var(--br)">Count</th>'
-    +'<th style="padding:4px 12px;font-size:8px;font-weight:600;color:#c2410c;text-align:center;border-bottom:1px solid var(--br)">% of Total</th>'
-    +'<th style="padding:4px 12px;font-size:8px;font-weight:600;color:#16a34a;text-align:center;border-bottom:1px solid var(--br)">Count</th>'
-    +'<th style="padding:4px 12px;font-size:8px;font-weight:600;color:#16a34a;text-align:center;border-bottom:1px solid var(--br)">% of Total</th>'
-    +'<th style="padding:4px 12px;border-bottom:1px solid var(--br)"></th>'
-    +'<th style="padding:4px 12px;border-bottom:1px solid var(--br)"></th>'
-    +'</tr></thead><tbody>';
-
-  BT_LIST.forEach(function(bt){
-    var s=btMap[bt],col=BT_COL[bt]||'#555',icon=BT_ICON[bt]||'&#128203;';
-    var pctP=s.tracked>0?(s.pending/s.tracked*100).toFixed(1):0;
-    var pctR=s.tracked>0?(s.remarked/s.tracked*100).toFixed(1):0;
-    var resPct=s.tracked>0?(s.remarked/s.tracked*100).toFixed(0):0;
-    var barCol=parseInt(resPct)>=50?'#16a34a':parseInt(resPct)>=20?'#d97706':'#dc2626';
-    tbl+='<tr style="border-bottom:1px solid rgba(228,232,240,.6)">'
-      +'<td style="padding:14px 16px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">'+icon+'</span><span style="font-size:12px;font-weight:600">'+bt+'</span></div></td>'
-      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:700;font-size:13px">'+s.tracked+'</td>'
-      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+s.pending+'</td>'
-      +'<td style="padding:14px 16px;text-align:center;font-size:11px;color:#c2410c">'+pctP+'%</td>'
-      +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+s.remarked+'</td>'
-      +'<td style="padding:14px 16px;text-align:center;font-size:11px;color:#16a34a">'+pctR+'%</td>'
-      +'<td style="padding:14px 24px"><div style="display:flex;align-items:center;gap:10px">'
-        +'<span style="font-size:11px;font-weight:700;color:'+barCol+';min-width:32px">'+resPct+'%</span>'
-        +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
-          +'<div style="height:100%;width:'+resPct+'%;background:'+barCol+';border-radius:3px"></div>'
-        +'</div>'
-        +'<span style="font-size:10px;color:var(--mu);white-space:nowrap">'+s.remarked+' / '+s.tracked+'</span>'
-      +'</div></td>'
-      +'<td style="padding:14px 16px"><button onclick="openRmkDetail(\''+bt+'\')" style="padding:6px 16px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">View &amp; Update &#8250;</button></td>'
-      +'</tr>';
-  });
-
-  var totResPct=totT>0?(totR/totT*100).toFixed(1):0;
-  var totBarCol=parseFloat(totResPct)>=50?'#16a34a':parseFloat(totResPct)>=20?'#d97706':'#dc2626';
-  tbl+='<tr style="background:var(--sf);border-top:2px solid var(--br)">'
-    +'<td style="padding:12px 16px;font-size:12px;font-weight:800">Total</td>'
-    +'<td style="padding:12px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:13px">'+totT+'</td>'
-    +'<td style="padding:12px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+totP+'</td>'
-    +'<td style="padding:12px 16px;text-align:center;font-size:11px;color:#c2410c">'+(totT>0?(totP/totT*100).toFixed(1):0)+'%</td>'
-    +'<td style="padding:12px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+totR+'</td>'
-    +'<td style="padding:12px 16px;text-align:center;font-size:11px;color:#16a34a">'+(totT>0?(totR/totT*100).toFixed(1):0)+'%</td>'
-    +'<td style="padding:12px 24px"><div style="display:flex;align-items:center;gap:10px">'
-      +'<span style="font-size:11px;font-weight:700;color:'+totBarCol+';min-width:32px">'+totResPct+'%</span>'
-      +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
-        +'<div style="height:100%;width:'+totResPct+'%;background:'+totBarCol+';border-radius:3px"></div>'
-      +'</div>'
-      +'<span style="font-size:10px;color:var(--mu);white-space:nowrap">'+totR+' / '+totT+'</span>'
-    +'</div></td><td style="padding:12px 16px;text-align:center;color:var(--mu)">—</td></tr>'
-    +'</tbody></table></div>';
+    +'<th style="'+TH+';text-align:center">#</th>'
+    +'<th style="'+TH+'">SKU</th>'
+    +'<th style="'+TH+'">Item Name</th>'
+    +'<th style="'+TH+'">Event Type</th>'
+    +'<th style="'+TH+'">Business</th>'
+    +'<th style="'+TH+'">Facility</th>'
+    +'<th style="'+TH+';text-align:right">COGS Impact</th>'
+    +'<th style="'+TH+'">Status</th>'
+    +'<th style="'+TH+'">Remark</th>'
+    +'<th style="'+TH+'">Action</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 
   var wrap=document.getElementById('rmkp-bt-table-wrap');
-  if(wrap) wrap.innerHTML=totT>0?tbl:'<div class="empty" style="padding:40px;text-align:center">No event data yet. Run testRunNow() in Apps Script to populate NI_EventHistory.</div>';
+  if(wrap) wrap.innerHTML=tbl;
 
   var nb=document.getElementById('nb-remarks');
-  if(nb) nb.textContent=totP>0?totP:'✓';
-  window._rmkpEvents=allEvents; window._rmkpGetRemark=getRemark;
+  if(nb) nb.textContent=pending>0?pending:'✓';
 }
 
 
@@ -2565,6 +2714,20 @@ function openRmkFromEvent(btn){
   document.getElementById('rmk-asn-d').textContent=a.name;
   document.getElementById('rmk-asn-s-d').textContent=a.email+' - included in tomorrow morning report';
   document.getElementById('rmk-txt').value='';
+  document.getElementById('rmk-modal').classList.add('show');
+}
+
+function openRmkModal(ehId,sku,name,batch,fac,bt,ev,cogs,date){
+  _rmk={sku:sku,batch:batch,fac:fac,bt:bt,ev:ev,cogs:cogs,ehId:ehId,date:date};
+  var a=ASGN[bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};
+  document.getElementById('rmk-sku-d').textContent=sku+(batch?' #'+batch:'');
+  document.getElementById('rmk-ev-d').textContent=ev+' — COGS: '+fv(parseFloat(cogs)||0);
+  document.getElementById('rmk-loc-d').textContent=fac+' ('+bt+')';
+  document.getElementById('rmk-asn-d').textContent=a.name;
+  document.getElementById('rmk-asn-s-d').textContent=a.email+' — included in tomorrow morning report';
+  // Pre-fill existing remark if any
+  var existing=allRemarks.find(function(r){return r['EH_ID']===ehId;});
+  document.getElementById('rmk-txt').value=existing?existing['Remark']:'';
   document.getElementById('rmk-modal').classList.add('show');
 }
 
