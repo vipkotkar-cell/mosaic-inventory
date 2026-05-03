@@ -2519,15 +2519,35 @@ function renderRemarksTracker(period, statusFilter){
     b.classList.toggle('on', b.getAttribute('data-rmkperiod')===period);
   });
 
-  // ── Source: Top 5 events by COGS across ALL BTs from today's R ──
-  var top5 = R && R.flat
-    ? R.flat.slice().sort(function(a,b){ return (b.cogsVal||0)-(a.cogsVal||0); }).slice(0,5)
-    : [];
+  var now=new Date(), cy=now.getFullYear(), cm=now.getMonth();
+  var todayStr=now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
 
-  // Remark lookup from allRemarks
-  var todayStr = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-  function getRmk(x){
+  // Build pool: allEventHistory (May 1, 2, 3...) + today from R.flat
+  var pool={};
+  allEventHistory.forEach(function(ev){
+    var d=parseDate(ev['Date']); if(!d||d.getFullYear()!==cy||d.getMonth()!==cm) return;
+    var ehId=ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
+    if(!pool[ehId]) pool[ehId]={
+      ehId:ehId, date:ev['Date'], sku:ev['SKU'], name:ev['Name']||'',
+      batch:ev['Batch']||'', fac:ev['Facility'], bt:ev['BizType']||ev['Business Type']||'',
+      event:ev['Event'], cogsVal:parseFloat(ev['COGSValue'])||0, qty:parseFloat(ev['Qty'])||0
+    };
+  });
+  if(R&&R.flat) R.flat.forEach(function(x){
     var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
+    if(!pool[ehId]) pool[ehId]={
+      ehId:ehId, date:todayStr, sku:x.sku, name:x.name||'',
+      batch:x.batch||'', fac:x.fac, bt:x.bt, event:x.event,
+      cogsVal:x.cogsVal||0, qty:x.qty||0
+    };
+  });
+
+  // Top 5 by COGS across entire month
+  var top5 = Object.values(pool)
+    .sort(function(a,b){ return (b.cogsVal||0)-(a.cogsVal||0); })
+    .slice(0,5);
+  function getRmk(x){
+    var ehId=x.ehId||[x.date||todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
     return allRemarks.find(function(r){ return r['EH_ID']===ehId||
       [r['Date']||'',r['SKU']||'',r['Batch']||'',r['Facility']||'',r['Event']||''].join('|')===ehId; })||null;
   }
@@ -2562,7 +2582,7 @@ function renderRemarksTracker(period, statusFilter){
   var TH='padding:10px 14px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
   var rows='';
   if(!top5.length){
-    rows='<tr><td colspan="8" style="padding:40px;text-align:center;color:var(--mu);font-size:12px">No events today — run testRunNow() in Apps Script</td></tr>';
+    rows='<tr><td colspan="11" style="padding:40px;text-align:center;color:var(--mu);font-size:12px">No events yet — run backfillFromSheets() then testRunNow() in Apps Script — run testRunNow() in Apps Script</td></tr>';
   } else {
     top5.forEach(function(x,i){
       var rmk=getRmk(x);
@@ -2575,14 +2595,15 @@ function renderRemarksTracker(period, statusFilter){
         ? '<div style="font-size:10px;color:var(--tx);line-height:1.4;max-width:200px">'+rmk['Remark']+'</div>'
           +'<div style="font-size:9px;color:var(--mu);margin-top:3px">— '+(rmk['Assigned To']||'')+'</div>'
         : '<span style="font-size:10px;color:var(--mu)">—</span>';
-      var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
+      var evDate=x.date||todayStr;
+      var ehId=x.ehId||[evDate,x.sku,x.batch||'',x.fac,x.event].join('|');
       var addBtn='<button onclick="openRmkModal(\''+ehId+'\',\''+x.sku+'\',\''+x.name.replace(/'/g,'`')+'\',\''
-        +(x.batch||'')+'\',\''+x.fac+'\',\''+x.bt+'\',\''+x.event+'\','+(x.cogsVal||0)+',\''+todayStr+'\')"'
-        +' style="padding:5px 14px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col
+        +(x.batch||'')+'\',\''+x.fac+'\',\''+x.bt+'\',\''+x.event+'\','+(x.cogsVal||0)+',\''+evDate+'\')"\n'
         +';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">'
         +(hasRmk?'&#9998; Edit':'+ Add Remark')+'</button>';
       rows+='<tr style="border-bottom:1px solid rgba(228,232,240,.6);'+(hasRmk?'':'background:rgba(254,247,237,.4)')+'">'
         +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;color:var(--mu);font-size:13px">'+(i+1)+'</td>'
+        +'<td style="padding:12px 10px;font-size:9px;color:var(--mu);white-space:nowrap">'+evDate+'</td>'
         +'<td style="padding:12px 14px"><div style="font-family:var(--mono);font-size:10px;font-weight:700">'+x.sku+'</div>'
           +(x.batch?'<div style="font-size:8px;color:var(--mu)">#'+x.batch+'</div>':'')+'</td>'
         +'<td style="padding:12px 14px;max-width:150px;font-size:10px;color:var(--tl);line-height:1.4">'+(x.name||'—')+'</td>'
@@ -2602,6 +2623,7 @@ function renderRemarksTracker(period, statusFilter){
   var tbl='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
     +'<thead><tr>'
     +'<th style="'+TH+';text-align:center">#</th>'
+    +'<th style="'+TH+'">Date</th>'
     +'<th style="'+TH+'">SKU</th>'
     +'<th style="'+TH+'">Item Name</th>'
     +'<th style="'+TH+'">Event Type</th>'
