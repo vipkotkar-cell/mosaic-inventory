@@ -411,7 +411,7 @@ tbody tr:hover td{background:var(--sf)}
     <div class="pg-head" style="margin-bottom:16px">
       <div>
         <div class="pg-title">&#128203; Remarks Tracker</div>
-        <div class="pg-sub">Business-wise remarks status from 14 Apr 2026 onwards</div>
+        <div class="pg-sub">Business-wise remarks status — current month</div>
       </div>
       <div style="display:flex;gap:0;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:2px">
         <button data-rmkperiod="today" class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">Today</button>
@@ -551,9 +551,10 @@ tbody tr:hover td{background:var(--sf)}
       </div>
     </div>
     
-  </div>
+  </div><!-- /view-movement -->
+  </div><!-- /pg-today -->
 
-    <!-- ═══ WTD & MTD — CEO Review ═══ -->
+  <!-- ═══ WTD & MTD — CEO Review ═══ -->
   <div class="pg content" id="pg-wtd">
     <div class="sub-tabs" style="margin-bottom:18px">
       <div class="sub-tab on" onclick="goWtdTab('wtd')" id="wtdtab-wtd">Week-to-Date</div>
@@ -627,9 +628,6 @@ tbody tr:hover td{background:var(--sf)}
 
     </div><!-- /pages -->
 </main>
-
-
-</div><!-- /pages -->
 
 <script>
 // ← UPDATE THIS after deploying inventory_impact_script.gs
@@ -756,6 +754,13 @@ function parseDate(s){
     if(dd&&mm&&yy){if(yy<100)yy+=2000; var d3=new Date(yy,mm-1,dd); if(!isNaN(d3))return d3;}
   }
   return null;
+}
+// Bulletproof current-month check — compares year+month integers, no timezone issues
+function isCurrentMonth(dateStr){
+  var dt=parseDate(dateStr);
+  if(!dt) return false;
+  var now=new Date();
+  return dt.getFullYear()===now.getFullYear() && dt.getMonth()===now.getMonth();
 }
 function fmtDate(d){if(!d)return '';return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
 function daysLeft(d){if(!d)return null;var now=new Date();now.setHours(0,0,0,0);return Math.round((d-now)/(1000*60*60*24));}
@@ -1288,19 +1293,11 @@ function togCat(el){var b=el.parentElement.querySelector('.cat-body'),a=el.query
 
 // ── RENDER WTD & MTD — CEO View ──
 function renderHistory(){
-  // ── DEBUG — shows state on the WTD page itself ──
-  var dbg=document.getElementById('_hist_debug');
-  if(!dbg){dbg=document.createElement('div');dbg.id='_hist_debug';
-    dbg.style.cssText='background:#1e3a5f;color:#7dd3fc;font-size:10px;font-family:monospace;padding:8px 14px;border-radius:6px;margin-bottom:12px;line-height:1.8';
-    var wp=document.getElementById('panel-wtd');
-    if(wp) wp.insertBefore(dbg,wp.firstChild);
-  }
-  function dbgSet(msg){if(dbg) dbg.innerHTML='🔍 Debug: '+msg;}
 
   // ── If NI_History is empty, build today's row directly from R ──
   if(!histData.length){
     if(!R){ // nothing at all yet — show placeholder
-      dbgSet('histData=0 rows, R=null — events not loaded yet');
+      
       ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
        'wtd-trend','mtd-trend','wtd-fac-rank','mtd-fac-rank',
        'wtd-biz-bars','mtd-biz-bars'].forEach(function(id){
@@ -1334,12 +1331,13 @@ function renderHistory(){
         'NegQty':String(f.negQty||0),'NegValue':String(f.negVal||0),
         'PosQty':String(f.posQty||0),'PosValue':String(f.posVal||0),'NetValue':String(f.netVal||0)};
     });
-    dbgSet('histData=0 from sheet → synthesized '+histData.length+' rows from R | date="'+ds+'"');
+    
   }
   function n(v){return parseFloat(v)||0;}
   var now=new Date(), dow=now.getDay(), db=dow===0?6:dow-1;
   var wkS=new Date(now); wkS.setDate(now.getDate()-db); wkS.setHours(0,0,0,0);
   var moS=new Date(now.getFullYear(),now.getMonth(),1);
+  var wkSClamped = wkS < moS ? moS : wkS; // WTD never crosses into previous month
 
   function calcPeriod(startDate){
     var a={negV:0,negQ:0,posV:0,posQ:0,netV:0,g2bQ:0,g2bV:0,expQ:0,expV:0,grnQ:0,days:0};
@@ -1393,16 +1391,7 @@ function renderHistory(){
     return a;
   }
 
-  var W=calcPeriod(wkS), M=calcPeriod(moS);
-
-  // Debug: show what calcPeriod found
-  if(dbg){
-    var firstDate = histData.length ? histData[0]['Date'] : 'none';
-    var lastDate  = histData.length ? histData[histData.length-1]['Date'] : 'none';
-    dbg.innerHTML += '<br>histData: '+histData.length+' rows | first date: "'+firstDate+'" | last: "'+lastDate+'"'
-      +'<br>WTD: days='+W.days+' negV='+W.negV.toFixed(0)+' wkStart='+wkS.toLocaleDateString('en-IN')+' ('+wkS.toISOString().slice(0,10)+')'
-      +'<br>MTD: days='+M.days+' negV='+M.negV.toFixed(0)+' moStart='+moS.toLocaleDateString('en-IN')+' ('+moS.toISOString().slice(0,10)+')';
-  }
+  var W=calcPeriod(wkSClamped), M=calcPeriod(moS);
 
   function renderPeriod(acc, pfx){
     var rateClass=acc.recoveryRate>=30?'rate-high':acc.recoveryRate>=10?'rate-med':'rate-low';
@@ -1716,7 +1705,8 @@ function goPage(p){
   var pgId = p==='mtd'?'wtd':p;
   document.getElementById('pg-'+pgId).classList.add('on');
   document.getElementById('pg-name').textContent=PGN[pgId]||pgId;
-  // If going to mtd, switch the inner tab
+  // If going to mtd, switch the inner tab; always reset to wtd panel when navigating to WTD
+  if(p==='wtd') goWtdTab('wtd');
   if(p==='mtd') goWtdTab('mtd');
   // Re-render history whenever WTD/MTD page is opened
   if(p==='wtd'||p==='mtd') renderHistory();
@@ -2101,16 +2091,18 @@ function switchMonth(month) {
 
     // Re-build allEventHistory
     if (ehRaw && ehRaw.headers && ehRaw.rows) {
+      var moSw=new Date(); moSw.setDate(1); moSw.setHours(0,0,0,0);
       allEventHistory = ehRaw.rows.map(function(row){
         var obj = {}; ehRaw.headers.forEach(function(h,i){ obj[h]=row[i]||''; }); return obj;
-      }).filter(function(r){ return r['EH_ID']||r['SKU']; });
+      }).filter(function(r){ return (r['EH_ID']||r['SKU']) && isCurrentMonth(r['Date']); });
     }
 
     // Re-build allRemarks
     if (rmkRaw && rmkRaw.headers && rmkRaw.rows) {
+      var moSw2=new Date(); moSw2.setDate(1); moSw2.setHours(0,0,0,0);
       allRemarks = rmkRaw.rows.map(function(row){
         var obj = {}; rmkRaw.headers.forEach(function(h,i){ obj[h]=row[i]||''; }); return obj;
-      });
+      }).filter(function(r){ return isCurrentMonth(r['Date']); });
     }
 
     renderHistory();
@@ -2178,12 +2170,13 @@ function boot(){
         fetchJ(EH_URL+'&t='+Date.now()).then(function(d){
           if(!d||!d.headers||!d.rows) return;
           var h=d.headers;
+          var moS=new Date(); moS.setDate(1); moS.setHours(0,0,0,0);
           allEventHistory = d.rows.map(function(row){
             var obj={}; h.forEach(function(col,i){ obj[col]=row[i]||''; }); return obj;
-          }).filter(function(r){ return r['EH_ID']||r['SKU']; });
+          }).filter(function(r){ return (r['EH_ID']||r['SKU']) && isCurrentMonth(r['Date']); });
           // If tracker is open, refresh it
           if(document.getElementById('pg-remarks').classList.contains('on')){
-            var _cp=(document.querySelector('[data-rmkperiod].on')||{getAttribute:function(){return 'mtd';}}).getAttribute('data-rmkperiod');renderRemarksTracker(_cp,'all');;
+            var _cp=(document.querySelector('[data-rmkperiod].on')||{getAttribute:function(){return 'mtd';}}).getAttribute('data-rmkperiod');renderRemarksTracker(_cp,'all');
           }
         }).catch(function(e){ console.warn('EventHistory fetch failed',e); });
 
@@ -2191,12 +2184,13 @@ function boot(){
         fetchJ(REMK_URL+'&t='+Date.now()).then(function(d){
           if(!d||!d.headers||!d.rows) return;
           var h=d.headers;
+          var moS=new Date(); moS.setDate(1); moS.setHours(0,0,0,0);
           allRemarks = d.rows.map(function(row){
             var obj={};
             h.forEach(function(col,i){ obj[col]=row[i]||''; });
             return obj;
-          }).filter(function(r){ return r['SKU']||r['ID']; });
-          // Update nav badge
+          }).filter(function(r){ return (r['SKU']||r['ID']) && isCurrentMonth(r['Date']); });
+          // Update nav badge — current month pending only
           var pending = allRemarks.filter(function(r){
             var s=r['Status']||'Open'; return s!=='Resolved'&&s!=='Completed';
           }).length;
@@ -2204,7 +2198,7 @@ function boot(){
           if(nb) nb.textContent = pending>0 ? pending : '✓';
           // Refresh tracker if already open
           if(document.getElementById('pg-remarks').classList.contains('on')){
-            var _cp3=(document.querySelector('[data-rmkperiod].on')||{getAttribute:function(){return 'mtd';}}).getAttribute('data-rmkperiod');renderRemarksTracker(_cp3,'all');;
+            var _cp3=(document.querySelector('[data-rmkperiod].on')||{getAttribute:function(){return 'mtd';}}).getAttribute('data-rmkperiod');renderRemarksTracker(_cp3,'all');
           }
         }).catch(function(e){ console.warn('Remarks fetch failed',e); });
         fetch(HIST_URL+'&t='+Date.now()).then(function(r){return r.json();}).then(function(d){
@@ -2297,8 +2291,9 @@ function renderRemarksTracker(period, statusFilter){
   var today   = new Date(); today.setHours(0,0,0,0);
   var wkStart = new Date(today); wkStart.setDate(today.getDate()-((today.getDay()||7)-1));
   var moStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  var wkStartClamped = wkStart < moStart ? moStart : wkStart;
   // 'all' = this month (data was cleared on fresh start — no point showing pre-May events)
-  var startDate = period==='today'?today:period==='wtd'?wkStart:moStart;
+  var startDate = period==='today'?today:period==='wtd'?wkStartClamped:moStart;
 
   document.querySelectorAll('[data-rmkperiod]').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-rmkperiod')===period);
@@ -2315,7 +2310,7 @@ function renderRemarksTracker(period, statusFilter){
   var todayStr=today.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
   var eventMap={};
   allEventHistory.forEach(function(ev){
-    var d=parseDate(ev['Date']); if(!d||d<startDate) return;
+    var d=parseDate(ev['Date']); if(!d||d<startDate||!isCurrentMonth(ev['Date'])) return;
     var ehId=ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
     if(!eventMap[ehId]) eventMap[ehId]={ehId:ehId,date:ev['Date'],sku:ev['SKU'],name:ev['Name']||'',
       batch:ev['Batch']||'',fac:ev['Facility'],city:ev['City']||'',
@@ -2550,7 +2545,8 @@ function renderRmkSummaryTable(period){
   var today   = new Date(); today.setHours(0,0,0,0);
   var wkStart = new Date(today); wkStart.setDate(today.getDate()-((today.getDay()||7)-1));
   var moStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  var startDate = period==='today'?today:period==='wtd'?wkStart:moStart;
+  var wkStartClamped = wkStart < moStart ? moStart : wkStart;
+  var startDate = period==='today'?today:period==='wtd'?wkStartClamped:moStart;
   document.querySelectorAll('[data-sumperiod]').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-sumperiod')===period);
   });
@@ -2559,7 +2555,7 @@ function renderRmkSummaryTable(period){
   var btMap={};
   BT_LIST.forEach(function(bt){btMap[bt]={pending:0,completed:0};});
   (allRemarks||[]).forEach(function(r){
-    var rd=parseDate(r['Date']); if(!rd||rd<startDate) return;
+    var rd=parseDate(r['Date']); if(!rd||rd<startDate||!isCurrentMonth(r['Date'])) return;
     var bt=r['Business Type']||'Other';
     if(!btMap[bt]) btMap[bt]={pending:0,completed:0};
     if(r['Status']==='Completed'||r['Status']==='Resolved') btMap[bt].completed++;
