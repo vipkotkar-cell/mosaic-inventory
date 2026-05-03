@@ -414,9 +414,9 @@ tbody tr:hover td{background:var(--sf)}
         <div class="pg-sub">Business-wise remarks status from 14 Apr 2026 onwards</div>
       </div>
       <div style="display:flex;gap:0;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:2px">
-        <button data-rmkperiod="today" class="sub-tab on" style="padding:5px 16px;font-size:10px;min-width:auto">Today</button>
+        <button data-rmkperiod="today" class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">Today</button>
         <button data-rmkperiod="wtd"   class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">WTD</button>
-        <button data-rmkperiod="mtd"   class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">MTD</button>
+        <button data-rmkperiod="mtd"   class="sub-tab on" style="padding:5px 16px;font-size:10px;min-width:auto">MTD</button>
         <button data-rmkperiod="all"   class="sub-tab"    style="padding:5px 16px;font-size:10px;min-width:auto">All</button>
       </div>
     </div>
@@ -442,9 +442,9 @@ tbody tr:hover td{background:var(--sf)}
         <div class="card-h">
           <div class="card-t">&#128203; Remarks by Business Type</div>
           <div style="display:flex;gap:4px">
-            <button data-sumperiod="today" class="sub-tab on" style="padding:3px 10px;font-size:9px;min-width:auto">Today</button>
+            <button data-sumperiod="today" class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">Today</button>
             <button data-sumperiod="wtd"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">WTD</button>
-            <button data-sumperiod="mtd"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">MTD</button>
+            <button data-sumperiod="mtd"   class="sub-tab on" style="padding:3px 10px;font-size:9px;min-width:auto">MTD</button>
             <button data-sumperiod="all"   class="sub-tab"    style="padding:3px 10px;font-size:9px;min-width:auto">All</button>
           </div>
         </div>
@@ -824,15 +824,131 @@ function buildRFromEvents(evData){
 }
 
 // BUILD INVENTORY from NI_TodayStock (full data with preserved splits)
-
+function buildInvFromStock(data) {
+  if (!data || !data.headers || !data.rows) return;
+  var h = data.headers, idx = {};
+  h.forEach(function(col, i) { idx[col] = i; });
+  var kpis = { totGood:0, totBad:0, totQC:0, totNE:0, totExp:0, totRecalled:0, totBlocked:0, totNotFound:0 };
+  var facMap = {};
+  data.rows.forEach(function(row) {
+    var fac     = row[idx['Facility']]       || '';
+    var bt      = row[idx['BizType']]        || '';
+    var city    = row[idx['City']]           || '';
+    var good    = parseFloat(row[idx['TotalGood']])      || 0;
+    var bad     = parseFloat(row[idx['TotalBad']])       || 0;
+    var qc      = parseFloat(row[idx['TotalQC']])        || 0;
+    var ne      = parseFloat(row[idx['GoodNearExpiry']]) || 0;
+    var exp     = (parseFloat(row[idx['GoodExpired']])   || 0)
+                + (parseFloat(row[idx['BadExpired']])    || 0)
+                + (parseFloat(row[idx['QCExpired']])     || 0);
+    var recalled= (parseFloat(row[idx['GoodRecalled']])  || 0)
+                + (parseFloat(row[idx['BadRecalled']])   || 0)
+                + (parseFloat(row[idx['QCRecalled']])    || 0);
+    var blocked = parseFloat(row[idx['Blocked']])        || 0;
+    var notFound= parseFloat(row[idx['NotFound']])       || 0;
+    var cogs    = parseFloat(row[idx['COGSValue']])      || 0;
+    kpis.totGood+=good; kpis.totBad+=bad; kpis.totQC+=qc;
+    kpis.totNE+=ne; kpis.totExp+=exp; kpis.totRecalled+=recalled;
+    kpis.totBlocked+=blocked; kpis.totNotFound+=notFound;
+    if (!facMap[fac]) facMap[fac] = { fac:fac, bt:bt, city:city,
+      good:0, bad:0, qc:0, ne:0, exp:0, recalled:0, blocked:0, notFound:0, cogsVal:0 };
+    var f = facMap[fac];
+    f.good+=good; f.bad+=bad; f.qc+=qc; f.ne+=ne;
+    f.exp+=exp; f.recalled+=recalled; f.blocked+=blocked; f.notFound+=notFound; f.cogsVal+=cogs;
+  });
+  invKPIs    = kpis;
+  invFacRows = Object.values(facMap).sort(function(a,b){ return b.cogsVal - a.cogsVal; });
+}
 
 // BUILD INVENTORY from NI_Inventory (fallback if NI_TodayStock not available)
+function buildInvFromSheet(data) {
+  if (!data || !data.headers || !data.rows) return;
+  var h = data.headers, idx = {};
+  h.forEach(function(col, i) { idx[col] = i; });
+  var kpis = { totGood:0, totBad:0, totQC:0, totNE:0, totExp:0, totRecalled:0, totBlocked:0, totNotFound:0 };
+  var facRows = [];
+  data.rows.forEach(function(row) {
+    var fac  = row[idx['Facility']] || '';
+    var bt   = row[idx['BizType']]  || '';
+    var city = row[idx['City']]     || '';
+    var good = parseFloat(row[idx['GoodQty']])      || 0;
+    var bad  = parseFloat(row[idx['BadQty']])        || 0;
+    var qc   = parseFloat(row[idx['QCQty']])         || 0;
+    var ne   = parseFloat(row[idx['NearExpiryQty']]) || 0;
+    var exp  = parseFloat(row[idx['ExpiredQty']])    || 0;
+    var cogs = parseFloat(row[idx['COGSValue']])     || 0;
+    kpis.totGood+=good; kpis.totBad+=bad; kpis.totQC+=qc; kpis.totNE+=ne; kpis.totExp+=exp;
+    facRows.push({ fac:fac, bt:bt, city:city,
+      good:good, bad:bad, qc:qc, ne:ne, exp:exp,
+      recalled:0, blocked:0, notFound:0, cogsVal:cogs });
+  });
+  invKPIs    = kpis;
+  invFacRows = facRows.sort(function(a,b){ return b.cogsVal - a.cogsVal; });
+}
 
+// RENDER INVENTORY OVERVIEW — no-op for Project 1 (Project 2 feature)
+// invKPIs + invFacRows are populated above and consumed by dlReport()
+function renderInventoryOverview() {}
+
+// SYNTHESIZE today's histData from R when NI_History is empty (fresh start)
+function synthesizeHistFromR(r) {
+  if (!r) return [];
+  var dateStr = new Date().toLocaleDateString('en-IN',
+    {day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Kolkata'});
+  var rows = [];
+  // Per-BT rows
+  (r.bizRanked||[]).forEach(function(bz) {
+    rows.push({
+      'Date': dateStr, 'Business Type': bz.bt,
+      'G2B Qty':'0','G2B Value':'0','G2Q Qty':'0','G2Q Value':'0',
+      'Expiry Qty':'0','Expiry Value':'0','BadGRN Qty':'0','BadGRN Value':'0',
+      'Total Neg Qty': String(bz.negQty||0),
+      'Total Neg Value': String(bz.negVal||0),
+      'Pos Qty': String(bz.posQty||0),
+      'Pos Value': String(bz.posVal||0),
+      'Net Qty': String((bz.negQty||0)-(bz.posQty||0)),
+      'Net Value': String(bz.netVal||0)
+    });
+  });
+  // TOTAL row with full category breakdown
+  var g2bQ=(r.neg.g2b||[]).reduce(function(s,x){return s+x.qty;},0);
+  var g2bV=(r.neg.g2b||[]).reduce(function(s,x){return s+x.cogsVal;},0);
+  var expArr=[].concat(r.neg.a2ne||[],r.neg.ne2e||[],r.neg.a2e||[]);
+  var expQ=expArr.reduce(function(s,x){return s+x.qty;},0);
+  var expV=expArr.reduce(function(s,x){return s+x.cogsVal;},0);
+  var grnArr=[].concat(r.neg.newBad||[],r.neg.newQC||[]);
+  var grnQ=grnArr.reduce(function(s,x){return s+x.qty;},0);
+  rows.push({
+    'Date': dateStr, 'Business Type': 'TOTAL',
+    'G2B Qty': String(g2bQ), 'G2B Value': String(g2bV),
+    'G2Q Qty':'0','G2Q Value':'0',
+    'Expiry Qty': String(expQ), 'Expiry Value': String(expV),
+    'BadGRN Qty': String(grnQ), 'BadGRN Value':'0',
+    'Total Neg Qty': String(r.totNeg||0),
+    'Total Neg Value': String(r.totVal||0),
+    'Pos Qty': String(r.posQty||0),
+    'Pos Value': String(r.posVal||0),
+    'Net Qty': String((r.totNeg||0)-(r.posQty||0)),
+    'Net Value': String(r.netVal||0)
+  });
+  return rows;
+}
+function synthesizeFacHistFromR(r) {
+  if (!r) return [];
+  var dateStr = new Date().toLocaleDateString('en-IN',
+    {day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Kolkata'});
+  return (r.facRanked||[]).map(function(f) {
+    return {
+      'Date': dateStr, 'Facility': f.name,
+      'BizType': f.bt||'', 'City': f.city||'',
+      'NegQty': String(f.negQty||0), 'NegValue': String(f.negVal||0),
+      'PosQty': String(f.posQty||0), 'PosValue': String(f.posVal||0),
+      'NetValue': String(f.netVal||0)
+    };
+  });
+}
 
 // BUILD EXPIRY from NI_Expiry with new windows + near-expiry logic
-
-
-// ── RENDER INVENTORY OVERVIEW ──
 
 
 
@@ -1172,15 +1288,53 @@ function togCat(el){var b=el.parentElement.querySelector('.cat-body'),a=el.query
 
 // ── RENDER WTD & MTD — CEO View ──
 function renderHistory(){
+  // ── DEBUG — shows state on the WTD page itself ──
+  var dbg=document.getElementById('_hist_debug');
+  if(!dbg){dbg=document.createElement('div');dbg.id='_hist_debug';
+    dbg.style.cssText='background:#1e3a5f;color:#7dd3fc;font-size:10px;font-family:monospace;padding:8px 14px;border-radius:6px;margin-bottom:12px;line-height:1.8';
+    var wp=document.getElementById('panel-wtd');
+    if(wp) wp.insertBefore(dbg,wp.firstChild);
+  }
+  function dbgSet(msg){if(dbg) dbg.innerHTML='🔍 Debug: '+msg;}
 
+  // ── If NI_History is empty, build today's row directly from R ──
   if(!histData.length){
-    ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
-     'wtd-trend','mtd-trend','wtd-gauge','mtd-gauge',
-     'wtd-fac-rank','mtd-fac-rank',
-     'wtd-biz-bars','mtd-biz-bars'].forEach(function(id){
-       var e=document.getElementById(id); if(e) e.innerHTML='<div class="empty">No history yet</div>';
+    if(!R){ // nothing at all yet — show placeholder
+      dbgSet('histData=0 rows, R=null — events not loaded yet');
+      ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
+       'wtd-trend','mtd-trend','wtd-fac-rank','mtd-fac-rank',
+       'wtd-biz-bars','mtd-biz-bars'].forEach(function(id){
+         var e=document.getElementById(id); if(e) e.innerHTML='<div class="empty">No history yet — run testRunNow() in Apps Script</div>';
+      });
+      return;
+    }
+    // Build synthetic histData from today's R
+    var ds=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    histData=[];
+    (R.bizRanked||[]).forEach(function(bz){
+      histData.push({'Date':ds,'Business Type':bz.bt,
+        'Total Neg Qty':String(bz.negQty||0),'Total Neg Value':String(bz.negVal||0),
+        'Pos Qty':String(bz.posQty||0),'Pos Value':String(bz.posVal||0),
+        'Net Qty':String((bz.negQty||0)-(bz.posQty||0)),'Net Value':String(bz.netVal||0),
+        'G2B Qty':'0','G2B Value':'0','Expiry Qty':'0','Expiry Value':'0','BadGRN Qty':'0'});
     });
-    return;
+    var g2bQ=(R.neg.g2b||[]).reduce(function(s,x){return s+x.qty;},0);
+    var g2bV=(R.neg.g2b||[]).reduce(function(s,x){return s+x.cogsVal;},0);
+    var expQ=[].concat(R.neg.a2ne||[],R.neg.ne2e||[],R.neg.a2e||[]).reduce(function(s,x){return s+x.qty;},0);
+    var expV=[].concat(R.neg.a2ne||[],R.neg.ne2e||[],R.neg.a2e||[]).reduce(function(s,x){return s+x.cogsVal;},0);
+    var grnQ=[].concat(R.neg.newBad||[],R.neg.newQC||[]).reduce(function(s,x){return s+x.qty;},0);
+    histData.push({'Date':ds,'Business Type':'TOTAL',
+      'Total Neg Qty':String(R.totNeg||0),'Total Neg Value':String(R.totVal||0),
+      'Pos Qty':String(R.posQty||0),'Pos Value':String(R.posVal||0),
+      'Net Qty':String((R.totNeg||0)-(R.posQty||0)),'Net Value':String(R.netVal||0),
+      'G2B Qty':String(g2bQ),'G2B Value':String(g2bV),
+      'Expiry Qty':String(expQ),'Expiry Value':String(expV),'BadGRN Qty':String(grnQ)});
+    if(!facHistData.length) facHistData=(R.facRanked||[]).map(function(f){
+      return {'Date':ds,'Facility':f.name,'BizType':f.bt||'','City':f.city||'',
+        'NegQty':String(f.negQty||0),'NegValue':String(f.negVal||0),
+        'PosQty':String(f.posQty||0),'PosValue':String(f.posVal||0),'NetValue':String(f.netVal||0)};
+    });
+    dbgSet('histData=0 from sheet → synthesized '+histData.length+' rows from R | date="'+ds+'"');
   }
   function n(v){return parseFloat(v)||0;}
   var now=new Date(), dow=now.getDay(), db=dow===0?6:dow-1;
@@ -1240,6 +1394,15 @@ function renderHistory(){
   }
 
   var W=calcPeriod(wkS), M=calcPeriod(moS);
+
+  // Debug: show what calcPeriod found
+  if(dbg){
+    var firstDate = histData.length ? histData[0]['Date'] : 'none';
+    var lastDate  = histData.length ? histData[histData.length-1]['Date'] : 'none';
+    dbg.innerHTML += '<br>histData: '+histData.length+' rows | first date: "'+firstDate+'" | last: "'+lastDate+'"'
+      +'<br>WTD: days='+W.days+' negV='+W.negV.toFixed(0)+' wkStart='+wkS.toLocaleDateString('en-IN')+' ('+wkS.toISOString().slice(0,10)+')'
+      +'<br>MTD: days='+M.days+' negV='+M.negV.toFixed(0)+' moStart='+moS.toLocaleDateString('en-IN')+' ('+moS.toISOString().slice(0,10)+')';
+  }
 
   function renderPeriod(acc, pfx){
     var rateClass=acc.recoveryRate>=30?'rate-high':acc.recoveryRate>=10?'rate-med':'rate-low';
@@ -1555,6 +1718,8 @@ function goPage(p){
   document.getElementById('pg-name').textContent=PGN[pgId]||pgId;
   // If going to mtd, switch the inner tab
   if(p==='mtd') goWtdTab('mtd');
+  // Re-render history whenever WTD/MTD page is opened
+  if(p==='wtd'||p==='mtd') renderHistory();
   // Render remarks tracker on navigate
   if(p==='remarks') switchRmkView('tracker');
 }
@@ -1717,7 +1882,7 @@ function switchRmkView(v){
   document.getElementById('rmk-tog-tracker').classList.toggle('on', v==='tracker');
   document.getElementById('rmk-tog-top5').classList.toggle('on',    v==='top5');
   if(v==='top5' && R) renderRemarksView(R);
-  if(v==='tracker') renderRemarksTracker('today','all');
+  if(v==='tracker') renderRemarksTracker('mtd','all');
 }
 
 function goWtdTab(t){
@@ -1757,7 +1922,7 @@ function saveRmk(){var t=document.getElementById('rmk-txt').value.trim();if(!t){
       if((_ehId&&_rEh===_ehId)||_rCk===_ck){ allRemarks.splice(_i,1); break; }
     }
     allRemarks.push({ID:'RMK-'+Date.now(),Date:p.date,SKU:p.sku,Batch:p.batch,Facility:p.facility,'Business Type':p.bizType,'COGS Value':p.cogsVal,Event:p.event,Remark:p.remark,'Assigned To':p.assignedTo,Status:'Completed',EH_ID:p.ehId||''});
-    if(R) renderRemarksView(R);renderRmkSummaryTable('today');closeRmk();btn.disabled=false;btn.textContent='Save Remark';showToast('&#10003; Saved &mdash; will appear in '+a.name+"'s morning report");}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
+    if(R) renderRemarksView(R);renderRmkSummaryTable('mtd');closeRmk();btn.disabled=false;btn.textContent='Save Remark';showToast('&#10003; Saved &mdash; will appear in '+a.name+"'s morning report");}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
 function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'updateStatus',id:id,status:status}),mode:'no-cors'}).catch(function(){});allRemarks.forEach(function(r){if(r['ID']===id)r['Status']=status;});if(R) renderRemarksView(R);}
 
 // DOWNLOAD
@@ -1959,7 +2124,7 @@ function switchMonth(month) {
     // Re-render open tracker if visible
     var rmkPg = document.getElementById('pg-remarks');
     if (rmkPg && rmkPg.classList.contains('on')) {
-      renderRemarksTracker('all','all');
+      var _cp=(document.querySelector('[data-rmkperiod].on')||{getAttribute:function(){return 'mtd';}}).getAttribute('data-rmkperiod');renderRemarksTracker(_cp,'all');;
     }
 
   }).catch(function(e){
@@ -2017,7 +2182,7 @@ function boot(){
           }).filter(function(r){ return r['EH_ID']||r['SKU']; });
           // If tracker is open, refresh it
           if(document.getElementById('pg-remarks').classList.contains('on')){
-            renderRemarksTracker('all','all');
+            var _cp=(document.querySelector('[data-rmkperiod].on')||{getAttribute:function(){return 'mtd';}}).getAttribute('data-rmkperiod');renderRemarksTracker(_cp,'all');;
           }
         }).catch(function(e){ console.warn('EventHistory fetch failed',e); });
 
@@ -2038,11 +2203,15 @@ function boot(){
           if(nb) nb.textContent = pending>0 ? pending : '✓';
           // Refresh tracker if already open
           if(document.getElementById('pg-remarks').classList.contains('on')){
-            renderRemarksTracker('all','all','all');
+            var _cp3=(document.querySelector('[data-rmkperiod].on')||{getAttribute:function(){return 'mtd';}}).getAttribute('data-rmkperiod');renderRemarksTracker(_cp3,'all');;
           }
         }).catch(function(e){ console.warn('Remarks fetch failed',e); });
         fetch(HIST_URL+'&t='+Date.now()).then(function(r){return r.json();}).then(function(d){
-        if(!d||!d.headers||!d.rows){histData=[];renderHistory();return;}
+        if(!d||!d.headers||!d.rows){
+          if(R){ histData=synthesizeHistFromR(R); facHistData=synthesizeFacHistFromR(R); }
+          else { histData=[]; }
+          renderHistory(); return;
+        }
         var h=d.headers;
         // NI_History fixed column positions (robust against missing headers)
         var POS={
@@ -2076,8 +2245,18 @@ function boot(){
           o['Net Value'] = String(row[POS.NETV]!==null&&row[POS.NETV]!==undefined?row[POS.NETV]:'0').trim()||o['Net Value']||'0';
           return o;
         });
+        // Fallback: if NI_History is empty (fresh start), synthesize today's row from R
+        if (!histData.length && R) {
+          histData = synthesizeHistFromR(R);
+          if (!facHistData.length) facHistData = synthesizeFacHistFromR(R);
+        }
         renderHistory();
-      }).catch(function(e){console.warn('History fetch failed:',e);histData=[];renderHistory();});
+      }).catch(function(e){
+        console.warn('History fetch failed:',e);
+        if(R){ histData=synthesizeHistFromR(R); facHistData=synthesizeFacHistFromR(R); }
+        else { histData=[]; }
+        renderHistory();
+      });
         // Fetch per-facility history for WTD/MTD ranking
         fetch(FAC_URL+'&t='+Date.now()).then(function(r){return r.json();}).then(function(d){
           if(d&&d.headers&&d.rows){
@@ -2111,14 +2290,14 @@ boot();
 // REMARKS TRACKER PAGE
 // ═══════════════════════════════════════════════════════
 function renderRemarksTracker(period, statusFilter){
-  period       = period||'today';
+  period       = period||'mtd';
   statusFilter = statusFilter||'all';
 
   var today   = new Date(); today.setHours(0,0,0,0);
-  var apr14   = new Date(2026,3,14);
   var wkStart = new Date(today); wkStart.setDate(today.getDate()-((today.getDay()||7)-1));
   var moStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  var startDate = period==='today'?today:period==='wtd'?wkStart:period==='mtd'?moStart:apr14;
+  // 'all' = this month (data was cleared on fresh start — no point showing pre-May events)
+  var startDate = period==='today'?today:period==='wtd'?wkStart:moStart;
 
   document.querySelectorAll('[data-rmkperiod]').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-rmkperiod')===period);
@@ -2366,12 +2545,11 @@ function closeRmkDetail(){
 
 
 function renderRmkSummaryTable(period){
-  period = period||'today';
+  period = period||'mtd';
   var today   = new Date(); today.setHours(0,0,0,0);
   var wkStart = new Date(today); wkStart.setDate(today.getDate()-((today.getDay()||7)-1));
   var moStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  var apr14   = new Date(2026,3,14);
-  var startDate = period==='today'?today:period==='wtd'?wkStart:period==='mtd'?moStart:apr14;
+  var startDate = period==='today'?today:period==='wtd'?wkStart:moStart;
   document.querySelectorAll('[data-sumperiod]').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-sumperiod')===period);
   });
