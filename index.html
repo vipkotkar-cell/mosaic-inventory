@@ -1840,12 +1840,9 @@ function switchRmkView(v){
     if(!dailyTop5Data.length){
       var wrap=document.getElementById('rmk-monthly-wrap');
       if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">Loading...</div>';
-      fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(d){
-        if(d&&d.headers&&d.rows){
-          var h=d.headers;
-          dailyTop5Data=d.rows.map(function(row){
-            var obj={}; h.forEach(function(col,i){obj[col]=row[i]||'';});return obj;
-          });
+      fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+        if(Array.isArray(rows)){
+          dailyTop5Data=rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
           allEventHistory=dailyTop5Data;
         }
         renderRmkMonthlyBusiness();
@@ -2289,14 +2286,10 @@ function saveRmk(){var t=document.getElementById('rmk-txt').value.trim();if(!t){
     allRemarks.push({ID:'RMK-'+Date.now(),Date:p.date,SKU:p.sku,Batch:p.batch,Facility:p.facility,'Business Type':p.bizType,'COGS Value':p.cogsVal,Event:p.event,Remark:p.remark,'Assigned To':p.assignedTo,Status:'Completed',EH_ID:p.ehId||''});
     if(R) renderRemarksTracker();closeRmk();btn.disabled=false;btn.textContent='Save Remark';showToast('&#10003; Saved — refreshing data...');
     // Refetch NI_DailyTop5 to get fresh remark status — single source of truth
-    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(d){
-      if(!d||!d.headers||!d.rows) return;
-      var h=d.headers;
-      dailyTop5Data = d.rows.map(function(row){
-        var obj={}; h.forEach(function(col,i){ obj[col]=row[i]||''; }); return obj;
-      }); // no filter — keep all rows, renderRmkMonthlyBusiness filters by month
+    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+      if(!Array.isArray(rows)) return;
+      dailyTop5Data = rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
       allEventHistory = dailyTop5Data;
-      // Update badge
       var pend=dailyTop5Data.filter(function(r){return !r['Remark'];}).length;
       var nb=document.getElementById('nb-remarks');
       if(nb) nb.textContent=pend>0?pend:'✓';
@@ -2573,22 +2566,18 @@ function boot(){
         fetchJ(EXPIRY_URL).then(function(d){buildExpiry(d);}).catch(function(){});
 
         // ── Fetch NI_DailyTop5 — dedicated source for remarks tracker ──
-        fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(d){
-          if(!d||!d.headers||!d.rows) return;
-          var h=d.headers;
-          dailyTop5Data = d.rows.map(function(row){
-            var obj={}; h.forEach(function(col,i){ obj[col]=row[i]||''; }); return obj;
-          }); // no filter — keep all rows, renderRmkMonthlyBusiness filters by month
-          // Mirror to allEventHistory for backward compat
+        fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+          // fetchJ returns array of objects directly
+          if(!Array.isArray(rows)) return;
+          dailyTop5Data = rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
           allEventHistory = dailyTop5Data;
-          // Refresh remarks if open
-          if(document.getElementById('pg-remarks').classList.contains('on')){
-            renderRemarksTracker(); renderRmkMonthlyBusiness();
-          }
-          // Update badge
           var pend=dailyTop5Data.filter(function(r){return !r['Remark'];}).length;
           var nb=document.getElementById('nb-remarks');
           if(nb) nb.textContent=pend>0?pend:'✓';
+          console.log('[Boot] NI_DailyTop5 loaded:',dailyTop5Data.length,'rows');
+          if(document.getElementById('pg-remarks').classList.contains('on')){
+            renderRemarksTracker(); renderRmkMonthlyBusiness();
+          }
         }).catch(function(e){ console.warn('NI_DailyTop5 fetch failed',e); });
 
         // ── Fetch NI_Remarks on boot ──
