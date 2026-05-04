@@ -1862,19 +1862,14 @@ function renderRmkMonthlyBusiness(){
   var todayStr=now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
   var monthLabel=now.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 
-  // ── Read directly from NI_DailyTop5 (dailyTop5Data) ──
+  // ── Use ALL rows from NI_DailyTop5 directly — no date parsing/filtering ──
+  // NI_DailyTop5 only contains current month data (archived at month end)
   var byDate={};
   dailyTop5Data.forEach(function(ev){
-    // Primary: parse Date column. Fallback: extract date from EH_ID prefix
-    var rawDate = ev['Date']||'';
-    var d=parseDate(rawDate);
-    if(!d){
-      // Try EH_ID prefix (format: "04 May 2026|SKU|...")
-      var ehParts=(ev['EH_ID']||'').split('|');
-      if(ehParts[0]) d=parseDate(ehParts[0]);
-    }
-    if(!d||d.getFullYear()!==cy||d.getMonth()!==cm) return;
-    var ds=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    if(!ev['EH_ID']&&!ev['SKU']) return; // skip blank rows
+    // Extract date from EH_ID prefix (always "DD Mon YYYY|...") — no parseDate needed
+    var ds = (ev['EH_ID']||'').split('|')[0] || ev['Date'] || '';
+    if(!ds) return;
     if(!byDate[ds]) byDate[ds]=[];
     byDate[ds].push({
       date:ds, sku:ev['SKU']||'', name:ev['Name']||'', batch:ev['Batch']||'',
@@ -1886,7 +1881,7 @@ function renderRmkMonthlyBusiness(){
     });
   });
 
-  // Add today from R.flat if not already saved to NI_DailyTop5
+  // Add today from R.flat if not already in NI_DailyTop5
   if(R&&R.flat){
     if(!byDate[todayStr]) byDate[todayStr]=[];
     R.flat.slice().sort(function(a,b){return (b.cogsVal||0)-(a.cogsVal||0);}).slice(0,5)
@@ -1907,6 +1902,9 @@ function renderRmkMonthlyBusiness(){
     byDate[ds].sort(function(a,b){return b.cogs-a.cogs;}).slice(0,5)
       .forEach(function(e){events.push(e);});
   });
+  console.log('[Monthly] dailyTop5Data rows:',dailyTop5Data.length,
+    '| byDate keys:',Object.keys(byDate),
+    '| events:',events.length);
 
   // ── BT aggregation — status read directly from event row ──
   var BT_LIST=['Self Warehouse','Dark Store','3PL B2C','3PL B2B'];
