@@ -1847,7 +1847,14 @@ function renderRmkMonthlyBusiness(){
   // ── Read directly from NI_DailyTop5 (dailyTop5Data) ──
   var byDate={};
   dailyTop5Data.forEach(function(ev){
-    var d=parseDate(ev['Date']);
+    // Primary: parse Date column. Fallback: extract date from EH_ID prefix
+    var rawDate = ev['Date']||'';
+    var d=parseDate(rawDate);
+    if(!d){
+      // Try EH_ID prefix (format: "04 May 2026|SKU|...")
+      var ehParts=(ev['EH_ID']||'').split('|');
+      if(ehParts[0]) d=parseDate(ehParts[0]);
+    }
     if(!d||d.getFullYear()!==cy||d.getMonth()!==cm) return;
     var ds=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     if(!byDate[ds]) byDate[ds]=[];
@@ -2264,21 +2271,38 @@ function saveRmk(){var t=document.getElementById('rmk-txt').value.trim();if(!t){
       if((_ehId&&_rEh===_ehId)||_rCk===_ck){ allRemarks.splice(_i,1); break; }
     }
     allRemarks.push({ID:'RMK-'+Date.now(),Date:p.date,SKU:p.sku,Batch:p.batch,Facility:p.facility,'Business Type':p.bizType,'COGS Value':p.cogsVal,Event:p.event,Remark:p.remark,'Assigned To':p.assignedTo,Status:'Completed',EH_ID:p.ehId||''});
-    if(R) renderRemarksTracker();closeRmk();btn.disabled=false;btn.textContent='Save Remark';showToast('&#10003; Saved &mdash; will appear in '+a.name+"'s morning report");
-    // Update dailyTop5Data and allEventHistory inline — no refetch needed
-    var savedEhId=_rmk.ehId||[_rmk.date||'',_rmk.sku||'',_rmk.batch||'',_rmk.fac||'',_rmk.ev||''].join('|');
-    var savedTxt=t;
-    [dailyTop5Data, allEventHistory].forEach(function(arr){
-      arr.forEach(function(ev){
-        var evId=ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
-        if(evId===savedEhId){ ev['Remark']=savedTxt; ev['Status']='Completed'; }
+    if(R) renderRemarksTracker();closeRmk();btn.disabled=false;btn.textContent='Save Remark';showToast('&#10003; Saved — refreshing data...');
+    // Refetch NI_DailyTop5 to get fresh remark status — single source of truth
+    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(d){
+      if(!d||!d.headers||!d.rows) return;
+      var h=d.headers;
+      dailyTop5Data = d.rows.map(function(row){
+        var obj={}; h.forEach(function(col,i){ obj[col]=row[i]||''; }); return obj;
+      }).filter(function(r){ return (r['EH_ID']||r['SKU']) && isCurrentMonth(r['Date']); });
+      allEventHistory = dailyTop5Data;
+      // Update badge
+      var pend=dailyTop5Data.filter(function(r){return !r['Remark'];}).length;
+      var nb=document.getElementById('nb-remarks');
+      if(nb) nb.textContent=pend>0?pend:'✓';
+      // Re-render
+      renderRemarksTracker();
+      if(window._openMonthlyBt){ renderRmkMonthlyBusiness(); }
+      showToast('&#10003; Saved &mdash; will appear in '+a.name+"'s morning report");
+    }).catch(function(){
+      // Fallback: patch inline if refetch fails
+      var savedEhId=_rmk.ehId||[_rmk.date||'',_rmk.sku||'',_rmk.batch||'',_rmk.fac||'',_rmk.ev||''].join('|');
+      [dailyTop5Data, allEventHistory].forEach(function(arr){
+        arr.forEach(function(ev){
+          var evId=ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
+          if(evId===savedEhId){ ev['Remark']=t; ev['Status']='Completed'; }
+        });
       });
-    });
-    // Also patch _monthlyEvents for instant panel update
-    (window._monthlyEvents||[]).forEach(function(ev){
-      if(ev.ehId===savedEhId){ ev.remark=savedTxt; ev.status='Completed'; }
-    });
-    if(window._openMonthlyBt){ renderRmkMonthlyBusiness(); }}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
+      (window._monthlyEvents||[]).forEach(function(ev){
+        if(ev.ehId===savedEhId){ ev.remark=t; ev.status='Completed'; }
+      });
+      renderRemarksTracker();
+      if(window._openMonthlyBt){ renderRmkMonthlyBusiness(); }
+    });}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
 function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'updateStatus',id:id,status:status}),mode:'no-cors'}).catch(function(){});allRemarks.forEach(function(r){if(r['ID']===id)r['Status']=status;});if(R) renderRemarksTracker();}
 
 // DOWNLOAD
