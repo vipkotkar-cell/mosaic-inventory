@@ -723,7 +723,7 @@ function getCutoffDays(shelfLifeMonths){
 function step(m,p){document.getElementById('boot-step').textContent=m;document.getElementById('boot-fill').style.width=p+'%';}
 function showErr(t,s){document.getElementById('boot').style.display='none';var e=document.getElementById('err-box');e.style.display='flex';document.getElementById('err-t').textContent=t;document.getElementById('err-s').textContent=s;}
 
-function fetchJ(url){return fetch(url+'&t='+Date.now()).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(d){if(d&&d.error)throw new Error(d.error);if(d&&d.headers&&d.rows){var h=d.headers;return d.rows.map(function(row){var o={};for(var i=0;i<h.length;i++)o[h[i]]=String(row[i]===null||row[i]===undefined?'':row[i]).trim();return o;});}if(Array.isArray(d))return d.map(function(row){var o={};Object.keys(row).forEach(function(k){o[k]=String(row[k]===null||row[k]===undefined?'':row[k]).trim();});return o;});throw new Error('Unexpected response format');});}
+function fetchJ(url){return fetch(url+'&t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(d){if(d&&d.error)throw new Error(d.error);if(d&&d.headers&&d.rows){var h=d.headers;return d.rows.map(function(row){var o={};for(var i=0;i<h.length;i++)o[h[i]]=String(row[i]===null||row[i]===undefined?'':row[i]).trim();return o;});}if(Array.isArray(d))return d.map(function(row){var o={};Object.keys(row).forEach(function(k){o[k]=String(row[k]===null||row[k]===undefined?'':row[k]).trim();});return o;});throw new Error('Unexpected response format');});}
 
 // GLOBAL STATE
 var R=null,histData=[],allRemarks=[],allEventsData=[],facHistData=[],allEventHistory=[];
@@ -2537,9 +2537,21 @@ function updateMonthBarVisibility(page) {
 function boot(){
   step('Connecting to Apps Script...',10);
   // Fetch events + today's full stock in parallel
-  Promise.all([fetchJ(EVENTS_URL), fetchJ(STOCK_URL).catch(function(){return [];})])
+  Promise.all([
+    fetchJ(EVENTS_URL),
+    fetchJ(STOCK_URL).catch(function(){return [];}),
+    fetchJ(DAILY_TOP5_URL).catch(function(){return [];})
+  ])
   .then(function(res){
-    var evData=res[0], stockData=res[1];
+    var evData=res[0], stockData=res[1], top5Rows=res[2];
+    // Populate dailyTop5Data immediately — guaranteed before any render
+    if(Array.isArray(top5Rows)&&top5Rows.length){
+      dailyTop5Data=top5Rows.filter(function(r){return r['EH_ID']||r['SKU'];});
+      allEventHistory=dailyTop5Data;
+      console.log('[Boot] NI_DailyTop5:',dailyTop5Data.length,'rows');
+    } else {
+      console.warn('[Boot] NI_DailyTop5 empty or failed, rows:',top5Rows&&top5Rows.length);
+    }
     step('Building analysis...',45);
     if(!evData.length && !stockData.length){showErr('No data found','Run testRunNow() in Apps Script first to populate sheets.');return;}
     setTimeout(function(){
@@ -2565,20 +2577,11 @@ function boot(){
         document.getElementById('ref-btn').disabled=false;
         fetchJ(EXPIRY_URL).then(function(d){buildExpiry(d);}).catch(function(){});
 
-        // ── Fetch NI_DailyTop5 — dedicated source for remarks tracker ──
-        fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
-          // fetchJ returns array of objects directly
-          if(!Array.isArray(rows)) return;
-          dailyTop5Data = rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
-          allEventHistory = dailyTop5Data;
-          var pend=dailyTop5Data.filter(function(r){return !r['Remark'];}).length;
-          var nb=document.getElementById('nb-remarks');
-          if(nb) nb.textContent=pend>0?pend:'✓';
-          console.log('[Boot] NI_DailyTop5 loaded:',dailyTop5Data.length,'rows');
-          if(document.getElementById('pg-remarks').classList.contains('on')){
-            renderRemarksTracker(); renderRmkMonthlyBusiness();
-          }
-        }).catch(function(e){ console.warn('NI_DailyTop5 fetch failed',e); });
+        // ── NI_DailyTop5 already loaded in boot Promise.all above ──
+        // Update badge now that data is available
+        var pend=dailyTop5Data.filter(function(r){return !r['Remark'];}).length;
+        var nb=document.getElementById('nb-remarks');
+        if(nb) nb.textContent=pend>0?pend:'✓';
 
         // ── Fetch NI_Remarks on boot ──
         fetchJ(REMK_URL+'&t='+Date.now()).then(function(d){
@@ -2712,29 +2715,33 @@ function renderRemarksTracker(period, statusFilter){
   var now=new Date(), cy=now.getFullYear(), cm=now.getMonth();
   var todayStr=now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
 
-  // Build pool: allEventHistory (May 1, 2, 3...) + today from R.flat
-  var pool={};
-  allEventHistory.forEach(function(ev){
-    var d=parseDate(ev['Date']); if(!d||d.getFullYear()!==cy||d.getMonth()!==cm) return;
-    var ehId=ev['EH_ID']||[ev['Date'],ev['SKU'],ev['Batch']||'',ev['Facility'],ev['Event']].join('|');
-    if(!pool[ehId]) pool[ehId]={
-      ehId:ehId, date:ev['Date'], sku:ev['SKU'], name:ev['Name']||'',
-      batch:ev['Batch']||'', fac:ev['Facility'], bt:ev['BizType']||ev['Business Type']||'',
-      event:ev['Event'], cogsVal:parseFloat(ev['COGSValue'])||0, qty:parseFloat(ev['Qty'])||0,
+  // ── Top 5 TODAY only — from R.flat (live today's events) ──
+  // Cross-reference with NI_DailyTop5 for saved remark status
+  var todayPool={};
+  // First seed from NI_DailyTop5 rows that match today (has remark status)
+  dailyTop5Data.forEach(function(ev){
+    var ehId=ev['EH_ID']||'';
+    var evDate=(ehId.split('|')[0]||ev['Date']||'').trim();
+    if(evDate!==todayStr) return;
+    todayPool[ehId]={
+      ehId:ehId, date:todayStr, sku:ev['SKU']||'', name:ev['Name']||'',
+      batch:ev['Batch']||'', fac:ev['Facility']||'', bt:ev['BizType']||ev['Business Type']||'',
+      event:ev['Event']||'', cogsVal:parseFloat(ev['COGSValue'])||0, qty:parseFloat(ev['Qty'])||0,
       remark:ev['Remark']||'', status:ev['Status']||'', assignedTo:ev['AssignedTo']||''
     };
   });
+  // Fill from R.flat — add any not already in todayPool
   if(R&&R.flat) R.flat.forEach(function(x){
     var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
-    if(!pool[ehId]) pool[ehId]={
+    if(!todayPool[ehId]) todayPool[ehId]={
       ehId:ehId, date:todayStr, sku:x.sku, name:x.name||'',
       batch:x.batch||'', fac:x.fac, bt:x.bt, event:x.event,
-      cogsVal:x.cogsVal||0, qty:x.qty||0
+      cogsVal:x.cogsVal||0, qty:x.qty||0, remark:'', status:'', assignedTo:''
     };
   });
 
-  // Top 5 by COGS across entire month
-  var top5 = Object.values(pool)
+  // Top 5 by COGS — TODAY only
+  var top5 = Object.values(todayPool)
     .sort(function(a,b){ return (b.cogsVal||0)-(a.cogsVal||0); })
     .slice(0,5);
   function getRmk(x){
