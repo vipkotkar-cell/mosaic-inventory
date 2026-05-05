@@ -1426,7 +1426,7 @@ function renderHistory(){
         var cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
         function vy(v){return PAD.t+cH-(v/maxV)*cH*0.88;}
         function vx(i){return PAD.l+(n===1?cW/2:i/(n-1)*cW);}
-        function fmtLbl(s){var p=s.split(' ');return p.length>=3?p[2]+' '+p[1]:s.slice(0,6);}
+        function fmtLbl(s){var p=s.split(' ');return p.length>=3?p[0]+' '+p[1]:s.slice(0,6);}
         // Grid lines
         var gridLines='';
         [0.25,0.5,0.75,1].forEach(function(f){
@@ -2949,9 +2949,16 @@ function openRmkModal(ehId,sku,name,batch,fac,bt,ev,cogs,date){
   document.getElementById('rmk-loc-d').textContent=fac+' ('+bt+')';
   document.getElementById('rmk-asn-d').textContent=a.name;
   document.getElementById('rmk-asn-s-d').textContent=a.email+' — included in tomorrow morning report';
-  // Pre-fill existing remark if any
-  var existing=allRemarks.find(function(r){return r['EH_ID']===ehId;});
-  document.getElementById('rmk-txt').value=existing?existing['Remark']:'';
+  // Auto-fill system triggered events
+  var SYSEV=['Active to Near Expiry','Near Expiry to Expired','Active to Expired'];
+  var isSystem=SYSEV.some(function(s){return String(ev||'').indexOf(s)>=0;});
+  // Pre-fill existing remark or system default
+  var existing=allRemarks.find(function(r){return r['EH_ID']===ehId;})
+    || dailyTop5Data.find(function(r){return (r['EH_ID']||'')=== ehId && r['Remark'];});
+  document.getElementById('rmk-txt').value=
+    existing ? (existing['Remark']||existing.Remark||'')
+    : isSystem ? 'System-triggered expiry movement, no action needed'
+    : '';
   document.getElementById('rmk-modal').classList.add('show');
 }
 
