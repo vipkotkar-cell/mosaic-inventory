@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Inventory Health Monitor — Mosaic Wellness</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -347,20 +347,7 @@ tbody tr:hover td{background:var(--sf)}
     <div class="login-title">Mosaic Wellness</div>
     <div class="login-sub">Inventory Impact Dashboard<br>Sign in to continue</div>
     <div class="login-badge">&#128274; @mosaicwellness.in accounts only</div>
-    <div id="g_id_onload"
-      data-client_id="157363808569-rj6tfm4ljt9t7tlfj3scscdqdog1h24e.apps.googleusercontent.com"
-      data-callback="handleGoogleLogin"
-      data-auto_prompt="false">
-    </div>
-    <div class="g_id_signin"
-      data-type="standard"
-      data-size="large"
-      data-theme="outline"
-      data-text="sign_in_with"
-      data-shape="rectangular"
-      data-logo_alignment="left"
-      data-width="320">
-    </div>
+    <div id="google-btn-container" style="display:flex;justify-content:center;margin:8px 0"></div>
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
@@ -784,62 +771,80 @@ function fetchJ(url){return fetch(url+'&t='+Date.now(),{cache:'no-store'}).then(
 // ── GOOGLE SSO ──────────────────────────────────────────────
 const SSO_CLIENT_ID = '157363808569-rj6tfm4ljt9t7tlfj3scscdqdog1h24e.apps.googleusercontent.com';
 const ALLOWED_DOMAIN = 'mosaicwellness.in';
-var _ssoUser = null; // { name, email, picture }
+var _ssoUser = null;
 
 function handleGoogleLogin(response) {
   try {
-    // Decode JWT credential
-    var payload = JSON.parse(atob(response.credential.split('.')[1]));
-    var email   = payload.email || '';
-    var domain  = email.split('@')[1] || '';
+    if (!response || !response.credential) {
+      showLoginErr('No credential received. Please try again.'); return;
+    }
+    var base64 = response.credential.split('.')[1];
+    base64 = base64.replace(/-/g,'+').replace(/_/g,'/');
+    while (base64.length % 4) base64 += '=';
+    var payload = JSON.parse(atob(base64));
+    var email  = payload.email || '';
+    var domain = email.split('@')[1] || '';
     if (domain !== ALLOWED_DOMAIN) {
-      var errEl = document.getElementById('login-err');
-      errEl.style.display = 'block';
-      errEl.textContent = '⛔ Access denied. Only @' + ALLOWED_DOMAIN + ' accounts are allowed. You signed in as: ' + email;
-      // Sign out of Google so they can try another account
-      if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
+      showLoginErr('\u26d4 Access denied. Only @' + ALLOWED_DOMAIN + ' accounts allowed. You used: ' + email);
+      try { google.accounts.id.disableAutoSelect(); } catch(e) {}
       return;
     }
-    // Store in sessionStorage — expires when browser closes
-    _ssoUser = { name: payload.name || email.split('@')[0], email: email, picture: payload.picture || '' };
+    _ssoUser = { name: payload.name || email.split('@')[0], email: email };
     sessionStorage.setItem('mw_sso_user', JSON.stringify(_ssoUser));
     ssoShowApp();
   } catch(e) {
-    var errEl = document.getElementById('login-err');
-    errEl.style.display = 'block';
-    errEl.textContent = 'Login failed. Please try again.';
+    showLoginErr('Login error: ' + e.message + '. Please try again.');
   }
 }
 
+function showLoginErr(msg) {
+  var el = document.getElementById('login-err');
+  if (el) { el.style.display = 'block'; el.textContent = msg; }
+}
+
 function ssoShowApp() {
-  // Hide login screen
   document.getElementById('login-screen').classList.add('hidden');
-  // Show user info in sidebar
   var uInfo = document.getElementById('sb-user-info');
   if (uInfo) uInfo.style.display = 'block';
-  var uName = document.getElementById('sb-user-name');
-  var uEmail = document.getElementById('sb-user-email');
-  if (uName)  uName.textContent  = _ssoUser.name;
-  if (uEmail) uEmail.textContent = _ssoUser.email;
-  // Pre-fill remark name field with user's name
-  try { localStorage.setItem('rmk_user_name', _ssoUser.name); } catch(e) {}
-  // Start the app
+  if (_ssoUser) {
+    var uName = document.getElementById('sb-user-name');
+    var uEmail = document.getElementById('sb-user-email');
+    if (uName)  uName.textContent  = _ssoUser.name;
+    if (uEmail) uEmail.textContent = _ssoUser.email;
+    try { localStorage.setItem('rmk_user_name', _ssoUser.name); } catch(e2) {}
+  }
   boot();
 }
 
 function ssoLogout() {
   sessionStorage.removeItem('mw_sso_user');
   _ssoUser = null;
-  if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
+  try { google.accounts.id.disableAutoSelect(); } catch(e) {}
   location.reload();
 }
 
 function ssoInit() {
-  // Always show login screen — user must sign in every visit
   sessionStorage.removeItem('mw_sso_user');
-  document.getElementById('login-screen').style.display = 'flex';
+  function initGSI() {
+    if (typeof google === 'undefined' || !google.accounts) {
+      setTimeout(initGSI, 200); return;
+    }
+    google.accounts.id.initialize({
+      client_id: SSO_CLIENT_ID,
+      callback: handleGoogleLogin,
+      auto_select: false,
+      cancel_on_tap_outside: false
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('google-btn-container'),
+      { theme: 'outline', size: 'large', text: 'sign_in_with', width: 320 }
+    );
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+  initGSI();
 }
 // ── END SSO ─────────────────────────────────────────────────
+
 
 // GLOBAL STATE
 var R=null,histData=[],allRemarks=[],allEventsData=[],facHistData=[],allEventHistory=[];
