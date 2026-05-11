@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Inventory Health Monitor — Mosaic Wellness</title>
-<script src="https://accounts.google.com/gsi/client"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -347,7 +346,10 @@ tbody tr:hover td{background:var(--sf)}
     <div class="login-title">Mosaic Wellness</div>
     <div class="login-sub">Inventory Impact Dashboard<br>Sign in to continue</div>
     <div class="login-badge">&#128274; @mosaicwellness.in accounts only</div>
-    <div id="google-btn-container" style="display:flex;justify-content:center;margin:8px 0"></div>
+    <button onclick="ssoRedirect()" style="display:flex;align-items:center;gap:12px;margin:8px auto;padding:12px 24px;border:1.5px solid #dadce0;border-radius:8px;background:#fff;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#3c4043;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:box-shadow .2s;width:100%;justify-content:center;max-width:320px">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
+    </button>
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
@@ -768,82 +770,96 @@ function showErr(t,s){document.getElementById('boot').style.display='none';var e
 
 function fetchJ(url){return fetch(url+'&t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(d){if(d&&d.error)throw new Error(d.error);if(d&&d.headers&&d.rows){var h=d.headers;return d.rows.map(function(row){var o={};for(var i=0;i<h.length;i++)o[h[i]]=String(row[i]===null||row[i]===undefined?'':row[i]).trim();return o;});}if(Array.isArray(d))return d.map(function(row){var o={};Object.keys(row).forEach(function(k){o[k]=String(row[k]===null||row[k]===undefined?'':row[k]).trim();});return o;});throw new Error('Unexpected response format');});}
 
-// ── GOOGLE SSO ──────────────────────────────────────────────
-const SSO_CLIENT_ID = '157363808569-rj6tfm4ljt9t7tlfj3scscdqdog1h24e.apps.googleusercontent.com';
+// ── GOOGLE SSO — Redirect Flow (GitHub Pages compatible) ──
+const SSO_CLIENT_ID  = '157363808569-rj6tfm4ljt9t7tlfj3scscdqdog1h24e.apps.googleusercontent.com';
 const ALLOWED_DOMAIN = 'mosaicwellness.in';
+const REDIRECT_URI   = 'https://vipkotkar-cell.github.io/mosaic-inventory/';
 var _ssoUser = null;
 
-function handleGoogleLogin(response) {
-  try {
-    if (!response || !response.credential) {
-      showLoginErr('No credential received. Please try again.'); return;
-    }
-    var base64 = response.credential.split('.')[1];
-    base64 = base64.replace(/-/g,'+').replace(/_/g,'/');
-    while (base64.length % 4) base64 += '=';
-    var payload = JSON.parse(atob(base64));
-    var email  = payload.email || '';
-    var domain = email.split('@')[1] || '';
-    if (domain !== ALLOWED_DOMAIN) {
-      showLoginErr('\u26d4 Access denied. Only @' + ALLOWED_DOMAIN + ' accounts allowed. You used: ' + email);
-      try { google.accounts.id.disableAutoSelect(); } catch(e) {}
-      return;
-    }
-    _ssoUser = { name: payload.name || email.split('@')[0], email: email };
-    sessionStorage.setItem('mw_sso_user', JSON.stringify(_ssoUser));
-    ssoShowApp();
-  } catch(e) {
-    showLoginErr('Login error: ' + e.message + '. Please try again.');
+function showLoginErr(msg){
+  var el=document.getElementById('login-err');
+  if(el){el.style.display='block';el.textContent=msg;}
+}
+
+// Decode JWT without library
+function decodeJWT(token){
+  try{
+    var b=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    while(b.length%4) b+='=';
+    return JSON.parse(atob(b));
+  }catch(e){return null;}
+}
+
+// Check URL hash for id_token on page load (after Google redirect)
+function checkRedirectToken(){
+  var hash=window.location.hash;
+  if(!hash) return false;
+  var params=new URLSearchParams(hash.slice(1));
+  var idToken=params.get('id_token');
+  if(!idToken) return false;
+  // Clean URL immediately
+  history.replaceState(null,'',window.location.pathname);
+  var payload=decodeJWT(idToken);
+  if(!payload){showLoginErr('Invalid token. Please try again.');return false;}
+  var email=payload.email||'';
+  var domain=email.split('@')[1]||'';
+  if(domain!==ALLOWED_DOMAIN){
+    showLoginErr('\u26d4 Access denied. Only @'+ALLOWED_DOMAIN+' accounts allowed. You used: '+email);
+    return false;
   }
+  _ssoUser={name:payload.name||email.split('@')[0],email:email};
+  sessionStorage.setItem('mw_sso_user',JSON.stringify(_ssoUser));
+  return true;
 }
 
-function showLoginErr(msg) {
-  var el = document.getElementById('login-err');
-  if (el) { el.style.display = 'block'; el.textContent = msg; }
+function ssoRedirect(){
+  var nonce=Math.random().toString(36).slice(2);
+  sessionStorage.setItem('sso_nonce',nonce);
+  var url='https://accounts.google.com/o/oauth2/v2/auth'
+    +'?client_id='+encodeURIComponent(SSO_CLIENT_ID)
+    +'&redirect_uri='+encodeURIComponent(REDIRECT_URI)
+    +'&response_type=id_token'
+    +'&scope=openid%20email%20profile'
+    +'&nonce='+nonce
+    +'&hd='+ALLOWED_DOMAIN
+    +'&prompt=select_account';
+  window.location.href=url;
 }
 
-function ssoShowApp() {
+function ssoShowApp(){
   document.getElementById('login-screen').classList.add('hidden');
-  var uInfo = document.getElementById('sb-user-info');
-  if (uInfo) uInfo.style.display = 'block';
-  if (_ssoUser) {
-    var uName = document.getElementById('sb-user-name');
-    var uEmail = document.getElementById('sb-user-email');
-    if (uName)  uName.textContent  = _ssoUser.name;
-    if (uEmail) uEmail.textContent = _ssoUser.email;
-    try { localStorage.setItem('rmk_user_name', _ssoUser.name); } catch(e2) {}
+  var uInfo=document.getElementById('sb-user-info');
+  if(uInfo) uInfo.style.display='block';
+  if(_ssoUser){
+    var n=document.getElementById('sb-user-name');
+    var e=document.getElementById('sb-user-email');
+    if(n) n.textContent=_ssoUser.name;
+    if(e) e.textContent=_ssoUser.email;
+    try{localStorage.setItem('rmk_user_name',_ssoUser.name);}catch(ex){}
   }
   boot();
 }
 
-function ssoLogout() {
-  sessionStorage.removeItem('mw_sso_user');
-  _ssoUser = null;
-  try { google.accounts.id.disableAutoSelect(); } catch(e) {}
+function ssoLogout(){
+  sessionStorage.clear();
+  _ssoUser=null;
+  history.replaceState(null,'',window.location.pathname);
   location.reload();
 }
 
-function ssoInit() {
-  sessionStorage.removeItem('mw_sso_user');
-  function initGSI() {
-    if (typeof google === 'undefined' || !google.accounts) {
-      setTimeout(initGSI, 200); return;
-    }
-    google.accounts.id.initialize({
-      client_id: SSO_CLIENT_ID,
-      callback: handleGoogleLogin,
-      auto_select: false,
-      cancel_on_tap_outside: false
-    });
-    google.accounts.id.renderButton(
-      document.getElementById('google-btn-container'),
-      { theme: 'outline', size: 'large', text: 'sign_in_with', width: 320 }
-    );
-    document.getElementById('login-screen').style.display = 'flex';
-  }
-  initGSI();
+function ssoInit(){
+  // 1. Check if just returned from Google redirect
+  if(checkRedirectToken()){ ssoShowApp(); return; }
+  // 2. Check active session this tab
+  try{
+    var s=sessionStorage.getItem('mw_sso_user');
+    if(s){ _ssoUser=JSON.parse(s); ssoShowApp(); return; }
+  }catch(e){}
+  // 3. Show login screen
+  document.getElementById('login-screen').style.display='flex';
 }
 // ── END SSO ─────────────────────────────────────────────────
+
 
 
 // GLOBAL STATE
