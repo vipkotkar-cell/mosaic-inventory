@@ -350,7 +350,7 @@ tbody tr:hover td{background:var(--sf)}
     <div id="g_id_onload"
       data-client_id="157363808569-rj6tfm4ljt9t7tlfj3scscdqdog1h24e.apps.googleusercontent.com"
       data-callback="handleGoogleLogin"
-      data-auto_prompt="true">
+      data-auto_prompt="false">
     </div>
     <div class="g_id_signin"
       data-type="standard"
@@ -835,16 +835,8 @@ function ssoLogout() {
 }
 
 function ssoInit() {
-  // Check if already logged in this session
-  try {
-    var stored = sessionStorage.getItem('mw_sso_user');
-    if (stored) {
-      _ssoUser = JSON.parse(stored);
-      ssoShowApp();
-      return;
-    }
-  } catch(e) {}
-  // Show login screen — Google GSI button handles the rest
+  // Always show login screen — user must sign in every visit
+  sessionStorage.removeItem('mw_sso_user');
   document.getElementById('login-screen').style.display = 'flex';
 }
 // ── END SSO ─────────────────────────────────────────────────
