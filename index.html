@@ -187,10 +187,10 @@ tbody tr:hover td{background:var(--sf)}
 .cat-body{display:none}.cat-body.open{display:block}
 
 /* EVENT ROWS */
-.ev-row{display:flex;align-items:center;gap:10px;padding:8px 16px 8px 47px;border-top:1px solid rgba(228,232,240,.5);transition:background .1s}
+.ev-row{display:flex;align-items:flex-start;gap:10px;padding:8px 16px 8px 47px;border-top:1px solid rgba(228,232,240,.5);transition:background .1s;width:100%;box-sizing:border-box;min-width:0}
 .ev-row:hover{background:var(--sf)}
-.ev-info{flex:1;min-width:0}
-.ev-sku{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--tx)}
+.ev-info{flex:1;min-width:0;overflow:hidden}
+.ev-sku{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev-batch{font-size:9px;color:var(--mu);font-weight:400;margin-left:5px}
 .ev-loc{font-size:10px;color:var(--tx2);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .ev-num{text-align:right;flex-shrink:0}
@@ -1176,14 +1176,13 @@ function renderImpact(r){
         +'<td style="padding:8px 12px;font-family:var(--mono);font-size:11px;font-weight:800;text-align:right;color:var(--re)">'+fv(c.cogs)+'</td>'
         +'</tr>'
         +'<tr id="cat-detail-'+c.cat+'" style="display:none"><td colspan="6" style="padding:0;background:var(--sf)">'
-        +'<div style="max-height:200px;overflow-y:auto">'
+        +'<div style="max-height:300px;overflow-y:auto;overflow-x:hidden;width:100%;display:block">'
         +c.rows.slice(0,20).map(function(x){
-          return '<div style="display:flex;align-items:center;padding:7px 16px 7px 32px;border-top:1px solid rgba(228,232,240,.5)">'
-            +'<div style="flex:1;min-width:0"><div style="font-family:var(--mono);font-size:10px;font-weight:600">'+x.sku+'</div>'
-            +'<div style="font-size:9px;color:var(--tl)">'+( x.name||'')+'</div>'
-            +'<div style="font-size:9px;color:var(--mu)">'+(x.fac||'')+(x.city?' — '+x.city:'')+'&nbsp;<span class="biz '+btCls(x.bt)+'">'+x.bt+'</span></div></div>'
-            +'<div style="text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(x.cogsVal)+'</div>'
-            ''
+          return '<div style="display:flex;align-items:flex-start;padding:8px 16px 8px 32px;border-top:1px solid rgba(228,232,240,.5);width:100%;box-sizing:border-box;min-width:0">'
+            +'<div style="flex:1;min-width:0;overflow:hidden"><div style="font-family:var(--mono);font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+x.sku+'</div>'
+            +'<div style="font-size:9px;color:var(--tl);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+( x.name||'')+'</div>'
+            +'<div style="font-size:9px;color:var(--mu);margin-top:1px;display:flex;flex-wrap:wrap;gap:4px;align-items:center">'+(x.fac||'')+(x.city?' — '+x.city:'')+'&nbsp;<span class="biz '+btCls(x.bt)+'">'+x.bt+'</span></div></div>'
+            +'<div style="text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re);flex-shrink:0;padding-left:8px">'+fv(x.cogsVal)+'</div>'
             +'</div>';
         }).join('')
         +(c.rows.length>20?'<div style="padding:8px 16px;font-size:10px;color:var(--mu);text-align:center">+ '+(c.rows.length-20)+' more — download report for full list</div>':'')
