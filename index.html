@@ -462,10 +462,10 @@ tbody tr:hover td{background:var(--sf)}
     </div>
 
     <!-- View Toggle -->
-    <div style="display:flex;gap:0;margin-bottom:20px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;width:fit-content">
-      <button class="sub-tab on" id="rmk-tog-tracker" onclick="switchRmkView('tracker')" style="min-width:180px">&#128202; Top 5 Today</button>
-      <button class="sub-tab"    id="rmk-tog-monthly" onclick="switchRmkView('monthly')" style="min-width:220px">&#128197; Monthly Pending — Business Wise</button>
-      <button class="sub-tab"    id="rmk-tog-summary" onclick="switchRmkView('summary')" style="min-width:200px">&#128203; Remarks Summary</button>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:20px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;max-width:100%">
+      <button class="sub-tab on" id="rmk-tog-tracker" onclick="switchRmkView('tracker')" style="min-width:160px;flex:1">&#128202; Top 5 Today</button>
+      <button class="sub-tab"    id="rmk-tog-monthly" onclick="switchRmkView('monthly')" style="min-width:200px;flex:1">&#128197; Monthly Pending</button>
+      <button class="sub-tab"    id="rmk-tog-summary" onclick="switchRmkView('summary')" style="min-width:180px;flex:1">&#128203; Remarks Summary</button>
     </div>
 
     <!-- VIEW A: Top 5 Today -->
@@ -1995,7 +1995,21 @@ function switchRmkView(v){
       renderRmkMonthlyBusiness();
     }
   }
-  if(v==='summary') renderRmkSummaryBW();
+  if(v==='summary'){
+    if(!dailyTop5Data.length){
+      var swrap=document.getElementById('rmk-summary-wrap');
+      if(swrap) swrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">Loading...</div>';
+      fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+        if(Array.isArray(rows)){
+          dailyTop5Data=rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
+          allEventHistory=dailyTop5Data;
+        }
+        renderRmkSummaryBW();
+      }).catch(function(){ renderRmkSummaryBW(); });
+    } else {
+      renderRmkSummaryBW();
+    }
+  }
 }
 
 // ── Monthly Pending Remarks — consolidated BT summary table ──
@@ -2067,9 +2081,10 @@ function renderRmkMonthlyBusiness(){
   // Debug — remove after confirming counts are correct
   console.log('[Monthly] Total events:', events.length, '| btMap:', JSON.stringify(Object.fromEntries(BT_LIST.map(function(bt){return [bt, btMap[bt].total];}))));
 
-  // ── Overall KPIs ──
-  var totT=0,totP=0,totC=0;
-  BT_LIST.forEach(function(bt){totT+=btMap[bt].total;totP+=btMap[bt].pending;totC+=btMap[bt].completed;});
+  // ── Overall KPIs — derived directly from dailyTop5Data for consistency with Remarks Summary ──
+  var totT = dailyTop5Data.filter(function(r){ return r['EH_ID']||r['SKU']; }).length;
+  var totC = dailyTop5Data.filter(function(r){ return (r['Remark']||'').trim(); }).length;
+  var totP = totT - totC;
   var resRate=totT>0?Math.round(totC/totT*100):0;
   var TH='padding:11px 16px;background:var(--sf);border-bottom:2px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-align:center;white-space:nowrap';
 
