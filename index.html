@@ -465,6 +465,7 @@ tbody tr:hover td{background:var(--sf)}
     <div style="display:flex;gap:0;margin-bottom:20px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;width:fit-content">
       <button class="sub-tab on" id="rmk-tog-tracker" onclick="switchRmkView('tracker')" style="min-width:180px">&#128202; Top 5 Today</button>
       <button class="sub-tab"    id="rmk-tog-monthly" onclick="switchRmkView('monthly')" style="min-width:220px">&#128197; Monthly Pending — Business Wise</button>
+      <button class="sub-tab"    id="rmk-tog-summary" onclick="switchRmkView('summary')" style="min-width:200px">&#128203; Remarks Summary</button>
     </div>
 
     <!-- VIEW A: Top 5 Today -->
@@ -482,6 +483,11 @@ tbody tr:hover td{background:var(--sf)}
     <div id="rmk-view-monthly" style="display:none">
       <div id="rmk-monthly-wrap"></div>
       <div id="monthly-rmk-panel"></div>
+    </div>
+
+    <!-- VIEW C: Remarks Summary — Business Wise -->
+    <div id="rmk-view-summary" style="display:none">
+      <div id="rmk-summary-wrap"></div>
     </div>
 
   </div>
@@ -1969,11 +1975,12 @@ function renderRemarksView(r, filterBt, rmkDateFilter){
 function switchRmkView(v){
   document.getElementById('rmk-view-tracker').style.display  = v==='tracker' ?'block':'none';
   document.getElementById('rmk-view-monthly').style.display  = v==='monthly' ?'block':'none';
+  document.getElementById('rmk-view-summary').style.display  = v==='summary' ?'block':'none';
   document.getElementById('rmk-tog-tracker').classList.toggle('on', v==='tracker');
   document.getElementById('rmk-tog-monthly').classList.toggle('on', v==='monthly');
+  document.getElementById('rmk-tog-summary').classList.toggle('on', v==='summary');
   if(v==='tracker') renderRemarksTracker();
   if(v==='monthly'){
-    // If dailyTop5Data is empty, fetch before rendering
     if(!dailyTop5Data.length){
       var wrap=document.getElementById('rmk-monthly-wrap');
       if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">Loading...</div>';
@@ -1988,6 +1995,7 @@ function switchRmkView(v){
       renderRmkMonthlyBusiness();
     }
   }
+  if(v==='summary') renderRmkSummaryBW();
 }
 
 // ── Monthly Pending Remarks — consolidated BT summary table ──
@@ -2149,6 +2157,116 @@ function renderRmkMonthlyBusiness(){
 
 
 // ── Monthly Remarks Panel ──
+
+// ── Remarks Summary — all remarks updated by users, Business-wise ──
+function renderRmkSummaryBW(){
+  var monthLabel = new Date().toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  var BT_LIST = ['Self Warehouse','Dark Store','3PL B2C','3PL B2B','Quality'];
+  var BT_COL  = {'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','Quality':'#9c3838'};
+  var BT_ICON = {'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;','Quality':'&#128202;'};
+
+  // Pull all events that have a remark saved (from NI_DailyTop5)
+  var remarked = dailyTop5Data.filter(function(ev){ return (ev['Remark']||'').trim(); });
+
+  // Group by BT
+  var byBT = {};
+  BT_LIST.forEach(function(bt){ byBT[bt] = []; });
+  remarked.forEach(function(ev){
+    var bt = ev['BizType'] || ev['Business Type'] || 'Other';
+    if(!byBT[bt]) byBT[bt] = [];
+    byBT[bt].push(ev);
+  });
+
+  var total  = remarked.length;
+  var totCOGS = remarked.reduce(function(s,e){ return s + (parseFloat(e['COGSValue'])||0); }, 0);
+  var activeBTs = BT_LIST.filter(function(bt){ return byBT[bt] && byBT[bt].length; }).length;
+
+  var wrap = document.getElementById('rmk-summary-wrap');
+  if(!wrap) return;
+
+  if(!total){
+    wrap.innerHTML = '<div style="padding:60px;text-align:center;color:var(--mu)">'
+      + '<div style="font-size:32px;margin-bottom:12px">&#128203;</div>'
+      + '<div style="font-size:14px;font-weight:600">No remarks updated yet</div>'
+      + '<div style="font-size:11px;margin-top:6px;color:var(--mu)">Remarks added via Top 5 Today or Update Remarks will appear here</div></div>';
+    return;
+  }
+
+  var TH = 'padding:9px 12px;background:var(--sf);border-bottom:2px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
+
+  // KPI strip
+  var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">'
+    + '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:12px">'
+      + '<div style="font-size:26px">&#10004;&#65039;</div>'
+      + '<div><div style="font-size:9px;font-weight:700;color:#16a34a;letter-spacing:.5px">TOTAL REMARKS</div>'
+      + '<div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">' + total + '</div>'
+      + '<div style="font-size:10px;color:#15803d">' + monthLabel + '</div></div></div>'
+    + '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:12px">'
+      + '<div style="font-size:26px">&#128200;</div>'
+      + '<div><div style="font-size:9px;font-weight:700;color:#1d4ed8;letter-spacing:.5px">COGS COVERED</div>'
+      + '<div style="font-size:28px;font-weight:800;color:#1d4ed8;line-height:1">' + fv(totCOGS) + '</div>'
+      + '<div style="font-size:10px;color:#1e40af">across remarked events</div></div></div>'
+    + '<div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:12px">'
+      + '<div style="font-size:26px">&#127775;</div>'
+      + '<div><div style="font-size:9px;font-weight:700;color:#7c3aed;letter-spacing:.5px">BUSINESS UNITS</div>'
+      + '<div style="font-size:28px;font-weight:800;color:#7c3aed;line-height:1">' + activeBTs + '</div>'
+      + '<div style="font-size:10px;color:#6d28d9">of ' + BT_LIST.length + ' units active</div></div></div>'
+    + '</div>';
+
+  // One card per BT
+  BT_LIST.forEach(function(bt){
+    var evs = byBT[bt];
+    if(!evs || !evs.length) return;
+    var col  = BT_COL[bt] || '#555';
+    var icon = BT_ICON[bt] || '&#128203;';
+    var btCOGS = evs.reduce(function(s,e){ return s + (parseFloat(e['COGSValue'])||0); }, 0);
+
+    html += '<div class="card" style="margin-bottom:16px">'
+      + '<div class="card-h" style="padding:12px 18px;border-bottom:1px solid var(--br)">'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+          + '<span style="font-size:20px">' + icon + '</span>'
+          + '<span style="font-size:13px;font-weight:700;color:' + col + '">' + bt + '</span>'
+          + '<span style="padding:2px 10px;border-radius:20px;background:#dcfce7;color:#16a34a;font-size:9px;font-weight:700">&#10003; ' + evs.length + ' remarked</span>'
+        + '</div>'
+        + '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:' + col + '">' + fv(btCOGS) + '</div>'
+      + '</div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+        + '<thead><tr>'
+          + '<th style="' + TH + '">Date</th>'
+          + '<th style="' + TH + '">SKU</th>'
+          + '<th style="' + TH + '">Item Name</th>'
+          + '<th style="' + TH + '">Event</th>'
+          + '<th style="' + TH + '">Facility</th>'
+          + '<th style="' + TH + ';text-align:right">COGS</th>'
+          + '<th style="' + TH + '">Remark</th>'
+          + '<th style="' + TH + '">Updated By</th>'
+          + '<th style="' + TH + '">Date Updated</th>'
+        + '</tr></thead><tbody>';
+
+    evs.sort(function(a,b){ return (parseFloat(b['COGSValue'])||0) - (parseFloat(a['COGSValue'])||0); })
+      .forEach(function(ev){
+        var ehId   = ev['EH_ID'] || '';
+        var dsDate = (ehId.split('|')[0] || ev['Date'] || '').trim();
+        html += '<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+          + '<td style="padding:9px 12px;font-size:10px;color:var(--mu);white-space:nowrap">' + dsDate + '</td>'
+          + '<td style="padding:9px 12px"><div style="font-family:var(--mono);font-size:10px;font-weight:700">' + (ev['SKU']||'') + '</div>'
+            + (ev['Batch'] ? '<div style="font-size:8px;color:var(--mu)">#' + ev['Batch'] + '</div>' : '') + '</td>'
+          + '<td style="padding:9px 12px;font-size:10px;color:var(--tl);max-width:140px;line-height:1.4">' + (ev['Name']||'—') + '</td>'
+          + '<td style="padding:9px 12px;font-size:10px">' + fev(ev['Event']||'—') + '</td>'
+          + '<td style="padding:9px 12px;font-size:10px;color:var(--tx2)">' + (ev['Facility']||'—') + '</td>'
+          + '<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">' + fv(parseFloat(ev['COGSValue'])||0) + '</td>'
+          + '<td style="padding:9px 12px;font-size:10px;color:var(--tx);max-width:200px;line-height:1.5">' + (ev['Remark']||'—') + '</td>'
+          + '<td style="padding:9px 12px;font-size:10px;font-weight:600;color:var(--tl)">' + (ev['AssignedTo']||'—') + '</td>'
+          + '<td style="padding:9px 12px;font-size:10px;color:var(--mu);white-space:nowrap">' + (ev['RemarkDate']||'—') + '</td>'
+          + '</tr>';
+      });
+
+    html += '</tbody></table></div></div>';
+  });
+
+  wrap.innerHTML = html;
+}
+
 function openMonthlyRmkPanel(bt){
   window._openMonthlyBt = bt;
   var col  = {'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569'}[bt]||'#555';
