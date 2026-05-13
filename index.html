@@ -1979,37 +1979,22 @@ function switchRmkView(v){
   document.getElementById('rmk-tog-tracker').classList.toggle('on', v==='tracker');
   document.getElementById('rmk-tog-monthly').classList.toggle('on', v==='monthly');
   document.getElementById('rmk-tog-summary').classList.toggle('on', v==='summary');
-  if(v==='tracker') renderRemarksTracker();
-  if(v==='monthly'){
-    if(!dailyTop5Data.length){
-      var wrap=document.getElementById('rmk-monthly-wrap');
-      if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">Loading...</div>';
-      fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
-        if(Array.isArray(rows)){
-          dailyTop5Data=rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
-          allEventHistory=dailyTop5Data;
-        }
-        renderRmkMonthlyBusiness();
-      }).catch(function(){ renderRmkMonthlyBusiness(); });
-    } else {
-      renderRmkMonthlyBusiness();
+  if(v==='tracker'){ renderRemarksTracker(); return; }
+  // Monthly and Summary both use dailyTop5Data — always fetch fresh on tab click
+  var loadingId = v==='monthly' ? 'rmk-monthly-wrap' : 'rmk-summary-wrap';
+  var loadEl = document.getElementById(loadingId);
+  if(loadEl) loadEl.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">&#8635; Loading...</div>';
+  fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+    if(Array.isArray(rows)){
+      dailyTop5Data  = rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
+      allEventHistory = dailyTop5Data;
     }
-  }
-  if(v==='summary'){
-    if(!dailyTop5Data.length){
-      var swrap=document.getElementById('rmk-summary-wrap');
-      if(swrap) swrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">Loading...</div>';
-      fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
-        if(Array.isArray(rows)){
-          dailyTop5Data=rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
-          allEventHistory=dailyTop5Data;
-        }
-        renderRmkSummaryBW();
-      }).catch(function(){ renderRmkSummaryBW(); });
-    } else {
-      renderRmkSummaryBW();
-    }
-  }
+    if(v==='monthly') renderRmkMonthlyBusiness();
+    if(v==='summary') renderRmkSummaryBW();
+  }).catch(function(){
+    if(v==='monthly') renderRmkMonthlyBusiness();
+    if(v==='summary') renderRmkSummaryBW();
+  });
 }
 
 // ── Monthly Pending Remarks — consolidated BT summary table ──
