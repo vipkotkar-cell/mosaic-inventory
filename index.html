@@ -458,6 +458,14 @@ tbody tr:hover td{background:var(--sf)}
       <div>
         <div class="pg-title">&#128203; Remarks Tracker</div>
         <div class="pg-sub">Top 5 negative events by COGS impact — add remarks for your team</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;margin-top:-4px">
+        <span style="font-size:11px;color:var(--mu);font-weight:600">Viewing:</span>
+        <select id="rmk-month-sel" onchange="onRmkMonthChange()" style="padding:5px 10px;border:1px solid var(--br);border-radius:6px;font-size:11px;background:var(--wh);color:var(--tx);font-family:var(--font);cursor:pointer">
+          <option value="current">Current Month</option>
+          <option value="last">Last Month</option>
+        </select>
+        <span id="rmk-month-label" style="font-size:11px;color:var(--tl);font-weight:600"></span>
+      </div>
       </div>
     </div>
 
@@ -545,6 +553,7 @@ tbody tr:hover td{background:var(--sf)}
     <div class="sub-tabs" style="margin-bottom:18px">
       <div class="sub-tab on" onclick="goWtdTab('wtd')" id="wtdtab-wtd">Week-to-Date</div>
       <div class="sub-tab" onclick="goWtdTab('mtd')" id="wtdtab-mtd">Month-to-Date</div>
+      <div class="sub-tab" onclick="goWtdTab('lmtd')" id="wtdtab-lmtd">Last Month</div>
     </div>
 
     <!-- WTD Panel -->
@@ -610,8 +619,11 @@ tbody tr:hover td{background:var(--sf)}
         </div>
       </div>
     </div>
+    <!-- Last Month Panel -->
+    <div id="panel-lmtd" style="display:none">
+      <div id="lmtd-content" style="padding:20px;text-align:center;color:var(--mu);font-size:12px">Select Last Month tab to load data</div>
+    </div>
   </div>
-
     </div><!-- /pages -->
 </main>
 
@@ -2158,7 +2170,185 @@ function renderRmkMonthlyBusiness(){
 
 // ── Monthly Remarks Panel ──
 
-// ── Remarks Summary — all remarks updated by users, Business-wise ──
+// ── Last Month History ───────────────────────────────────────
+function renderLastMonthHistory(){
+  var lm = new Date(); lm.setDate(1); lm.setMonth(lm.getMonth()-1);
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var histSheet = 'NI_History_'+months[lm.getMonth()]+lm.getFullYear();
+  var facSheet  = 'NI_FacHistory_'+months[lm.getMonth()]+lm.getFullYear();
+  var label = lm.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  var el = document.getElementById('lmtd-content');
+  if(el) el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--mu)">&#8635; Loading '+label+'...</div>';
+
+  Promise.all([
+    fetchJ(PROXY+'?sheet='+encodeURIComponent(histSheet)+'&t='+Date.now()).catch(function(){return [];}),
+    fetchJ(PROXY+'?sheet='+encodeURIComponent(facSheet)+'&t='+Date.now()).catch(function(){return [];})
+  ]).then(function(res){
+    var lmHistData = Array.isArray(res[0]) ? res[0] : [];
+    var lmFacData  = Array.isArray(res[1]) ? res[1] : [];
+
+    if(!lmHistData.length){
+      if(el) el.innerHTML = '<div style="padding:48px;text-align:center;color:var(--mu)">'
+        + '<div style="font-size:28px;margin-bottom:10px">&#128197;</div>'
+        + '<div style="font-size:13px;font-weight:600">No data for '+label+'</div>'
+        + '<div style="font-size:11px;margin-top:6px">Archive sheet <code>'+histSheet+'</code> not found.<br>Run <code>archiveMonthlyData()</code> in Apps Script to create it.</div>'
+        + '</div>';
+      return;
+    }
+
+    // Compute full month totals from lmHistData
+    function n(v){return parseFloat(v)||0;}
+    var totNeg=0,totPos=0,totNet=0,totNegQ=0,totPosQ=0;
+    var btMap={}, daily={};
+    lmHistData.forEach(function(row){
+      var bt=row['Business Type']; if(!bt||bt==='TOTAL') return;
+      totNeg+=n(row['Total Neg Value']); totPos+=n(row['Pos Value']||0);
+      totNegQ+=n(row['Total Neg Qty']); totPosQ+=n(row['Pos Qty']||0);
+      if(!btMap[bt]) btMap[bt]={neg:0,pos:0}; 
+      btMap[bt].neg+=n(row['Total Neg Value']); btMap[bt].pos+=n(row['Pos Value']||0);
+      var ds=row['Date']||''; if(!daily[ds]) daily[ds]={};
+      if(!daily[ds][bt]) daily[ds][bt]=0; daily[ds][bt]+=n(row['Total Neg Value']);
+    });
+    totNet=totNeg-totPos;
+    var rate=totNeg>0?Math.round(totPos/totNeg*100):0;
+
+    // Build chart labels + series
+    var days=Object.keys(daily).sort();
+    var BTS=['3PL B2C','Self Warehouse','Dark Store','3PL B2B'];
+    var BT_COLORS=['#2563eb','#166534','#7c3aed','#64748b'];
+
+    // KPIs
+    var kpiHtml='<div class="impact-hero" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">'
+      +'<div class="imp-tile imp-neg"><div class="imp-lbl">&#9660; Negative Impact</div><div class="imp-big">'+fv(totNeg)+'</div><div class="imp-sub">'+fq(totNegQ)+' units · '+label+'</div></div>'
+      +'<div class="imp-tile imp-pos"><div class="imp-lbl">&#9650; Positive Impact</div><div class="imp-big">'+fv(totPos)+'</div><div class="imp-sub">+'+fq(totPosQ)+' units recovered</div></div>'
+      +'<div class="imp-tile '+(totNet>0?'imp-neg':'imp-net')+'"><div class="imp-lbl">&#9654; Net Impact</div><div class="imp-big">'+fv(totNet)+'</div><div class="imp-sub">Full month exposure</div></div>'
+      +'<div class="imp-tile" style="border-color:var(--tl-bd)"><div class="imp-lbl">&#9685; Recovery Rate</div><div class="imp-big" style="color:var(--gn)">'+rate+'%</div><div class="imp-sub">Positive / Negative ratio</div></div>'
+      +'</div>';
+
+    // BT bars
+    var btBars='<div class="card" style="padding:16px 20px;margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">Business Type — '+label+' Full Month</div>';
+    BTS.forEach(function(bt,i){
+      var neg=btMap[bt]?btMap[bt].neg:0;
+      var pct=totNeg>0?Math.round(neg/totNeg*100):0;
+      btBars+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="font-weight:600">'+bt+'</span><span style="font-family:var(--mono);color:var(--re)">'+fv(neg)+'</span></div>'
+        +'<div style="height:6px;background:rgba(0,0,0,.08);border-radius:3px"><div style="height:100%;width:'+pct+'%;background:'+BT_COLORS[i]+';border-radius:3px"></div></div></div>';
+    });
+    btBars+='</div>';
+
+    // Facility table
+    var facRows=''; var facMap={};
+    lmFacData.forEach(function(row){
+      var fac=row['Facility']||''; if(!fac) return;
+      if(!facMap[fac]) facMap[fac]={neg:0,pos:0,negQ:0};
+      facMap[fac].neg+=n(row['Neg Value']||row['Total Neg Value']||0);
+      facMap[fac].pos+=n(row['Pos Value']||0);
+      facMap[fac].negQ+=n(row['Neg Qty']||row['Total Neg Qty']||0);
+    });
+    Object.entries(facMap).sort(function(a,b){return b[1].neg-a[1].neg;}).slice(0,10)
+      .forEach(function(entry,i){
+        var fac=entry[0],s=entry[1];
+        var net=s.neg-s.pos;
+        facRows+='<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+          +'<td style="padding:7px 10px;color:var(--mu);font-size:10px">'+(i+1)+'</td>'
+          +'<td style="padding:7px 10px;font-size:10px;font-weight:600">'+fac+'</td>'
+          +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--re)">'+fv(s.neg)+'</td>'
+          +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--mu)">'+fv(net)+'</td>'
+          +'</tr>';
+      });
+    var facTable='<div class="card"><div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities — '+label+'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
+      +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">#</th>'
+      +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>'
+      +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Neg COGS</th>'
+      +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>'
+      +'</tr></thead><tbody>'+facRows+'</tbody></table></div>';
+
+    if(el) el.innerHTML = kpiHtml + btBars + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' + facTable + '</div>';
+  });
+}
+// ── End Last Month History ────────────────────────────────────
+var _rmkSelectedMonth = 'current'; // 'current' or 'last'
+var _rmkLastMonthData = []; // cached last month NI_DailyTop5
+
+function getLastMonthSheetName() {
+  var d = new Date();
+  // Last month = current month - 1
+  var lm = new Date(d.getFullYear(), d.getMonth()-1, 1);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return 'NI_DailyTop5_' + months[lm.getMonth()] + lm.getFullYear();
+}
+
+function getLastMonthLabel() {
+  var d = new Date();
+  var lm = new Date(d.getFullYear(), d.getMonth()-1, 1);
+  return lm.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+}
+
+function getCurrentMonthLabel() {
+  return new Date().toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+}
+
+function onRmkMonthChange() {
+  var sel = document.getElementById('rmk-month-sel');
+  _rmkSelectedMonth = sel ? sel.value : 'current';
+  var label = _rmkSelectedMonth === 'last' ? getLastMonthLabel() : getCurrentMonthLabel();
+  var lbl = document.getElementById('rmk-month-label');
+  if(lbl) lbl.textContent = '— ' + label;
+  // Reload the active tab with new month data
+  if(_rmkSelectedMonth === 'last') {
+    loadLastMonthRmkData(function(){ refreshActiveRmkTab(); });
+  } else {
+    // Always refetch current month
+    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+      if(Array.isArray(rows)){
+        dailyTop5Data = rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
+        allEventHistory = dailyTop5Data;
+      }
+      refreshActiveRmkTab();
+    }).catch(function(){ refreshActiveRmkTab(); });
+  }
+}
+
+function loadLastMonthRmkData(cb) {
+  var shName = getLastMonthSheetName();
+  var lmWrap = document.getElementById('rmk-monthly-wrap') || document.getElementById('rmk-summary-wrap');
+  if(lmWrap) lmWrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">&#8635; Loading ' + getLastMonthLabel() + '...</div>';
+  fetchJ(PROXY+'?sheet='+encodeURIComponent(shName)+'&t='+Date.now()).then(function(rows){
+    if(Array.isArray(rows) && rows.length){
+      _rmkLastMonthData = rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
+      dailyTop5Data = _rmkLastMonthData;
+      allEventHistory = _rmkLastMonthData;
+      if(cb) cb();
+    } else {
+      // Archived sheet doesn't exist yet — show message
+      var w = document.getElementById('rmk-monthly-wrap') || document.getElementById('rmk-summary-wrap');
+      if(w) w.innerHTML = '<div style="padding:40px;text-align:center;color:var(--mu)">'
+        + '<div style="font-size:28px;margin-bottom:12px">&#128197;</div>'
+        + '<div style="font-size:13px;font-weight:600">No archived data for ' + getLastMonthLabel() + '</div>'
+        + '<div style="font-size:11px;margin-top:6px">Archive sheet <code>' + shName + '</code> not found.<br>Run <code>archiveMonthlyData()</code> in Apps Script to create it.</div>'
+        + '</div>';
+    }
+  }).catch(function(e){
+    console.warn('Last month load failed:', e);
+    var w = document.getElementById('rmk-monthly-wrap') || document.getElementById('rmk-summary-wrap');
+    if(w) w.innerHTML = '<div style="padding:40px;text-align:center;color:var(--mu)">Could not load last month data. Sheet <b>' + shName + '</b> may not exist yet.</div>';
+  });
+}
+
+function refreshActiveRmkTab() {
+  var v = document.getElementById('rmk-tog-tracker').classList.contains('on') ? 'tracker'
+        : document.getElementById('rmk-tog-monthly').classList.contains('on') ? 'monthly'
+        : document.getElementById('rmk-tog-summary').classList.contains('on') ? 'summary' : 'tracker';
+  if(v==='tracker') renderRemarksTracker();
+  if(v==='monthly') renderRmkMonthlyBusiness();
+  if(v==='summary') renderRmkSummaryBW();
+}
+
+// Pass targetSheet to saveRmk for archived months
+function getRmkTargetSheet() {
+  return _rmkSelectedMonth === 'last' ? getLastMonthSheetName() : 'NI_DailyTop5';
+}
+// ── End Remarks Month Selector ──────────────────────────────
 function renderRmkSummaryBW(){
   var monthLabel = new Date().toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   var BT_LIST = ['Self Warehouse','Dark Store','3PL B2C','3PL B2B','Quality'];
@@ -2505,10 +2695,10 @@ function renderRmkDailyReview(period){
 function goWtdTab(t){
   document.querySelectorAll('[id^="wtdtab-"]').forEach(function(el){el.classList.remove('on');});
   document.getElementById('wtdtab-'+t).classList.add('on');
-  document.getElementById('panel-wtd').style.display = t==='wtd'?'block':'none';
-  document.getElementById('panel-mtd').style.display = t==='mtd'?'block':'none';
-  // Update badge counts
-  var nb=document.getElementById('nb-wtd');
+  document.getElementById('panel-wtd').style.display  = t==='wtd'  ? 'block':'none';
+  document.getElementById('panel-mtd').style.display  = t==='mtd'  ? 'block':'none';
+  document.getElementById('panel-lmtd').style.display = t==='lmtd' ? 'block':'none';
+  if(t==='lmtd') renderLastMonthHistory();
 }
 
 // MODAL
@@ -2540,7 +2730,7 @@ function saveRmk(){
     var ehId=(_rmk.ehId&&_rmk.ehId.trim())
       ? _rmk.ehId.trim()
       : [_evDate,_rmk.sku,_rmk.batch||'',_rmk.fac,_rmk.ev].join('|');
-    var p={action:'saveRemark',sku:_rmk.sku,batch:_rmk.batch,facility:_rmk.fac,bizType:_rmk.bt,event:_rmk.ev,cogsVal:parseFloat(_rmk.cogs)||0,remark:t,assignedTo:a.name,assignedEmail:a.email,updatedBy:userName,tags:tagStr,isEdit:isEdit,date:new Date().toLocaleDateString('en-IN'),ehId:ehId,status:'Completed'};fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'}).then(function(){// Remove any existing entry with same EH_ID or composite key (dedup)
+    var p={action:'saveRemark',sku:_rmk.sku,batch:_rmk.batch,facility:_rmk.fac,bizType:_rmk.bt,event:_rmk.ev,cogsVal:parseFloat(_rmk.cogs)||0,remark:t,assignedTo:a.name,assignedEmail:a.email,updatedBy:userName,tags:tagStr,isEdit:isEdit,date:new Date().toLocaleDateString('en-IN'),ehId:ehId,status:'Completed',targetSheet:getRmkTargetSheet()};fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'}).then(function(){// Remove any existing entry with same EH_ID or composite key (dedup)
     var _ehId=(p.ehId||'').trim();
     var _ck=[p.date,p.sku,p.batch||'',p.facility,p.event].join('|');
     for(var _i=allRemarks.length-1;_i>=0;_i--){
