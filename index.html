@@ -2196,16 +2196,19 @@ function renderLastMonthHistory(){
       return;
     }
 
-    // Compute full month totals from lmHistData
+    // Compute full month totals — actual NI_History columns: Total Neg Value, Pos Value, Net Value
     function n(v){return parseFloat(v)||0;}
     var totNeg=0,totPos=0,totNet=0,totNegQ=0,totPosQ=0;
     var btMap={}, daily={};
     lmHistData.forEach(function(row){
       var bt=row['Business Type']; if(!bt||bt==='TOTAL') return;
-      totNeg+=n(row['Total Neg Value']); totPos+=n(row['Pos Value']||0);
-      totNegQ+=n(row['Total Neg Qty']); totPosQ+=n(row['Pos Qty']||0);
-      if(!btMap[bt]) btMap[bt]={neg:0,pos:0}; 
-      btMap[bt].neg+=n(row['Total Neg Value']); btMap[bt].pos+=n(row['Pos Value']||0);
+      totNeg +=n(row['Total Neg Value']);
+      totPos +=n(row['Pos Value']||0);
+      totNegQ+=n(row['Total Neg Qty']);
+      totPosQ+=n(row['Pos Qty']||0);
+      if(!btMap[bt]) btMap[bt]={neg:0,pos:0};
+      btMap[bt].neg+=n(row['Total Neg Value']);
+      btMap[bt].pos+=n(row['Pos Value']||0);
       var ds=row['Date']||''; if(!daily[ds]) daily[ds]={};
       if(!daily[ds][bt]) daily[ds][bt]=0; daily[ds][bt]+=n(row['Total Neg Value']);
     });
@@ -2240,9 +2243,10 @@ function renderLastMonthHistory(){
     lmFacData.forEach(function(row){
       var fac=row['Facility']||''; if(!fac) return;
       if(!facMap[fac]) facMap[fac]={neg:0,pos:0,negQ:0};
-      facMap[fac].neg+=n(row['Neg Value']||row['Total Neg Value']||0);
-      facMap[fac].pos+=n(row['Pos Value']||0);
-      facMap[fac].negQ+=n(row['Neg Qty']||row['Total Neg Qty']||0);
+      // Actual NI_FacHistory columns: NegValue, PosValue, NegQty, NetValue
+      facMap[fac].neg +=n(row['NegValue']||0);
+      facMap[fac].pos +=n(row['PosValue']||0);
+      facMap[fac].negQ+=n(row['NegQty']||0);
     });
     Object.entries(facMap).sort(function(a,b){return b[1].neg-a[1].neg;}).slice(0,10)
       .forEach(function(entry,i){
