@@ -553,7 +553,6 @@ tbody tr:hover td{background:var(--sf)}
     <div class="sub-tabs" style="margin-bottom:18px">
       <div class="sub-tab on" onclick="goWtdTab('wtd')" id="wtdtab-wtd">Week-to-Date</div>
       <div class="sub-tab" onclick="goWtdTab('mtd')" id="wtdtab-mtd">Month-to-Date</div>
-      <div class="sub-tab" onclick="goWtdTab('lmtd')" id="wtdtab-lmtd">Last Month</div>
     </div>
 
     <!-- WTD Panel -->
@@ -618,10 +617,6 @@ tbody tr:hover td{background:var(--sf)}
           <div id="mtd-biz-bars"></div>
         </div>
       </div>
-    </div>
-    <!-- Last Month Panel -->
-    <div id="panel-lmtd" style="display:none">
-      <div id="lmtd-content" style="padding:20px;text-align:center;color:var(--mu);font-size:12px">Select Last Month tab to load data</div>
     </div>
   </div>
     </div><!-- /pages -->
@@ -1467,25 +1462,28 @@ function renderHistory(){
       if(d<startDate) return;
       if(bt==='TOTAL'){
         var dk=row['Date'];
-        a.negV+=n(row['Total Neg Value']||row['Total Value']);
-        a.negQ+=n(row['Total Neg Qty']||row['Total Qty']);
+        // Financial Loss only: G2B + G2Q + BadGRN (exclude Expiry Risk)
+        var flV=n(row['G2B Value'])+n(row['G2Q Value'])+n(row['BadGRN Value']);
+        var flQ=n(row['G2B Qty'])+n(row['G2Q Qty'])+n(row['BadGRN Qty']);
+        a.negV+=flV; a.negQ+=flQ;
         a.posV+=n(row['Pos Value']); a.posQ+=n(row['Pos Qty']);
-        a.netV+=n(row['Net Value']); a.g2bQ+=n(row['G2B Qty']);
+        a.netV=a.negV-a.posV; a.g2bQ+=n(row['G2B Qty']);
         a.g2bV+=n(row['G2B Value']); a.expQ+=n(row['Expiry Qty']);
         a.expV+=n(row['Expiry Value']); a.grnQ+=n(row['BadGRN Qty']); a.days++;
-        if(!daily[dk]) daily[dk]=0; daily[dk]+=n(row['Net Value']);
+        if(!daily[dk]) daily[dk]=0; daily[dk]+=flV-n(row['Pos Value']);
       } else {
         if(!bizMap[bt]) bizMap[bt]={nV:0,pV:0,netV:0,negQ:0,posQ:0};
-        bizMap[bt].nV+=n(row['Total Neg Value']||row['Total Value']);
-        bizMap[bt].negQ+=n(row['Total Neg Qty']||row['Total Qty']);
+        var flVbt=n(row['G2B Value'])+n(row['G2Q Value'])+n(row['BadGRN Value']);
+        var flQbt=n(row['G2B Qty'])+n(row['G2Q Qty'])+n(row['BadGRN Qty']);
+        bizMap[bt].nV+=flVbt; bizMap[bt].negQ+=flQbt;
         bizMap[bt].pV+=n(row['Pos Value']); bizMap[bt].posQ+=n(row['Pos Qty']);
-        bizMap[bt].netV+=n(row['Net Value']);
+        bizMap[bt].netV=bizMap[bt].nV-bizMap[bt].pV;
         // Per-BT daily neg COGS for multi-line trend
         var dk2=row['Date'];
         if(!a.btDaily) a.btDaily={};
         if(!a.btDaily[bt]) a.btDaily[bt]={};
         if(!a.btDaily[bt][dk2]) a.btDaily[bt][dk2]=0;
-        a.btDaily[bt][dk2]+=n(row['Total Neg Value']||row['Total Value']);
+        a.btDaily[bt][dk2]+=flVbt;
       }
     });
     a.recoveryRate=a.negV>0?(a.posV/a.negV*100):0;
@@ -1508,7 +1506,7 @@ function renderHistory(){
     a.facRanked=Object.values(facAcc).map(function(f){
       f.netVal=f.negVal-f.posVal; return f;
     }).sort(function(a,b){return b.netVal-a.netVal;});
-    a.bizMap=bizMap; a.daily=daily;
+    a.bizMap=bizMap; a.daily=daily; a.startDate=startDate;
     return a;
   }
 
@@ -1529,7 +1527,7 @@ function renderHistory(){
       '<div class="imp-tile imp-neg">'+
         '<div class="imp-lbl">&#9660; Negative Impact</div>'+
         '<div class="imp-big">'+fv(acc.negV)+'</div>'+
-        '<div class="imp-sub"><span class="mono">'+fq(acc.negQ)+'</span> units &middot; 1 May onwards</div>'+
+        '<div class="imp-sub"><span class="mono">'+fq(acc.negQ)+'</span> units &middot; '+fmtDate(acc.startDate)+' onwards</div>'+
       '</div>'+
       '<div class="imp-tile imp-pos">'+
         '<div class="imp-lbl">&#9650; Positive Impact</div>'+
@@ -3045,7 +3043,10 @@ function boot(){
     step('Building analysis...',45);
     if(!evData.length && !stockData.length){showErr('No data found','Run testRunNow() in Apps Script first to populate sheets.');return;}
     setTimeout(function(){
-      allEventsData=evData; R=buildRFromEvents(evData);
+      allEventsData=evData;
+      var _todayStr=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Kolkata'});
+      var todayEvData=evData.filter(function(row){ return row['Date']===_todayStr && row['Impact Class']!=='Expiry Risk'; });
+      R=buildRFromEvents(todayEvData);
       step('Processing inventory...',65);
       // Prefer NI_TodayStock (accurate), fall back to NI_Inventory if unavailable
       if(stockData && stockData.length){
