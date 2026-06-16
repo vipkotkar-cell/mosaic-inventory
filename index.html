@@ -1393,119 +1393,73 @@ function togCat(el){var b=el.parentElement.querySelector('.cat-body'),a=el.query
 
 // ── RENDER WTD & MTD — CEO View ──
 function renderHistory(){
-
-  // ── If NI_History is empty, build today's row directly from R ──
-  if(!histData.length){
-    if(!R){ // nothing at all yet — show placeholder
-      
-      ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
-       'wtd-trend','mtd-trend','wtd-fac-rank','mtd-fac-rank',
-       'wtd-biz-bars','mtd-biz-bars'].forEach(function(id){
-         var e=document.getElementById(id); if(e) e.innerHTML='<div class="empty">No history yet — run testRunNow() in Apps Script</div>';
-      });
-      return;
-    }
-    // Build synthetic histData from today's R — only if today not already in NI_History
-    var ds=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-    var todayAlreadyInHist=histData.some(function(row){
-      return (row['Date']||'')=== ds && (row['Business Type']||'')==='TOTAL';
+  // Read directly from NI_Events (allEventsData) — no NI_History needed
+  if(!allEventsData.length){
+    ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
+     'wtd-trend','mtd-trend','wtd-fac-rank','mtd-fac-rank',
+     'wtd-biz-bars','mtd-biz-bars'].forEach(function(id){
+       var e=document.getElementById(id); if(e) e.innerHTML='<div class="empty">No data yet — run the daily report in Apps Script first</div>';
     });
-    if(todayAlreadyInHist){ /* today already in NI_History — no synthesis needed */ return; }
-    histData=[];
-    (R.bizRanked||[]).forEach(function(bz){
-      histData.push({'Date':ds,'Business Type':bz.bt,
-        'Total Neg Qty':String(bz.negQty||0),'Total Neg Value':String(bz.negVal||0),
-        'Pos Qty':String(bz.posQty||0),'Pos Value':String(bz.posVal||0),
-        'Net Qty':String((bz.negQty||0)-(bz.posQty||0)),'Net Value':String(bz.netVal||0),
-        'G2B Qty':'0','G2B Value':'0','Expiry Qty':'0','Expiry Value':'0','BadGRN Qty':'0'});
-    });
-    var g2bQ=(R.neg.g2b||[]).reduce(function(s,x){return s+x.qty;},0);
-    var g2bV=(R.neg.g2b||[]).reduce(function(s,x){return s+x.cogsVal;},0);
-    var expQ=[].concat(R.neg.a2ne||[],R.neg.ne2e||[],R.neg.a2e||[]).reduce(function(s,x){return s+x.qty;},0);
-    var expV=[].concat(R.neg.a2ne||[],R.neg.ne2e||[],R.neg.a2e||[]).reduce(function(s,x){return s+x.cogsVal;},0);
-    var grnQ=[].concat(R.neg.newBad||[],R.neg.newQC||[]).reduce(function(s,x){return s+x.qty;},0);
-    histData.push({'Date':ds,'Business Type':'TOTAL',
-      'Total Neg Qty':String(R.totNeg||0),'Total Neg Value':String(R.totVal||0),
-      'Pos Qty':String(R.posQty||0),'Pos Value':String(R.posVal||0),
-      'Net Qty':String((R.totNeg||0)-(R.posQty||0)),'Net Value':String(R.netVal||0),
-      'G2B Qty':String(g2bQ),'G2B Value':String(g2bV),
-      'Expiry Qty':String(expQ),'Expiry Value':String(expV),'BadGRN Qty':String(grnQ)});
-    if(!facHistData.length) facHistData=(R.facRanked||[]).map(function(f){
-      return {'Date':ds,'Facility':f.name,'BizType':f.bt||'','City':f.city||'',
-        'NegQty':String(f.negQty||0),'NegValue':String(f.negVal||0),
-        'PosQty':String(f.posQty||0),'PosValue':String(f.posVal||0),'NetValue':String(f.netVal||0)};
-    });
-    
+    return;
   }
   function n(v){return parseFloat(v)||0;}
-  // ── Dedup histData by Date+BT — guards against duplicate rows in NI_History ──
-  var seen={};
-  histData = histData.filter(function(row){
-    var key=(row['Date']||'')+'|'+(row['Business Type']||'');
-    if(seen[key]) return false;
-    seen[key]=true; return true;
-  });
   var now=new Date(), dow=now.getDay(), db=dow===0?6:dow-1;
   var wkS=new Date(now); wkS.setDate(now.getDate()-db); wkS.setHours(0,0,0,0);
   var moS=new Date(now.getFullYear(),now.getMonth(),1);
-  var wkSClamped = wkS < moS ? moS : wkS; // WTD never crosses into previous month
-  var _cy=now.getFullYear(), _cm=now.getMonth(); // current year/month for hard guard
+  var wkSClamped = wkS < moS ? moS : wkS;
+  var _cy=now.getFullYear(), _cm=now.getMonth();
 
   function calcPeriod(startDate){
-    var a={negV:0,negQ:0,posV:0,posQ:0,netV:0,g2bQ:0,g2bV:0,expQ:0,expV:0,grnQ:0,days:0};
-    var bizMap={}, facMap={}, daily={};
-    histData.forEach(function(row){
-      var bt=row['Business Type']; if(!bt) return;
+    var a={negV:0,negQ:0,posV:0,posQ:0,netV:0,g2bQ:0,g2bV:0,expQ:0,expV:0,grnQ:0,days:0,btDaily:{}};
+    var bizMap={}, daily={}, daySet={};
+    allEventsData.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      // Hard current-month guard — no data from previous months ever shown
       if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
       if(d<startDate) return;
-      if(bt==='TOTAL'){
-        var dk=row['Date'];
-        // Financial Loss only: G2B + G2Q + BadGRN (exclude Expiry Risk)
-        var flV=n(row['G2B Value'])+n(row['G2Q Value'])+n(row['BadGRN Value']);
-        var flQ=n(row['G2B Qty'])+n(row['G2Q Qty'])+n(row['BadGRN Qty']);
-        a.negV+=flV; a.negQ+=flQ;
-        a.posV+=n(row['Pos Value']); a.posQ+=n(row['Pos Qty']);
-        a.netV=a.negV-a.posV; a.g2bQ+=n(row['G2B Qty']);
-        a.g2bV+=n(row['G2B Value']); a.expQ+=n(row['Expiry Qty']);
-        a.expV+=n(row['Expiry Value']); a.grnQ+=n(row['BadGRN Qty']); a.days++;
-        if(!daily[dk]) daily[dk]=0; daily[dk]+=flV-n(row['Pos Value']);
+      var bt  = row['BizType']||'Other';
+      var qty = n(row['Qty']);
+      var cv  = n(row['COGSValue']);
+      var type= row['Type']||'';
+      var dir = row['Direction']||'';
+      var ic  = (row['Impact Class']||'').trim();
+      var dk  = row['Date'];
+      daySet[dk]=1;
+      if(!bizMap[bt]) bizMap[bt]={nV:0,pV:0,netV:0,negQ:0,posQ:0};
+      if(!a.btDaily[bt]) a.btDaily[bt]={};
+      if(!a.btDaily[bt][dk]) a.btDaily[bt][dk]=0;
+      if(!daily[dk]) daily[dk]=0;
+      if(type==='POS'){
+        a.posV+=cv; a.posQ+=qty;
+        bizMap[bt].pV+=cv; bizMap[bt].posQ+=qty;
+        daily[dk]-=cv;
+      } else if(ic==='Expiry Risk'){
+        a.expQ+=qty; a.expV+=cv;
       } else {
-        if(!bizMap[bt]) bizMap[bt]={nV:0,pV:0,netV:0,negQ:0,posQ:0};
-        var flVbt=n(row['G2B Value'])+n(row['G2Q Value'])+n(row['BadGRN Value']);
-        var flQbt=n(row['G2B Qty'])+n(row['G2Q Qty'])+n(row['BadGRN Qty']);
-        bizMap[bt].nV+=flVbt; bizMap[bt].negQ+=flQbt;
-        bizMap[bt].pV+=n(row['Pos Value']); bizMap[bt].posQ+=n(row['Pos Qty']);
-        bizMap[bt].netV=bizMap[bt].nV-bizMap[bt].pV;
-        // Per-BT daily neg COGS for multi-line trend
-        var dk2=row['Date'];
-        if(!a.btDaily) a.btDaily={};
-        if(!a.btDaily[bt]) a.btDaily[bt]={};
-        if(!a.btDaily[bt][dk2]) a.btDaily[bt][dk2]=0;
-        a.btDaily[bt][dk2]+=flVbt;
+        // Financial Loss
+        a.negV+=cv; a.negQ+=qty;
+        bizMap[bt].nV+=cv; bizMap[bt].negQ+=qty;
+        a.btDaily[bt][dk]+=cv;
+        daily[dk]+=cv;
+        if(dir==='g2b'||dir==='g2rc'||dir==='g2q'){ a.g2bQ+=qty; a.g2bV+=cv; }
+        if(dir==='newBad'||dir==='newQC'){ a.grnQ+=qty; }
       }
     });
+    Object.keys(bizMap).forEach(function(bt){ bizMap[bt].netV=bizMap[bt].nV-bizMap[bt].pV; });
+    a.days=Object.keys(daySet).length;
+    a.netV=a.negV-a.posV;
     a.recoveryRate=a.negV>0?(a.posV/a.negV*100):0;
-    // ── Facility ranking from NI_FacHistory filtered by period ──
+    // Facility ranking from NI_FacHistory
     var facAcc={};
     (facHistData||[]).forEach(function(row){
       var d=parseDate(row['Date']); if(!d||d<startDate) return;
       if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
       var fac=row['Facility']||''; if(!fac) return;
-      var nv=parseFloat(row['NegValue'])||0;
-      var nq=parseFloat(row['NegQty'])||0;
-      var pv=parseFloat(row['PosValue'])||0;
-      var pq=parseFloat(row['PosQty'])||0;
-      var bt=row['BizType']||getBT(fac);
-      var city=row['City']||getCity(fac);
-      if(!facAcc[fac]) facAcc[fac]={name:fac,bt:bt,city:city,negVal:0,posVal:0,negQty:0,posQty:0};
-      facAcc[fac].negVal+=nv; facAcc[fac].negQty+=nq;
-      facAcc[fac].posVal+=pv; facAcc[fac].posQty+=pq;
+      if(!facAcc[fac]) facAcc[fac]={name:fac,bt:row['BizType']||'',city:row['City']||'',negVal:0,posVal:0,negQty:0,posQty:0};
+      facAcc[fac].negVal+=n(row['NegValue']); facAcc[fac].negQty+=n(row['NegQty']);
+      facAcc[fac].posVal+=n(row['PosValue']); facAcc[fac].posQty+=n(row['PosQty']);
     });
-    a.facRanked=Object.values(facAcc).map(function(f){
-      f.netVal=f.negVal-f.posVal; return f;
-    }).sort(function(a,b){return b.netVal-a.netVal;});
+    a.facRanked=Object.values(facAcc).map(function(f){ f.netVal=f.negVal-f.posVal; return f; })
+      .sort(function(a,b){return b.netVal-a.netVal;});
     a.bizMap=bizMap; a.daily=daily; a.startDate=startDate;
     return a;
   }
@@ -3044,8 +2998,12 @@ function boot(){
     if(!evData.length && !stockData.length){showErr('No data found','Run testRunNow() in Apps Script first to populate sheets.');return;}
     setTimeout(function(){
       allEventsData=evData;
-      var _todayStr=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Kolkata'});
-      var todayEvData=evData.filter(function(row){ return row['Date']===_todayStr && row['Impact Class']!=='Expiry Risk'; });
+      var _now=new Date(); var _tY=_now.getFullYear(),_tM=_now.getMonth(),_tD=_now.getDate();
+      var todayEvData=evData.filter(function(row){
+        if((row['Impact Class']||'').trim()==='Expiry Risk') return false;
+        var d=parseDate(row['Date']); if(!d) return false;
+        return d.getFullYear()===_tY && d.getMonth()===_tM && d.getDate()===_tD;
+      });
       R=buildRFromEvents(todayEvData);
       step('Processing inventory...',65);
       // Prefer NI_TodayStock (accurate), fall back to NI_Inventory if unavailable
