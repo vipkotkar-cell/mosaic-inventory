@@ -1604,7 +1604,8 @@ function renderHistory(){
     var r=50, cx=70, cy=65;
     var rad=(angle-180)*(Math.PI/180);
     var nx=cx+r*Math.cos(rad), ny=cy+r*Math.sin(rad);
-    document.getElementById(pfx+'-gauge').innerHTML=
+    var gaugeEl=document.getElementById(pfx+'-gauge');
+    if(gaugeEl) gaugeEl.innerHTML=
       '<div class="gauge-wrap">'
       +'<svg class="gauge-svg" width="140" height="80" viewBox="0 0 140 80">'
       +'<path d="M20,65 A50,50 0 0,1 120,65" fill="none" stroke="#e4e8f0" stroke-width="14" stroke-linecap="round"/>'
@@ -3323,7 +3324,7 @@ function goWtdTab(t){
   document.getElementById('wtdtab-'+t).classList.add('on');
   document.getElementById('panel-wtd').style.display  = t==='wtd'  ? 'block':'none';
   document.getElementById('panel-mtd').style.display  = t==='mtd'  ? 'block':'none';
-  document.getElementById('panel-lmtd').style.display = t==='lmtd' ? 'block':'none';
+  var lmtdEl=document.getElementById('panel-lmtd'); if(lmtdEl) lmtdEl.style.display = t==='lmtd' ? 'block':'none';
   if(t==='lmtd') renderLastMonthHistory();
 }
 
