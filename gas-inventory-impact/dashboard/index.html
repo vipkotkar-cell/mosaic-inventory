@@ -3047,7 +3047,10 @@ function saveRmk(){
       if((_ehId&&_rEh===_ehId)||_rCk===_ck){ allRemarks.splice(_i,1); break; }
     }
     allRemarks.push({ID:'RMK-'+Date.now(),Date:p.date,SKU:p.sku,Batch:p.batch,Facility:p.facility,'Business Type':p.bizType,'COGS Value':p.cogsVal,Event:p.event,Remark:p.remark,'Assigned To':p.assignedTo,Status:'Completed',EH_ID:p.ehId||''});
-    if(R) renderRemarksTracker();closeRmk();btn.disabled=false;btn.textContent='Save Remark';try{localStorage.setItem('rmk_user_name',document.getElementById('rmk-user-name').value.trim());}catch(e){};showToast('&#10003; Saved — refreshing data...');
+    closeRmk();btn.disabled=false;btn.textContent='Save Remark';
+    try{localStorage.setItem('rmk_user_name',document.getElementById('rmk-user-name').value.trim());}catch(e){}
+    renderActiveRmkView();
+    showToast('&#10003; Saved — refreshing data...');
     // Refetch NI_DailyTop5 to get fresh remark status — single source of truth
     fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
       if(!Array.isArray(rows)) return;
@@ -3056,12 +3059,10 @@ function saveRmk(){
       var pend=dailyTop5Data.filter(function(r){return !r['Remark'];}).length;
       var nb=document.getElementById('nb-remarks');
       if(nb) nb.textContent=pend>0?pend:'✓';
-      // Re-render
-      renderRemarksTracker();
-      if(window._openMonthlyBt){ renderRmkMonthlyBusiness(); renderRmkMonthlyBizType(); }
+      renderActiveRmkView();
       showToast('&#10003; Saved &mdash; will appear in '+a.name+"'s morning report");
     }).catch(function(){
-      // Fallback: patch inline if refetch fails
+      // Fallback: patch remark inline if refetch fails
       var savedEhId=_rmk.ehId||[_rmk.date||'',_rmk.sku||'',_rmk.batch||'',_rmk.fac||'',_rmk.ev||''].join('|');
       [dailyTop5Data, allEventHistory].forEach(function(arr){
         arr.forEach(function(ev){
@@ -3072,10 +3073,19 @@ function saveRmk(){
       (window._monthlyEvents||[]).forEach(function(ev){
         if(ev.ehId===savedEhId){ ev.remark=t; ev.status='Completed'; }
       });
-      renderRemarksTracker();
-      if(window._openMonthlyBt){ renderRmkMonthlyBusiness(); renderRmkMonthlyBizType(); }
+      renderActiveRmkView();
     });}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
-function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'updateStatus',id:id,status:status}),mode:'no-cors'}).catch(function(){});allRemarks.forEach(function(r){if(r['ID']===id)r['Status']=status;});if(R) renderRemarksTracker();}
+function renderActiveRmkView(){
+  var todayOn=document.getElementById('rmk-tog-today');
+  var monthlyOn=document.getElementById('rmk-tog-monthly');
+  if(todayOn&&todayOn.classList.contains('on')){
+    renderTop20Today();
+  } else if(monthlyOn&&monthlyOn.classList.contains('on')){
+    renderRmkMonthlyBusiness();
+    renderRmkMonthlyBizType();
+  }
+}
+function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'updateStatus',id:id,status:status}),mode:'no-cors'}).catch(function(){});allRemarks.forEach(function(r){if(r['ID']===id)r['Status']=status;});renderActiveRmkView();}
 
 // DOWNLOAD
 function dlReport(){
