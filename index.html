@@ -401,8 +401,9 @@ tbody tr:hover td{background:var(--sf)}
   <nav class="sb-nav">
     <div class="sb-grp">Inventory Impact Tracking</div>
     <button class="nav-item on" onclick="goPage('today')" id="nav-today"><span class="nav-icon">&#9888;</span>Today&apos;s Impact<span class="nav-bdg" id="nb-today">-</span></button>
-    <button class="nav-item" onclick="goPage('wtd')" id="nav-wtd"><span class="nav-icon">&#128200;</span>WTD &amp; MTD<span class="nav-bdg nav-bdg-g" id="nb-wtd">-</span></button>
-    <button class="nav-item" onclick="goPage('remarks')" id="nav-remarks"><span class="nav-icon">&#128203;</span>Remarks Tracker<span class="nav-bdg nav-bdg-a" id="nb-remarks">-</span></button>
+    <button class="nav-item" onclick="goPage('wtd')" id="nav-wtd"><span class="nav-icon">&#128200;</span>Analysis<span class="nav-bdg nav-bdg-g" id="nb-wtd">-</span></button>
+    <button class="nav-item" onclick="goPage('biz')" id="nav-biz"><span class="nav-icon">&#127981;</span>Business-wise</button>
+    <button class="nav-item" onclick="goPage('remarks')" id="nav-remarks"><span class="nav-icon">&#128203;</span>Remarks<span class="nav-bdg nav-bdg-a" id="nb-remarks">-</span></button>
 
     
     
@@ -547,24 +548,21 @@ tbody tr:hover td{background:var(--sf)}
     <div id="panel-wtd">
       <div class="impact-hero" id="wtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
       <div id="wtd-insight"></div>
-      <!-- Row 1: Movement · Business Type · Brand-wise -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
+      <!-- Row 1: Movement · Brand-wise -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Movement Breakdown</div>
           <div id="wtd-mov-table"></div>
-        </div>
-        <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-          <div id="wtd-biz-bars"></div>
         </div>
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Impact</div>
           <div id="wtd-brand-bars"></div>
         </div>
       </div>
+      <div id="wtd-biz-bars" style="display:none"></div>
       <div id="wtd-gauge" style="display:none"></div>
-      <!-- Row 2: Top 10 Facilities · Business-wise Bar Chart -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <!-- Row 2: Top 10 Facilities -->
+      <div style="margin-bottom:14px">
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities by Net COGS</div>
           <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>
@@ -574,35 +572,29 @@ tbody tr:hover td{background:var(--sf)}
             <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
           </tr></thead><tbody id="wtd-fac-rank"></tbody></table>
         </div>
-        <div class="card" style="padding:16px 20px 14px">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact — Business-wise</div>
-          <div id="wtd-trend" style="width:100%;"></div>
-        </div>
       </div>
+      <div id="wtd-trend" style="display:none"></div>
     </div>
 
     <!-- MTD Panel -->
     <div id="panel-mtd" style="display:none">
       <div class="impact-hero" id="mtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
       <div id="mtd-insight"></div>
-      <!-- Row 1: Movement · Business Type · Brand-wise -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
+      <!-- Row 1: Movement · Brand-wise -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Movement Breakdown</div>
           <div id="mtd-mov-table"></div>
-        </div>
-        <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-          <div id="mtd-biz-bars"></div>
         </div>
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Impact</div>
           <div id="mtd-brand-bars"></div>
         </div>
       </div>
+      <div id="mtd-biz-bars" style="display:none"></div>
       <div id="mtd-gauge" style="display:none"></div>
-      <!-- Row 2: Top 10 Facilities · Business-wise Bar Chart -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <!-- Row 2: Top 10 Facilities -->
+      <div style="margin-bottom:14px">
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities by Net COGS</div>
           <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>
@@ -612,13 +604,49 @@ tbody tr:hover td{background:var(--sf)}
             <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
           </tr></thead><tbody id="mtd-fac-rank"></tbody></table>
         </div>
+      </div>
+      <div id="mtd-trend" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ── BUSINESS-WISE ANALYSIS PAGE ── -->
+  <div class="pg content" id="pg-biz">
+    <div class="sub-tabs" style="margin-bottom:18px">
+      <div class="sub-tab on" onclick="goBizTab('wtd')" id="biztab-wtd">Week-to-Date</div>
+      <div class="sub-tab" onclick="goBizTab('mtd')" id="biztab-mtd">Month-to-Date</div>
+    </div>
+    <!-- WTD Business-wise Panel -->
+    <div id="biz-panel-wtd">
+      <div class="impact-hero" id="biz-wtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
+      <div id="biz-wtd-insight"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+          <div id="biz-wtd-bars"></div>
+        </div>
         <div class="card" style="padding:16px 20px 14px">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact — Business-wise (MTD)</div>
-          <div id="mtd-trend" style="width:100%;"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS by Business Unit (Trend)</div>
+          <div id="biz-wtd-trend" style="width:100%;"></div>
+        </div>
+      </div>
+    </div>
+    <!-- MTD Business-wise Panel -->
+    <div id="biz-panel-mtd" style="display:none">
+      <div class="impact-hero" id="biz-mtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
+      <div id="biz-mtd-insight"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+          <div id="biz-mtd-bars"></div>
+        </div>
+        <div class="card" style="padding:16px 20px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS by Business Unit (Trend)</div>
+          <div id="biz-mtd-trend" style="width:100%;"></div>
         </div>
       </div>
     </div>
   </div>
+
     </div><!-- /pages -->
 </main>
 
@@ -1439,8 +1467,8 @@ function renderHistory(){
   // Read directly from NI_Events (allEventsData) — no NI_History needed
   if(!allEventsData.length){
     ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
-     'wtd-trend','mtd-trend','wtd-fac-rank','mtd-fac-rank',
-     'wtd-biz-bars','mtd-biz-bars'].forEach(function(id){
+     'wtd-fac-rank','mtd-fac-rank',
+     'biz-wtd-kpis','biz-mtd-kpis','biz-wtd-bars','biz-mtd-bars'].forEach(function(id){
        var e=document.getElementById(id); if(e) e.innerHTML='<div class="empty">No data yet — run the daily report in Apps Script first</div>';
     });
     return;
@@ -1722,6 +1750,110 @@ function renderHistory(){
   window._trendAcc={wtd:W, mtd:M};
 }
 
+function renderBizPage(){
+  if(!allEventsData.length){
+    ['biz-wtd-kpis','biz-mtd-kpis','biz-wtd-bars','biz-mtd-bars','biz-wtd-trend','biz-mtd-trend'].forEach(function(id){
+      var e=document.getElementById(id); if(e) e.innerHTML='<div class="empty">No data yet</div>';
+    });
+    return;
+  }
+  function n(v){return parseFloat(v)||0;}
+  var now=new Date(), dow=now.getDay(), db=dow===0?6:dow-1;
+  var wkS=new Date(now); wkS.setDate(now.getDate()-db); wkS.setHours(0,0,0,0);
+  var moS=new Date(now.getFullYear(),now.getMonth(),1);
+  var wkSClamped = wkS < moS ? moS : wkS;
+  var _cy=now.getFullYear(), _cm=now.getMonth();
+
+  function calcBizPeriod(startDate){
+    var bizMap={}, daySet={};
+    allEventsData.forEach(function(row){
+      var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
+      if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
+      if(d<startDate) return;
+      var bt=row['BizType']||'Other';
+      var qty=n(row['Qty']), cv=n(row['COGSValue']);
+      var type=row['Type']||'', ic=(row['Impact Class']||'').trim();
+      var dk=row['Date']; daySet[dk]=1;
+      if(!bizMap[bt]) bizMap[bt]={nV:0,pV:0,netV:0,negQ:0,posQ:0};
+      if(type==='POS'){bizMap[bt].pV+=cv; bizMap[bt].posQ+=qty;}
+      else if(ic!=='Expiry Risk'){bizMap[bt].nV+=cv; bizMap[bt].negQ+=qty;}
+    });
+    Object.keys(bizMap).forEach(function(bt){bizMap[bt].netV=bizMap[bt].nV-bizMap[bt].pV;});
+    var days=Object.keys(daySet).length;
+    var totalNeg=Object.values(bizMap).reduce(function(s,b){return s+b.nV;},0);
+    var totalPos=Object.values(bizMap).reduce(function(s,b){return s+b.pV;},0);
+    var btArr=Object.keys(bizMap).map(function(k){return Object.assign({bt:k},bizMap[k]);})
+      .sort(function(a,b){return b.netV-a.netV;});
+    return {bizMap:bizMap,btArr:btArr,days:days,totalNeg:totalNeg,totalPos:totalPos,netV:totalNeg-totalPos};
+  }
+
+  var W=calcBizPeriod(wkSClamped), M=calcBizPeriod(moS);
+  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b45309','Quality':'#9c3838'};
+
+  function renderBizPeriod(acc, pfx){
+    var kpiEl=document.getElementById(pfx+'-kpis');
+    if(kpiEl){
+      var HC='border-radius:10px;padding:13px 14px;min-width:0';
+      kpiEl.innerHTML=
+        '<div style="background:var(--sf);'+HC+'"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">BUSINESS UNITS</div><div style="font-size:22px;font-weight:800;line-height:1.1;margin-top:2px">'+acc.btArr.length+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">with activity</div></div>'
+        +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+HC+'"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL LOSS</div><div style="font-size:22px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+fv(acc.totalNeg)+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">Financial Loss</div></div>'
+        +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">RECOVERY</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+fv(acc.totalPos)+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">recovered</div></div>'
+        +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+HC+'"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">NET IMPACT</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(acc.netV)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">'+acc.days+' days</div></div>';
+    }
+
+    var barsEl=document.getElementById(pfx+'-bars');
+    if(barsEl && acc.btArr.length){
+      var totalBizCogs=acc.btArr.reduce(function(s,b){return s+b.netV;},0)||1;
+      var mxV=acc.btArr.length?Math.max.apply(null,acc.btArr.map(function(b){return b.netV||0;}))||1:1;
+      barsEl.innerHTML='<div style="padding:14px 16px">'+acc.btArr.map(function(b){
+        var col=BT_COL[b.bt]||'#555';
+        var pct=Math.round(b.netV/mxV*100);
+        var pctCogs=totalBizCogs>0?Math.round(b.netV/totalBizCogs*100):0;
+        return '<div style="margin-bottom:12px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+            +'<span style="font-size:11px;font-weight:700;color:'+col+'">'+b.bt+'</span>'
+            +'<div style="text-align:right"><span style="font-size:11px;font-weight:800;color:var(--re);font-family:var(--mono)">'+fv(b.netV)+'</span>'
+            +'<span style="font-size:9px;color:var(--mu);margin-left:6px">'+pctCogs+'% of total</span></div>'
+          +'</div>'
+          +'<div style="height:8px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden">'
+            +'<div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:4px"></div>'
+          +'</div>'
+        +'</div>';
+      }).join('')+'</div>';
+    } else if(barsEl){
+      barsEl.innerHTML='<div style="padding:20px;text-align:center;font-size:11px;color:var(--mu)">No data for this period</div>';
+    }
+
+    var trendEl=document.getElementById(pfx+'-trend');
+    if(trendEl && acc.btArr.length){
+      trendEl.innerHTML='<div style="padding:14px 16px">'+acc.btArr.map(function(b){
+        var col=BT_COL[b.bt]||'#555';
+        var recPct=b.nV>0?Math.round(b.pV/b.nV*100):0;
+        return '<div style="margin-bottom:14px">'
+          +'<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px">'+b.bt+'</div>'
+          +'<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px">'
+            +'<span style="font-size:9px;color:var(--mu);min-width:40px">Loss</span>'
+            +'<div style="flex:1;height:7px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden">'
+              +'<div style="height:100%;width:100%;background:'+col+';border-radius:4px"></div>'
+            +'</div>'
+            +'<span style="font-size:9px;font-family:var(--mono);font-weight:700;color:var(--re);min-width:55px;text-align:right">'+fv(b.nV)+'</span>'
+          +'</div>'
+          +'<div style="display:flex;gap:4px;align-items:center">'
+            +'<span style="font-size:9px;color:var(--mu);min-width:40px">Rec.</span>'
+            +'<div style="flex:1;height:5px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden">'
+              +'<div style="height:100%;width:'+recPct+'%;background:#16a34a;border-radius:4px"></div>'
+            +'</div>'
+            +'<span style="font-size:9px;font-family:var(--mono);color:#16a34a;min-width:55px;text-align:right">'+fv(b.pV)+'</span>'
+          +'</div>'
+        +'</div>';
+      }).join('')+'</div>';
+    }
+  }
+
+  renderBizPeriod(W, 'biz-wtd');
+  renderBizPeriod(M, 'biz-mtd');
+}
+
 function setTrendView(pfx, mode){
   var el=document.getElementById(pfx+'-trend');
   var el2=document.getElementById(pfx+'-trend-biz');
@@ -1820,23 +1952,23 @@ function ceoKpi(lbl,val,sub,col,trend,trendTxt){
 
 
 // NAVIGATION
-var PGN={overview:'Inventory Overview',expiry:'Expiry Watch',today:"Today's Impact",wtd:'WTD & MTD',remarks:'Remarks Tracker'};
+var PGN={overview:'Inventory Overview',expiry:'Expiry Watch',today:"Today's Impact",wtd:'Analysis',biz:'Business-wise Analysis',remarks:'Remarks Tracker'};
 function goPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('on');});
   document.querySelectorAll('.pg').forEach(function(el){el.classList.remove('on');});
   updateMonthBarVisibility(p);
-  // Map mtd to wtd page (merged)
-  var navId = p==='mtd'?'wtd':p;
+  // Map mtd to wtd page (merged); biz-mtd maps to biz page
+  var navId = p==='mtd'?'wtd':(p==='biz-mtd'?'biz':p);
   document.getElementById('nav-'+navId).classList.add('on');
-  var pgId = p==='mtd'?'wtd':p;
+  var pgId = p==='mtd'?'wtd':(p==='biz-mtd'?'biz':p);
   document.getElementById('pg-'+pgId).classList.add('on');
   document.getElementById('pg-name').textContent=PGN[pgId]||pgId;
-  // If going to mtd, switch the inner tab; always reset to wtd panel when navigating to WTD
   if(p==='wtd') goWtdTab('wtd');
   if(p==='mtd') goWtdTab('mtd');
-  // Re-render history whenever WTD/MTD page is opened
+  if(p==='biz') goBizTab('wtd');
+  if(p==='biz-mtd') goBizTab('mtd');
   if(p==='wtd'||p==='mtd') renderHistory();
-  // Render remarks tracker on navigate
+  if(p==='biz'||p==='biz-mtd') renderBizPage();
   if(p==='remarks') switchRmkView('today');
 }
 
@@ -3236,6 +3368,13 @@ function goWtdTab(t){
   document.getElementById('panel-lmtd').style.display = t==='lmtd' ? 'block':'none';
   if(t==='lmtd') renderLastMonthHistory();
 }
+function goBizTab(t){
+  document.getElementById('biz-panel-wtd').style.display = t==='wtd' ? 'block':'none';
+  document.getElementById('biz-panel-mtd').style.display = t==='mtd' ? 'block':'none';
+  document.querySelectorAll('[id^="biztab-"]').forEach(function(el){
+    el.classList.toggle('on', el.id==='biztab-'+t);
+  });
+}
 
 // MODAL
 var _rmk={};
@@ -3539,6 +3678,7 @@ function switchMonth(month) {
     }
 
     renderHistory();
+    renderBizPage();
 
     // Restore opacity
     ['panel-wtd','panel-mtd','rmk-view-tracker','rmk-view-monthly'].forEach(function(id){
@@ -3564,7 +3704,7 @@ function switchMonth(month) {
 function updateMonthBarVisibility(page) {
   var bar = document.getElementById('month-bar');
   if (!bar) return;
-  bar.style.display = (page==='today'||page==='wtd'||page==='remarks') ? 'block' : 'none';
+  bar.style.display = (page==='today'||page==='wtd'||page==='biz'||page==='remarks') ? 'block' : 'none';
 }
 
 
