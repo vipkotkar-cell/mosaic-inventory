@@ -455,29 +455,81 @@ tbody tr:hover td{background:var(--sf)}
   <!-- ═══ REMARKS TRACKER ═══ -->
   <div class="pg content" id="pg-remarks">
 
-    <!-- 3 main tabs: Daily | Monthly | Remarks -->
+    <!-- 2 tabs: Analysis | Remarks -->
     <div class="sub-tabs" style="margin-bottom:20px">
-      <div class="sub-tab on" onclick="goOpsTab('daily')"   id="ops-tab-daily">&#128197; Daily</div>
-      <div class="sub-tab"    onclick="goOpsTab('monthly')" id="ops-tab-monthly">&#128202; Monthly</div>
-      <div class="sub-tab"    onclick="goOpsTab('remarks')" id="ops-tab-remarks">&#128203; Remarks</div>
+      <div class="sub-tab on" onclick="goOpsTab('analysis')" id="ops-tab-analysis">&#128200; Analysis</div>
+      <div class="sub-tab"    onclick="goOpsTab('remarks')"  id="ops-tab-remarks">&#128203; Remarks</div>
     </div>
 
-    <!-- VIEW: Daily -->
-    <div id="ops-view-daily"></div>
+    <!-- VIEW: Analysis (Daily + Monthly stacked) -->
+    <div id="ops-view-analysis">
+      <div class="sec-title">Today&rsquo;s Impact</div>
+      <div class="impact-hero" id="ops-daily-kpis" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">
+        <div class="card">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:11px;font-weight:700;color:var(--tx)">Business Type</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead><tr>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Type</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Events</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
+            </tr></thead>
+            <tbody id="ops-daily-biz-tbody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:11px;font-weight:700;color:var(--tx)">Brand-wise</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead><tr>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Brand</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Events</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
+            </tr></thead>
+            <tbody id="ops-daily-brand-tbody"></tbody>
+          </table>
+        </div>
+      </div>
 
-    <!-- VIEW: Monthly -->
-    <div id="ops-view-monthly" style="display:none"></div>
+      <div class="sec-title">Month to Date</div>
+      <div class="impact-hero" id="ops-monthly-kpis" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="card">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:11px;font-weight:700;color:var(--tx)">Business Type</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead><tr>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Type</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Events</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
+            </tr></thead>
+            <tbody id="ops-monthly-biz-tbody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:11px;font-weight:700;color:var(--tx)">Brand-wise</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead><tr>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Brand</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Events</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>
+              <th style="padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
+            </tr></thead>
+            <tbody id="ops-monthly-brand-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
     <!-- VIEW: Remarks -->
     <div id="ops-view-remarks" style="display:none">
       <div style="display:flex;gap:0;margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid var(--br);width:fit-content">
-        <button id="rmk-sub-btn-today"   onclick="goRmkSub('today')"   style="padding:7px 20px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:#1565c0;color:#fff">&#128197; Today</button>
-        <button id="rmk-sub-btn-monthly" onclick="goRmkSub('monthly')" style="padding:7px 20px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:var(--sf);color:var(--mu)">&#128202; Monthly</button>
-        <button id="rmk-sub-btn-add"     onclick="goRmkSub('add')"     style="padding:7px 20px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:var(--sf);color:var(--mu)">&#9998; Add Remarks</button>
+        <button id="rmk-sub-btn-today"   onclick="goRmkSub('today')"   style="padding:7px 22px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:#1565c0;color:#fff">&#128197; Today</button>
+        <button id="rmk-sub-btn-monthly" onclick="goRmkSub('monthly')" style="padding:7px 22px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:var(--sf);color:var(--mu)">&#128202; Monthly</button>
       </div>
       <div id="rmk-sub-today-wrap"></div>
       <div id="rmk-sub-monthly-wrap" style="display:none"></div>
-      <div id="rmk-sub-add-wrap"     style="display:none"></div>
     </div>
 
   </div>
@@ -1929,7 +1981,7 @@ function goPage(p){
   if(p==='wtd') goWtdTab('wtd');
   if(p==='mtd') goWtdTab('mtd');
   if(p==='wtd'||p==='mtd') renderHistory();
-  if(p==='remarks') goOpsTab('daily');
+  if(p==='remarks') goOpsTab('analysis');
 }
 
 
@@ -3397,24 +3449,22 @@ function saveRmk(){
       renderActiveRmkView();
     });}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
 function renderActiveRmkView(){
-  var dailyView=document.getElementById('ops-view-daily');
-  if(dailyView&&dailyView.style.display!=='none') renderOpsDaily();
-  else {
-    var rmkView=document.getElementById('ops-view-remarks');
-    if(rmkView&&rmkView.style.display!=='none'){
-      var addWrap=document.getElementById('rmk-sub-add-wrap');
-      if(addWrap&&addWrap.style.display!=='none') renderRmkSubAdd();
-      else renderRmkSubToday();
-    }
+  var analysisView=document.getElementById('ops-view-analysis');
+  if(analysisView&&analysisView.style.display!=='none'){ renderOpsAnalysis(); return; }
+  var rmkView=document.getElementById('ops-view-remarks');
+  if(rmkView&&rmkView.style.display!=='none'){
+    var mWrap=document.getElementById('rmk-sub-monthly-wrap');
+    if(mWrap&&mWrap.style.display!=='none') renderRmkSubMonthly();
+    else renderRmkSubToday();
   }
 }
 function switchRmkView(v){ goOpsTab(v==='monthly'?'monthly':'daily'); }
 function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'updateStatus',id:id,status:status}),mode:'no-cors'}).catch(function(){});allRemarks.forEach(function(r){if(r['ID']===id)r['Status']=status;});renderActiveRmkView();}
 
 // ══════════════════════════════════════════════
-//  OPS TRACKER — 3-tab page
+//  OPS TRACKER
 // ══════════════════════════════════════════════
-function toggleBtExpand(grp){
+function _obsolete_toggleBtExpand(grp){
   var rows=document.querySelectorAll('[data-btg="'+grp+'"]');
   var show=rows.length&&rows[0].style.display==='none';
   rows.forEach(function(r){r.style.display=show?'table-row':'none';});
@@ -3423,12 +3473,11 @@ function toggleBtExpand(grp){
 }
 
 function goOpsTab(tab){
-  ['daily','monthly','remarks'].forEach(function(t){
+  ['analysis','remarks'].forEach(function(t){
     var v=document.getElementById('ops-view-'+t); if(v) v.style.display=t===tab?'block':'none';
     var b=document.getElementById('ops-tab-'+t); if(b) b.classList.toggle('on',t===tab);
   });
-  if(tab==='daily') renderOpsDaily();
-  else if(tab==='monthly') renderOpsMonthly();
+  if(tab==='analysis') renderOpsAnalysis();
   else goRmkSub('today');
 }
 
@@ -3590,14 +3639,13 @@ function renderOpsMonthly(){
 }
 
 function goRmkSub(sub){
-  ['today','monthly','add'].forEach(function(s){
+  ['today','monthly'].forEach(function(s){
     var v=document.getElementById('rmk-sub-'+s+'-wrap'); if(v) v.style.display=s===sub?'block':'none';
     var b=document.getElementById('rmk-sub-btn-'+s);
     if(b){b.style.background=s===sub?'#1565c0':'var(--sf)'; b.style.color=s===sub?'#fff':'var(--mu)';}
   });
   if(sub==='today') renderRmkSubToday();
-  else if(sub==='monthly') renderRmkSubMonthly();
-  else renderRmkSubAdd();
+  else renderRmkSubMonthly();
 }
 
 function renderRmkSubToday(){
@@ -3716,6 +3764,266 @@ function renderRmkSubAdd(){
       +'</tr>';
   });
   html+='</tbody></table></div>';
+  wrap.innerHTML=html;
+}
+
+// ── NEW OPS TRACKER RENDERS ──────────────────────────────────────
+function renderOpsAnalysis(){
+  renderOpsDailySection();
+  renderOpsMonthlySection();
+}
+
+function renderOpsDailySection(){
+  if(!R||!R.flat){ return; }
+  var n=function(v){return parseFloat(v)||0;};
+  var FL=R.flat.filter(function(x){return x.ic==='Financial Loss';});
+  var totalCogs=FL.reduce(function(s,x){return s+n(x.cogsVal);},0);
+  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
+  var BRAND_COL={'Be Bodywise':'#1558a8','Man Matters':'#6d4c41','Little Joys':'#1a6b1a','Root Labs':'#7c3aed','OWN':'#475569'};
+  // BizType map
+  var btMap={};
+  FL.forEach(function(x){
+    var bt=x.bt||'Other'; if(!btMap[bt]) btMap[bt]={cnt:0,cogs:0,qty:0};
+    btMap[bt].cnt++; btMap[bt].cogs+=n(x.cogsVal); btMap[bt].qty+=n(x.qty);
+  });
+  var btSorted=Object.keys(btMap).sort(function(a,b){return btMap[b].cogs-btMap[a].cogs;});
+  // Brand map
+  var brMap={};
+  FL.forEach(function(x){
+    var br=x.brand||'Other'; if(!brMap[br]) brMap[br]={cnt:0,cogs:0,qty:0};
+    brMap[br].cnt++; brMap[br].cogs+=n(x.cogsVal); brMap[br].qty+=n(x.qty);
+  });
+  var brSorted=Object.keys(brMap).sort(function(a,b){return brMap[b].cogs-brMap[a].cogs;});
+  // Top items for KPIs
+  var topBT=btSorted[0]||'—'; var topBr=brSorted[0]||'—';
+  // KPI cards
+  var HC='border-radius:10px;padding:13px 14px;min-width:0';
+  var kpi=document.getElementById('ops-daily-kpis');
+  if(kpi) kpi.innerHTML=
+    '<div style="background:var(--sf);'+HC+'"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:20px;font-weight:800;line-height:1.1;margin-top:3px">'+FL.length+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">Financial Loss today</div></div>'
+    +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+HC+'"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:20px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:3px">'+fv(totalCogs)+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">full universe</div></div>'
+    +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+HC+'"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">BIZ TYPES</div><div style="font-size:20px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:3px">'+btSorted.length+'</div><div style="font-size:9px;color:#0284c7;margin-top:2px">with events today</div></div>'
+    +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+HC+'"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP BIZ TYPE</div><div style="font-size:20px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:3px">'+fv(btMap[topBT]?btMap[topBT].cogs:0)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+topBT+'</div></div>'
+    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">TOP BRAND</div><div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:3px">'+fv(brMap[topBr]?brMap[topBr].cogs:0)+'</div><div style="font-size:9px;color:#15803d;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+topBr+'</div></div>';
+  // BizType table
+  var bizTbody=document.getElementById('ops-daily-biz-tbody');
+  if(bizTbody) bizTbody.innerHTML=btSorted.length
+    ? btSorted.map(function(bt){
+        var b=btMap[bt]; var col=BT_COL[bt]||'#555';
+        return '<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+          +'<td style="padding:8px 10px"><span class="biz '+btCls(bt)+'" style="color:'+col+'">'+bt+'</span></td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600">'+b.cnt+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--re)">'+fv(b.cogs)+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:10px;color:var(--mu)">'+fq(b.qty)+'</td></tr>';
+      }).join('')
+    : '<tr><td colspan="4" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No events today</td></tr>';
+  // Brand table
+  var brTbody=document.getElementById('ops-daily-brand-tbody');
+  if(brTbody) brTbody.innerHTML=brSorted.length
+    ? brSorted.map(function(br){
+        var b=brMap[br]; var col=BRAND_COL[br]||'#555';
+        return '<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+          +'<td style="padding:8px 10px;font-size:11px;font-weight:700;color:'+col+'">'+br+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600">'+b.cnt+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--re)">'+fv(b.cogs)+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:10px;color:var(--mu)">'+fq(b.qty)+'</td></tr>';
+      }).join('')
+    : '<tr><td colspan="4" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No brand data</td></tr>';
+}
+
+function renderOpsMonthlySection(){
+  var n=function(v){return parseFloat(v)||0;};
+  if(!allEventsData.length){
+    fetchJ(EVENTS_URL+'&curmonth=1&t='+Date.now()).then(function(rows){
+      if(rows&&rows.length){ allEventsData=rows; renderOpsMonthlySection(); }
+    }).catch(function(){});
+    return;
+  }
+  var now=new Date(); var _cy=now.getFullYear(); var _cm=now.getMonth();
+  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
+  var BRAND_COL={'Be Bodywise':'#1558a8','Man Matters':'#6d4c41','Little Joys':'#1a6b1a','Root Labs':'#7c3aed','OWN':'#475569'};
+  var btMap={}, brMap={}, totLoss=0, totRec=0, totQty=0, totCnt=0;
+  allEventsData.forEach(function(row){
+    var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
+    if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
+    var bt=row['BizType']||'Other'; var br=row['Brand']||'Other';
+    var cv=n(row['COGSValue']); var qty=n(row['Qty']);
+    var isPos=(row['Type']||'').trim()==='POS';
+    if(isPos){ totRec+=cv; }
+    else{
+      totLoss+=cv; totCnt++; totQty+=qty;
+      if(!btMap[bt]) btMap[bt]={cnt:0,cogs:0,qty:0};
+      btMap[bt].cnt++; btMap[bt].cogs+=cv; btMap[bt].qty+=qty;
+      if(!brMap[br]) brMap[br]={cnt:0,cogs:0,qty:0};
+      brMap[br].cnt++; brMap[br].cogs+=cv; brMap[br].qty+=qty;
+    }
+  });
+  var netCogs=totLoss-totRec;
+  var recRate=totLoss>0?Math.round(totRec/totLoss*100):0;
+  var btSorted=Object.keys(btMap).sort(function(a,b){return btMap[b].cogs-btMap[a].cogs;});
+  var brSorted=Object.keys(brMap).sort(function(a,b){return brMap[b].cogs-brMap[a].cogs;});
+  var HC='border-radius:10px;padding:13px 14px;min-width:0';
+  var kpi=document.getElementById('ops-monthly-kpis');
+  if(kpi) kpi.innerHTML=
+    '<div style="background:var(--sf);'+HC+'"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:20px;font-weight:800;line-height:1.1;margin-top:3px">'+totCnt+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">Financial Loss MTD</div></div>'
+    +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+HC+'"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:20px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:3px">'+fv(totLoss)+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">Financial Loss MTD</div></div>'
+    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">RECOVERY</div><div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:3px">'+fv(totRec)+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">recovered MTD</div></div>'
+    +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+HC+'"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">NET COGS</div><div style="font-size:20px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:3px">'+fv(netCogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">net exposure MTD</div></div>'
+    +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+HC+'"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">RECOVERY RATE</div><div style="font-size:20px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:3px">'+recRate+'%</div><div style="font-size:9px;color:#0284c7;margin-top:2px">pos / neg ratio</div></div>';
+  var bizTbody=document.getElementById('ops-monthly-biz-tbody');
+  if(bizTbody) bizTbody.innerHTML=btSorted.length
+    ? btSorted.map(function(bt){
+        var b=btMap[bt]; var col=BT_COL[bt]||'#555';
+        return '<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+          +'<td style="padding:8px 10px"><span class="biz '+btCls(bt)+'" style="color:'+col+'">'+bt+'</span></td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600">'+b.cnt+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--re)">'+fv(b.cogs)+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:10px;color:var(--mu)">'+fq(b.qty)+'</td></tr>';
+      }).join('')
+    : '<tr><td colspan="4" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No data</td></tr>';
+  var brTbody=document.getElementById('ops-monthly-brand-tbody');
+  if(brTbody) brTbody.innerHTML=brSorted.length
+    ? brSorted.map(function(br){
+        var b=brMap[br]; var col=BRAND_COL[br]||'#555';
+        return '<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+          +'<td style="padding:8px 10px;font-size:11px;font-weight:700;color:'+col+'">'+br+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600">'+b.cnt+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--re)">'+fv(b.cogs)+'</td>'
+          +'<td style="padding:8px 10px;text-align:right;font-size:10px;color:var(--mu)">'+fq(b.qty)+'</td></tr>';
+      }).join('')
+    : '<tr><td colspan="4" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No data</td></tr>';
+}
+
+function renderRmkSubToday(){
+  var wrap=document.getElementById('rmk-sub-today-wrap'); if(!wrap) return;
+  var now=new Date();
+  var todayRows=dailyTop5Data.filter(function(r){
+    var d=parseDate(r['Date']);
+    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate();
+  }).sort(function(a,b){return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0);});
+
+  if(!todayRows.length){
+    wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:11px">No NI_DailyTop5 entries for today yet. Run the daily GAS trigger or wait for 8 AM data.</div>';
+    return;
+  }
+  var BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs','OWN'];
+  var BRAND_COL={'Be Bodywise':'#1558a8','Man Matters':'#6d4c41','Little Joys':'#1a6b1a','Root Labs':'#7c3aed','OWN':'#475569'};
+  var TH='padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
+  var remarked=todayRows.filter(function(r){return (r['Remark']||'').trim();}).length;
+  var html='<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<div style="background:var(--sf);border-radius:8px;padding:10px 16px"><span style="font-size:8px;font-weight:700;color:var(--mu)">TOTAL</span> <span style="font-size:16px;font-weight:800">'+todayRows.length+'</span></div>'
+    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 16px"><span style="font-size:8px;font-weight:700;color:#16a34a">REMARKED</span> <span style="font-size:16px;font-weight:800;color:#16a34a">'+remarked+'</span></div>'
+    +'<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 16px"><span style="font-size:8px;font-weight:700;color:#b45309">PENDING</span> <span style="font-size:16px;font-weight:800;color:#b45309">'+(todayRows.length-remarked)+'</span></div>'
+    +'</div>';
+  BRANDS.forEach(function(br){
+    var rows=todayRows.filter(function(r){return r['Brand']===br;});
+    if(!rows.length) return;
+    var bcol=BRAND_COL[br]||'#555';
+    html+='<div class="card" style="margin-bottom:14px">'
+      +'<div style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:'+bcol+'">'+br+'</div>'
+      +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+      +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU</th><th style="'+TH+'">Facility</th>'
+      +'<th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Remark</th><th style="'+TH+'">Action</th>'
+      +'</tr></thead><tbody>';
+    rows.forEach(function(r,i){
+      var rmk=(r['Remark']||'').trim();
+      var ba='data-sku="'+r['SKU']+'" data-batch="'+(r['Batch']||'')+'" data-fac="'+r['Facility']+'" data-bt="'+(r['BizType']||'')+'" data-ev="'+(r['Event']||'')+'" data-cogs="'+(r['COGSValue']||0)+'"';
+      html+='<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
+        +'<td style="padding:7px 10px;font-size:9px;color:var(--mu)">'+(i+1)+'</td>'
+        +'<td style="padding:7px 10px"><div style="font-size:10px;font-weight:700">'+r['SKU']+'</div><div style="font-size:9px;color:var(--mu)">'+r['Facility']+'</div></td>'
+        +'<td style="padding:7px 10px;font-size:9px">'+r['Facility']+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
+        +'<td style="padding:7px 10px;font-size:9px;color:'+(rmk?'var(--gn)':'var(--am)')+'">'+( rmk?rmk.substring(0,30):'Pending')+'</td>'
+        +'<td style="padding:7px 10px">'+(rmk?'<span style="font-size:9px;color:var(--gn)">&#10003;</span>':'<button onclick="openRmk(this)" '+ba+' style="padding:3px 10px;font-size:10px;font-weight:600;background:#1565c0;color:#fff;border:none;border-radius:5px;cursor:pointer">Add</button>')+'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+  });
+  wrap.innerHTML=html;
+}
+
+function renderRmkSubMonthly(){
+  var wrap=document.getElementById('rmk-sub-monthly-wrap'); if(!wrap) return;
+  if(!dailyTop5Data.length){
+    wrap.innerHTML='<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">Loading data&hellip;</div>';
+    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+      if(rows&&rows.length){ dailyTop5Data=rows.filter(function(r){return r['EH_ID']||r['SKU'];}); renderRmkSubMonthly(); }
+    }).catch(function(){});
+    return;
+  }
+  var rows=dailyTop5Data;
+  var BT_LIST=['Self Warehouse','Dark Store','3PL B2C','3PL B2B','FBA / Marketplace'];
+  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
+  var btMap={};
+  rows.forEach(function(r){
+    var bt=r['BizType']||'Other';
+    if(!btMap[bt]) btMap[bt]={total:0,remarked:0,events:[]};
+    btMap[bt].total++;
+    if((r['Remark']||'').trim()) btMap[bt].remarked++;
+    btMap[bt].events.push(r);
+  });
+  var totalAll=rows.length;
+  var remarkedAll=rows.filter(function(r){return (r['Remark']||'').trim();}).length;
+  var covPct=totalAll>0?Math.round(remarkedAll/totalAll*100):0;
+  var TH='padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
+  var HC='border-radius:8px;padding:10px 16px';
+  var html='<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<div style="background:var(--sf);'+HC+'"><span style="font-size:8px;font-weight:700;color:var(--mu)">TOTAL TRACKED</span> <span style="font-size:16px;font-weight:800">'+totalAll+'</span></div>'
+    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><span style="font-size:8px;font-weight:700;color:#16a34a">REMARKED</span> <span style="font-size:16px;font-weight:800;color:#16a34a">'+remarkedAll+'</span></div>'
+    +'<div style="background:#fef3c7;border:1px solid #fde68a;'+HC+'"><span style="font-size:8px;font-weight:700;color:#b45309">PENDING</span> <span style="font-size:16px;font-weight:800;color:#b45309">'+(totalAll-remarkedAll)+'</span></div>'
+    +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+HC+'"><span style="font-size:8px;font-weight:700;color:#0369a1">COVERAGE</span> <span style="font-size:16px;font-weight:800;color:#0369a1">'+covPct+'%</span></div>'
+    +'</div>';
+  // BizType pendency summary table
+  html+='<div class="card" style="margin-bottom:18px">'
+    +'<div style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:11px;font-weight:700;color:var(--tx)">Pendency by Business Type</div>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="'+TH+'">Business Type</th>'
+    +'<th style="'+TH+';text-align:right">Tracked</th>'
+    +'<th style="'+TH+';text-align:right">Remarked</th>'
+    +'<th style="'+TH+';text-align:right">Pending</th>'
+    +'<th style="'+TH+';text-align:right">Done %</th>'
+    +'</tr></thead><tbody>';
+  var btKeys=Object.keys(btMap).sort(function(a,b){return btMap[b].total-btMap[a].total;});
+  btKeys.forEach(function(bt){
+    var b=btMap[bt]; var col=BT_COL[bt]||'#555';
+    var pct=b.total>0?Math.round(b.remarked/b.total*100):0;
+    var pctCol=pct>=80?'var(--gn)':pct>=50?'var(--am)':'var(--re)';
+    html+='<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
+      +'<td style="padding:8px 10px"><span class="biz '+btCls(bt)+'" style="color:'+col+'">'+bt+'</span></td>'
+      +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600">'+b.total+'</td>'
+      +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600;color:var(--gn)">'+b.remarked+'</td>'
+      +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600;color:var(--am)">'+(b.total-b.remarked)+'</td>'
+      +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:800;color:'+pctCol+'">'+pct+'%</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  // Pending events with write buttons
+  var pending=rows.filter(function(r){return !(r['Remark']||'').trim();})
+    .sort(function(a,b){return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0);});
+  if(pending.length){
+    html+='<div class="card">'
+      +'<div style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:11px;font-weight:700;color:var(--tx)">Pending Remarks ('+pending.length+')</div>'
+      +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+      +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU</th><th style="'+TH+'">Brand</th>'
+      +'<th style="'+TH+'">Facility</th><th style="'+TH+'">Date</th>'
+      +'<th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Action</th>'
+      +'</tr></thead><tbody>';
+    pending.forEach(function(r,i){
+      var ba='data-sku="'+r['SKU']+'" data-batch="'+(r['Batch']||'')+'" data-fac="'+r['Facility']+'" data-bt="'+(r['BizType']||'')+'" data-ev="'+(r['Event']||'')+'" data-cogs="'+(r['COGSValue']||0)+'"';
+      html+='<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
+        +'<td style="padding:6px 10px;font-size:9px;color:var(--mu)">'+(i+1)+'</td>'
+        +'<td style="padding:6px 10px;font-size:10px;font-weight:700">'+r['SKU']+'</td>'
+        +'<td style="padding:6px 10px;font-size:10px">'+r['Brand']+'</td>'
+        +'<td style="padding:6px 10px;font-size:9px">'+r['Facility']+'</td>'
+        +'<td style="padding:6px 10px;font-size:9px;color:var(--mu)">'+r['Date']+'</td>'
+        +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
+        +'<td style="padding:6px 10px"><button onclick="openRmk(this)" '+ba+' style="padding:3px 10px;font-size:10px;font-weight:600;background:#1565c0;color:#fff;border:none;border-radius:5px;cursor:pointer">Add</button></td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+  } else {
+    html+='<div style="padding:24px;text-align:center;color:var(--gn);font-size:13px;font-weight:700">&#10003; All remarks captured!</div>';
+  }
   wrap.innerHTML=html;
 }
 
