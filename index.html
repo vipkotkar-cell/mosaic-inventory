@@ -3698,55 +3698,6 @@ function renderRmkSubToday(){
   wrap.innerHTML=html;
 }
 
-function renderRmkSubMonthly(){
-  var wrap=document.getElementById('rmk-sub-monthly-wrap'); if(!wrap) return;
-  var BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs','OWN'];
-  var BRAND_COL={'Be Bodywise':'#1558a8','Man Matters':'#6d4c41','Little Joys':'#1a6b1a','Root Labs':'#7c3aed','OWN':'#475569'};
-  var rows=dailyTop5Data;
-  if(!rows.length){
-    wrap.innerHTML='<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">No data — navigate to Remarks &gt; Today to load</div>';
-    return;
-  }
-  var totalAll=rows.length;
-  var remarkedAll=rows.filter(function(r){return (r['Remark']||'').trim();}).length;
-  var coveragePct=totalAll>0?Math.round(remarkedAll/totalAll*100):0;
-  var HC='border-radius:10px;padding:13px 14px;min-width:0';
-  var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">'
-    +'<div style="background:var(--sf);'+HC+'"><div style="font-size:8px;font-weight:700;color:var(--mu)">TOTAL TRACKED</div><div style="font-size:22px;font-weight:800;margin-top:2px">'+totalAll+'</div></div>'
-    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><div style="font-size:8px;font-weight:700;color:#16a34a">REMARKED</div><div style="font-size:22px;font-weight:800;color:#16a34a;margin-top:2px">'+remarkedAll+'</div></div>'
-    +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+HC+'"><div style="font-size:8px;font-weight:700;color:#0369a1">COVERAGE</div><div style="font-size:22px;font-weight:800;color:#0369a1;margin-top:2px">'+coveragePct+'%</div></div>'
-    +'</div>';
-  var TH='padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
-  BRANDS.forEach(function(br){
-    var brows=rows.filter(function(r){return r['Brand']===br;});
-    if(!brows.length) return;
-    var bRemarked=brows.filter(function(r){return (r['Remark']||'').trim();}).length;
-    var bCov=Math.round(bRemarked/brows.length*100);
-    var bcol=BRAND_COL[br]||'#555';
-    var top5=brows.slice().sort(function(a,b){return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0);}).slice(0,5);
-    html+='<div class="card" style="margin-bottom:14px">'
-      +'<div style="padding:10px 14px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center">'
-      +'<span style="font-size:12px;font-weight:700;color:'+bcol+'">'+br+'</span>'
-      +'<span style="font-size:10px;color:var(--mu)">'+bRemarked+'/'+brows.length+' &mdash; <strong style="color:#0369a1">'+bCov+'%</strong> coverage</span>'
-      +'</div>'
-      +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
-      +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU</th><th style="'+TH+'">Facility</th>'
-      +'<th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Remark</th>'
-      +'</tr></thead><tbody>';
-    top5.forEach(function(r,i){
-      var rmk=(r['Remark']||'').trim();
-      html+='<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
-        +'<td style="padding:6px 10px;font-size:9px;color:var(--mu)">'+(i+1)+'</td>'
-        +'<td style="padding:6px 10px;font-size:10px;font-weight:600">'+r['SKU']+'</td>'
-        +'<td style="padding:6px 10px;font-size:9px">'+r['Facility']+'</td>'
-        +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
-        +'<td style="padding:6px 10px;font-size:9px;color:'+(rmk?'var(--gn)':'var(--am)')+'">'+( rmk||'Pending')+'</td>'
-        +'</tr>';
-    });
-    html+='</tbody></table></div>';
-  });
-  wrap.innerHTML=html;
-}
 
 function renderRmkSubAdd(){
   var wrap=document.getElementById('rmk-sub-add-wrap'); if(!wrap) return;
@@ -3965,11 +3916,148 @@ function renderRmkSubMonthly(){
     return;
   }
   var now=new Date();
+  var monthLabel=now.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  var PRIMARY_BRANDS=['Be Bodywise','Man Matters','Little Joys','OWN'];
+  var SECONDARY_BRANDS=['Root Labs'];
+  var ALL_TRACKED=PRIMARY_BRANDS.concat(SECONDARY_BRANDS);
+  var BRAND_LOGO={'Be Bodywise':'assets/be-bodywise.png','Man Matters':'assets/man-matters.png','Little Joys':'assets/little-joys.png','OWN':'assets/own.png','Root Labs':'assets/root-labs.png'};
+  var BRAND_AVT={'Be Bodywise':{initials:'BB',bg:'#fce4ef',fg:'#c2185b'},'Man Matters':{initials:'MM',bg:'#e3f2fd',fg:'#1565c0'},'Little Joys':{initials:'LJ',bg:'#fff3e0',fg:'#e65100'},'OWN':{initials:'OW',bg:'#efebe9',fg:'#6d4c41'},'Root Labs':{initials:'RL',bg:'#e8f5e9',fg:'#2e7d32'}};
+  function brandAvatar(br){
+    var logo=BRAND_LOGO[br]; var a=BRAND_AVT[br]||{initials:br.substring(0,2).toUpperCase(),bg:'#eee',fg:'#555'};
+    var fs='width:40px;height:40px;border-radius:10px;background:'+a.bg+';display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:'+a.fg+';flex-shrink:0';
+    if(logo) return '<img src="'+logo+'" alt="'+br+'" style="width:40px;height:40px;border-radius:10px;object-fit:contain;border:0.5px solid rgba(0,0,0,.08);background:#fff;flex-shrink:0;vertical-align:middle" onerror="this.outerHTML=\'<div style=&quot;'+fs+'&quot;>'+a.initials+'</div>\'">';
+    return '<div style="'+fs+'">'+a.initials+'</div>';
+  }
+  // Build brand map from MTD dailyTop5Data
   var mtdRows=dailyTop5Data.filter(function(r){
     var d=parseDate(r['Date']);
     return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
   });
-  _rmkBizCards(mtdRows,'rmk-sub-monthly-wrap','No data for this month yet.');
+  var uniqueDays=[]; mtdRows.forEach(function(r){var ds=r['Date']||''; if(ds&&uniqueDays.indexOf(ds)<0) uniqueDays.push(ds);});
+  var daysWithData=uniqueDays.length||1;
+  var brandMap={};
+  PRIMARY_BRANDS.forEach(function(br){brandMap[br]={total:0,pending:0,completed:0,isPrimary:true,target:daysWithData*5,events:[]};});
+  SECONDARY_BRANDS.forEach(function(br){brandMap[br]={total:0,pending:0,completed:0,isPrimary:false,target:null,events:[]};});
+  mtdRows.forEach(function(r){
+    var br=r['Brand']||''; if(ALL_TRACKED.indexOf(br)<0) return;
+    brandMap[br].total++; brandMap[br].events.push(r);
+    if((r['Remark']||'').trim()) brandMap[br].completed++; else brandMap[br].pending++;
+  });
+  var RENDER_BRANDS=PRIMARY_BRANDS.concat(SECONDARY_BRANDS.filter(function(br){return brandMap[br].total>0;}));
+  var totT=mtdRows.filter(function(r){return ALL_TRACKED.indexOf(r['Brand']||'')>=0;}).length;
+  var totC=mtdRows.filter(function(r){return ALL_TRACKED.indexOf(r['Brand']||'')>=0&&(r['Remark']||'').trim();}).length;
+  var totP=totT-totC, resRate=totT>0?Math.round(totC/totT*100):0;
+  var monthTarget=daysWithData*PRIMARY_BRANDS.length*5;
+  var TH='padding:10px 14px;background:var(--sf);border-bottom:2px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-align:center;white-space:nowrap';
+  var html=
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
+      +'<div style="background:var(--sf);border:1px solid var(--br);border-radius:12px;padding:16px 18px"><div style="font-size:9px;font-weight:700;color:var(--mu);letter-spacing:.5px;margin-bottom:4px">MONTHLY TARGET</div><div style="font-size:28px;font-weight:800;line-height:1">'+monthTarget+'</div><div style="font-size:10px;color:var(--mu);margin-top:3px">'+daysWithData+' days × 20/day</div></div>'
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 18px"><div style="font-size:9px;font-weight:700;color:#c2410c;letter-spacing:.5px;margin-bottom:4px">PENDING</div><div style="font-size:28px;font-weight:800;color:#c2410c;line-height:1">'+totP+'</div><div style="font-size:10px;color:#9a3412;margin-top:3px">of '+totT+' captured</div></div>'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 18px"><div style="font-size:9px;font-weight:700;color:#16a34a;letter-spacing:.5px;margin-bottom:4px">REMARKED</div><div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">'+totC+'</div><div style="font-size:10px;color:#15803d;margin-top:3px">events with remarks</div></div>'
+      +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px"><div style="font-size:9px;font-weight:700;color:#1d4ed8;letter-spacing:.5px;margin-bottom:4px">RESOLUTION RATE</div><div style="font-size:28px;font-weight:800;color:#1d4ed8;line-height:1">'+resRate+'%</div><div style="font-size:10px;color:#1e40af;margin-top:3px">'+totC+'/'+totT+' resolved</div></div>'
+    +'</div>'
+    +'<div style="overflow-x:auto;border:1px solid var(--br);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr>'
+    +'<th style="'+TH+';text-align:left;padding-left:18px">Brand</th>'
+    +'<th style="'+TH+'">Target</th>'
+    +'<th style="'+TH+'">Captured</th>'
+    +'<th style="'+TH+';color:#c2410c">Pending</th>'
+    +'<th style="'+TH+';color:#16a34a">Remarked</th>'
+    +'<th style="'+TH+'">Completion</th>'
+    +'<th style="'+TH+'">Action</th>'
+    +'</tr></thead><tbody>';
+  RENDER_BRANDS.forEach(function(br){
+    var s=brandMap[br]; var col=BRAND_COLS[br]||'#555';
+    var pct=s.total>0?Math.round(s.completed/s.total*100):0;
+    var barCol=pct>=80?'#16a34a':pct>=40?'#d97706':'#dc2626';
+    var safeBr=br.replace(/'/g,"\\'");
+    html+='<tr style="border-bottom:1px solid rgba(228,232,240,.6)">'
+      +'<td style="padding:12px 18px"><div style="display:flex;align-items:center;gap:10px">'
+        +brandAvatar(br)
+        +'<div><div style="font-size:12px;font-weight:700;color:'+col+'">'+br+'</div>'
+        +'<div style="font-size:9px;color:var(--mu)">'+(s.isPrimary?'Primary':'Secondary')+' · Top 5/day · Financial Loss</div></div>'
+      +'</div></td>'
+      +'<td style="padding:12px 14px;text-align:center">'+(s.isPrimary?'<span style="font-family:var(--mono);font-size:13px;color:var(--mu)">'+s.target+'</span>':'<span style="color:var(--mu)">—</span>')+'</td>'
+      +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+s.total+'</td>'
+      +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+s.pending+'</td>'
+      +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+s.completed+'</td>'
+      +'<td style="padding:12px 18px"><div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:12px;font-weight:800;color:'+barCol+';min-width:34px">'+pct+'%</span>'
+        +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
+          +'<div style="height:100%;width:'+pct+'%;background:'+barCol+';border-radius:3px;transition:width .4s"></div>'
+        +'</div>'
+        +'<span style="font-size:9px;color:var(--mu)">'+s.completed+'/'+s.total+'</span>'
+      +'</div></td>'
+      +'<td style="padding:12px 14px;text-align:center">'
+        +(s.total>0
+          ?'<button onclick="openBrandPendingPanel(\''+safeBr+'\')" style="padding:6px 14px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">&#9998; Update Remarks</button>'
+          :'<span style="color:var(--mu);font-size:10px">—</span>')
+      +'</td></tr>';
+  });
+  // Totals row
+  var totPct=totT>0?Math.round(totC/totT*100):0;
+  var totBarCol=totPct>=80?'#16a34a':totPct>=40?'#d97706':'#dc2626';
+  html+='<tr style="background:var(--sf);border-top:2px solid var(--br)">'
+    +'<td style="padding:12px 18px;font-size:12px;font-weight:800">Total</td>'
+    +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-size:13px;color:var(--mu)">'+monthTarget+'</td>'
+    +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+totT+'</td>'
+    +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+totP+'</td>'
+    +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+totC+'</td>'
+    +'<td style="padding:12px 18px"><div style="display:flex;align-items:center;gap:8px">'
+      +'<span style="font-size:12px;font-weight:800;color:'+totBarCol+';min-width:34px">'+totPct+'%</span>'
+      +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
+        +'<div style="height:100%;width:'+totPct+'%;background:'+totBarCol+';border-radius:3px"></div>'
+      +'</div>'
+      +'<span style="font-size:9px;color:var(--mu)">'+totC+'/'+totT+'</span>'
+    +'</div></td>'
+    +'<td style="padding:12px 14px;text-align:center;color:var(--mu)">—</td>'
+    +'</tr></tbody></table></div>'
+    // Expandable panel for per-brand pending events
+    +'<div id="brand-pending-panel" style="margin-top:16px"></div>';
+  wrap.innerHTML=totT>0?html:'<div style="padding:40px;text-align:center;color:var(--mu)">No Financial Loss events found for this month.</div>';
+}
+
+function openBrandPendingPanel(br){
+  var panel=document.getElementById('brand-pending-panel'); if(!panel) return;
+  var now=new Date();
+  var pending=dailyTop5Data.filter(function(r){
+    var d=parseDate(r['Date']);
+    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()
+      &&r['Brand']===br&&!(r['Remark']||'').trim();
+  }).sort(function(a,b){return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0);});
+  var col=BRAND_COLS[br]||'#555';
+  var TH='padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
+  if(!pending.length){
+    panel.innerHTML='<div class="card" style="padding:20px;text-align:center;color:var(--gn);font-weight:700">&#10003; All '+br+' remarks captured!</div>';
+    panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+    return;
+  }
+  var html='<div class="card">'
+    +'<div style="padding:12px 16px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between">'
+      +'<span style="font-size:13px;font-weight:700;color:'+col+'">'+br+' — Pending Remarks ('+pending.length+')</span>'
+      +'<button onclick="document.getElementById(\'brand-pending-panel\').innerHTML=\'\'" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--mu)">&times;</button>'
+    +'</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
+    +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU</th><th style="'+TH+'">Name</th>'
+    +'<th style="'+TH+'">Facility</th><th style="'+TH+'">BizType</th><th style="'+TH+'">Date</th>'
+    +'<th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Action</th>'
+    +'</tr></thead><tbody>';
+  pending.forEach(function(r,i){
+    var ba='data-sku="'+r['SKU']+'" data-batch="'+(r['Batch']||'')+'" data-fac="'+r['Facility']+'" data-bt="'+(r['BizType']||'')+'" data-ev="'+(r['Event']||'')+'" data-cogs="'+(r['COGSValue']||0)+'"';
+    html+='<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
+      +'<td style="padding:7px 12px;color:var(--mu)">'+(i+1)+'</td>'
+      +'<td style="padding:7px 12px;font-weight:700">'+r['SKU']+'</td>'
+      +'<td style="padding:7px 12px;color:var(--mu);font-size:10px">'+((r['Name']||'').substring(0,24)||'—')+'</td>'
+      +'<td style="padding:7px 12px;font-size:10px">'+r['Facility']+'</td>'
+      +'<td style="padding:7px 12px;font-size:10px">'+r['BizType']+'</td>'
+      +'<td style="padding:7px 12px;font-size:10px;color:var(--mu)">'+r['Date']+'</td>'
+      +'<td style="padding:7px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
+      +'<td style="padding:7px 12px"><button onclick="openRmk(this)" '+ba+' style="padding:4px 12px;font-size:10px;font-weight:600;background:#1565c0;color:#fff;border:none;border-radius:6px;cursor:pointer">Add</button></td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  panel.innerHTML=html;
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 // DOWNLOAD
