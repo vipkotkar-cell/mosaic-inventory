@@ -1672,7 +1672,8 @@ function renderHistory(){
     var mxB=bzArr.length?Math.max.apply(null,bzArr.map(function(b){return b.netV||0;}))||1:1;
     var _bCols={'3PL B2C':'#1558a8','3PL B2B':'#37474f','Dark Store':'#4a148c','Self Warehouse':'#166534','FBA / Marketplace':'#b7410e','Other':'#7c85a0'};
     var totalBizCogs=bzArr.reduce(function(s,b){return s+(b.netV||0);},0)||1;
-    document.getElementById(pfx+'-biz-bars').innerHTML=bzArr.length?'<div class="bars">'+bzArr.map(function(b){
+    var bizBarsEl=document.getElementById(pfx+'-biz-bars');
+    if(bizBarsEl) bizBarsEl.innerHTML=bzArr.length?'<div class="bars">'+bzArr.map(function(b){
       var col=_bCols[b.bt]||'#7c85a0'; var p=Math.max(3,(b.netV/mxB*100)).toFixed(0);
       var pctCogs=Math.round(b.netV/totalBizCogs*100);
       return '<div class="bar-row"><div class="bar-lbl">'+b.bt
