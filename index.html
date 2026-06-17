@@ -401,9 +401,8 @@ tbody tr:hover td{background:var(--sf)}
   <nav class="sb-nav">
     <div class="sb-grp">Inventory Impact Tracking</div>
     <button class="nav-item on" onclick="goPage('today')" id="nav-today"><span class="nav-icon">&#9888;</span>Today&apos;s Impact<span class="nav-bdg" id="nb-today">-</span></button>
-    <button class="nav-item" onclick="goPage('wtd')" id="nav-wtd"><span class="nav-icon">&#128200;</span>Analysis<span class="nav-bdg nav-bdg-g" id="nb-wtd">-</span></button>
-    <button class="nav-item" onclick="goPage('biz')" id="nav-biz"><span class="nav-icon">&#127981;</span>Business-wise</button>
-    <button class="nav-item" onclick="goPage('remarks')" id="nav-remarks"><span class="nav-icon">&#128203;</span>Remarks<span class="nav-bdg nav-bdg-a" id="nb-remarks">-</span></button>
+    <button class="nav-item" onclick="goPage('wtd')" id="nav-wtd"><span class="nav-icon">&#128200;</span>WTD &amp; MTD<span class="nav-bdg nav-bdg-g" id="nb-wtd">-</span></button>
+    <button class="nav-item" onclick="goPage('remarks')" id="nav-remarks"><span class="nav-icon">&#128203;</span>Ops Tracker<span class="nav-bdg nav-bdg-a" id="nb-remarks">-</span></button>
 
     
     
@@ -559,8 +558,11 @@ tbody tr:hover td{background:var(--sf)}
           <div id="wtd-brand-bars"></div>
         </div>
       </div>
-      <div id="wtd-biz-bars" style="display:none"></div>
-      <div id="wtd-gauge" style="display:none"></div>
+      <!-- Business Type Impact -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+        <div id="wtd-trend"></div>
+      </div>
       <!-- Row 2: Top 10 Facilities -->
       <div style="margin-bottom:14px">
         <div class="card">
@@ -573,7 +575,6 @@ tbody tr:hover td{background:var(--sf)}
           </tr></thead><tbody id="wtd-fac-rank"></tbody></table>
         </div>
       </div>
-      <div id="wtd-trend" style="display:none"></div>
     </div>
 
     <!-- MTD Panel -->
@@ -591,8 +592,11 @@ tbody tr:hover td{background:var(--sf)}
           <div id="mtd-brand-bars"></div>
         </div>
       </div>
-      <div id="mtd-biz-bars" style="display:none"></div>
-      <div id="mtd-gauge" style="display:none"></div>
+      <!-- Business Type Impact -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+        <div id="mtd-trend"></div>
+      </div>
       <!-- Row 2: Top 10 Facilities -->
       <div style="margin-bottom:14px">
         <div class="card">
@@ -605,47 +609,9 @@ tbody tr:hover td{background:var(--sf)}
           </tr></thead><tbody id="mtd-fac-rank"></tbody></table>
         </div>
       </div>
-      <div id="mtd-trend" style="display:none"></div>
     </div>
   </div>
 
-  <!-- ── BUSINESS-WISE ANALYSIS PAGE ── -->
-  <div class="pg content" id="pg-biz">
-    <div class="sub-tabs" style="margin-bottom:18px">
-      <div class="sub-tab on" onclick="goBizTab('wtd')" id="biztab-wtd">Week-to-Date</div>
-      <div class="sub-tab" onclick="goBizTab('mtd')" id="biztab-mtd">Month-to-Date</div>
-    </div>
-    <!-- WTD Business-wise Panel -->
-    <div id="biz-panel-wtd">
-      <div class="impact-hero" id="biz-wtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
-      <div id="biz-wtd-insight"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-          <div id="biz-wtd-bars"></div>
-        </div>
-        <div class="card" style="padding:16px 20px 14px">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS by Business Unit (Trend)</div>
-          <div id="biz-wtd-trend" style="width:100%;"></div>
-        </div>
-      </div>
-    </div>
-    <!-- MTD Business-wise Panel -->
-    <div id="biz-panel-mtd" style="display:none">
-      <div class="impact-hero" id="biz-mtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
-      <div id="biz-mtd-insight"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-          <div id="biz-mtd-bars"></div>
-        </div>
-        <div class="card" style="padding:16px 20px 14px">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS by Business Unit (Trend)</div>
-          <div id="biz-mtd-trend" style="width:100%;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
 
     </div><!-- /pages -->
 </main>
@@ -1543,12 +1509,12 @@ function renderHistory(){
       var bt=row['BizType']||row['Business Type']||'';
       var city=row['City']||'';
       var qty=n(row['Qty']), cv=n(row['COGSValue']);
-      var ic=(row['Impact Class']||'').trim();
+      var type=(row['Type']||'').trim();
       if(!facAcc[fac]) facAcc[fac]={name:fac,bt:bt,city:city,negVal:0,posVal:0,negQty:0,posQty:0};
-      if(ic==='Financial Loss'||ic==='Expiry Risk'){
-        facAcc[fac].negVal+=cv; facAcc[fac].negQty+=qty;
-      } else if(ic==='Recovery'){
+      if(type==='POS'){
         facAcc[fac].posVal+=cv; facAcc[fac].posQty+=qty;
+      } else {
+        facAcc[fac].negVal+=cv; facAcc[fac].negQty+=qty;
       }
     });
     a.facRanked=Object.values(facAcc).map(function(f){ f.netVal=f.negVal-f.posVal; return f; })
@@ -1750,9 +1716,9 @@ function renderHistory(){
   window._trendAcc={wtd:W, mtd:M};
 }
 
-function renderBizPage(){
+function _renderBizPage_removed(){
   if(!allEventsData.length){
-    ['biz-wtd-kpis','biz-mtd-kpis','biz-wtd-bars','biz-mtd-bars','biz-wtd-trend','biz-mtd-trend'].forEach(function(id){
+    [].forEach(function(id){
       var e=document.getElementById(id); if(e) e.innerHTML='<div class="empty">No data yet</div>';
     });
     return;
@@ -1952,23 +1918,19 @@ function ceoKpi(lbl,val,sub,col,trend,trendTxt){
 
 
 // NAVIGATION
-var PGN={overview:'Inventory Overview',expiry:'Expiry Watch',today:"Today's Impact",wtd:'Analysis',biz:'Business-wise Analysis',remarks:'Remarks Tracker'};
+var PGN={overview:'Inventory Overview',expiry:'Expiry Watch',today:"Today's Impact",wtd:'WTD & MTD',remarks:'Ops Tracker'};
 function goPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('on');});
   document.querySelectorAll('.pg').forEach(function(el){el.classList.remove('on');});
   updateMonthBarVisibility(p);
-  // Map mtd to wtd page (merged); biz-mtd maps to biz page
-  var navId = p==='mtd'?'wtd':(p==='biz-mtd'?'biz':p);
+  var navId = p==='mtd'?'wtd':p;
   document.getElementById('nav-'+navId).classList.add('on');
-  var pgId = p==='mtd'?'wtd':(p==='biz-mtd'?'biz':p);
+  var pgId = p==='mtd'?'wtd':p;
   document.getElementById('pg-'+pgId).classList.add('on');
   document.getElementById('pg-name').textContent=PGN[pgId]||pgId;
   if(p==='wtd') goWtdTab('wtd');
   if(p==='mtd') goWtdTab('mtd');
-  if(p==='biz') goBizTab('wtd');
-  if(p==='biz-mtd') goBizTab('mtd');
   if(p==='wtd'||p==='mtd') renderHistory();
-  if(p==='biz'||p==='biz-mtd') renderBizPage();
   if(p==='remarks') switchRmkView('today');
 }
 
@@ -3367,13 +3329,6 @@ function goWtdTab(t){
   document.getElementById('panel-mtd').style.display  = t==='mtd'  ? 'block':'none';
   document.getElementById('panel-lmtd').style.display = t==='lmtd' ? 'block':'none';
   if(t==='lmtd') renderLastMonthHistory();
-}
-function goBizTab(t){
-  document.getElementById('biz-panel-wtd').style.display = t==='wtd' ? 'block':'none';
-  document.getElementById('biz-panel-mtd').style.display = t==='mtd' ? 'block':'none';
-  document.querySelectorAll('[id^="biztab-"]').forEach(function(el){
-    el.classList.toggle('on', el.id==='biztab-'+t);
-  });
 }
 
 // MODAL
