@@ -2010,7 +2010,9 @@ function switchRmkView(v){
       allEventHistory = dailyTop5Data;
     }
     // Cache monthly all-events totals (Financial Loss only) for KPI cards
-    if(Array.isArray(evRows)){
+    // Also refresh allEventsData so WTD/MTD facility ranking stays current
+    if(Array.isArray(evRows) && evRows.length){
+      allEventsData = evRows;
       var fl=evRows.filter(function(r){return (r['Impact Class']||r['ic']||'')==='Financial Loss';});
       window._monthlyTotalEvCount = fl.length;
       window._monthlyTotalEvCOGS  = fl.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0);
