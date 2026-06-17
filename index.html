@@ -455,14 +455,6 @@ tbody tr:hover td{background:var(--sf)}
   <!-- ═══ REMARKS TRACKER ═══ -->
   <div class="pg content" id="pg-remarks">
 
-    <!-- Page Header -->
-    <div class="pg-head" style="margin-bottom:16px">
-      <div>
-        <div class="pg-title">&#128203; Remarks Tracker</div>
-        <div class="pg-sub">Top 20 Financial Loss events · brand-wise · track and update remarks</div>
-      </div>
-    </div>
-
     <!-- Main Toggle: 2 tabs -->
     <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:20px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;max-width:100%">
       <button class="sub-tab on" id="rmk-tog-today"   onclick="switchRmkView('today')"   style="min-width:160px;flex:1">&#128197; Top 20 Today</button>
@@ -549,17 +541,23 @@ tbody tr:hover td{background:var(--sf)}
     <div id="panel-wtd">
       <div class="impact-hero" id="wtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
       <div id="wtd-insight"></div>
-      <div style="display:grid;grid-template-columns:1fr 1.8fr;gap:14px;margin-bottom:14px">
+      <!-- Row 1: Movement · Business Type · Brand-wise -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Movement Breakdown</div>
           <div id="wtd-mov-table"></div>
         </div>
-        <div class="card" style="padding:16px 20px 14px">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact — Business-wise Trends</div>
-          <div id="wtd-trend" style="width:100%;"></div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+          <div id="wtd-biz-bars"></div>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Financial Loss</div>
+          <div id="wtd-brand-bars"></div>
         </div>
       </div>
       <div id="wtd-gauge" style="display:none"></div>
+      <!-- Row 2: Top 10 Facilities · Business-wise Bar Chart -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities by Net COGS</div>
@@ -570,13 +568,9 @@ tbody tr:hover td{background:var(--sf)}
             <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
           </tr></thead><tbody id="wtd-fac-rank"></tbody></table>
         </div>
-        <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-          <div id="wtd-biz-bars"></div>
-        </div>
-        <div class="card" style="margin-top:14px">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Financial Loss</div>
-          <div id="wtd-brand-bars"></div>
+        <div class="card" style="padding:16px 20px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact — Business-wise</div>
+          <div id="wtd-trend" style="width:100%;"></div>
         </div>
       </div>
     </div>
@@ -585,17 +579,23 @@ tbody tr:hover td{background:var(--sf)}
     <div id="panel-mtd" style="display:none">
       <div class="impact-hero" id="mtd-kpis" style="grid-template-columns:repeat(4,1fr)"></div>
       <div id="mtd-insight"></div>
-      <div style="display:grid;grid-template-columns:1fr 1.8fr;gap:14px;margin-bottom:14px">
+      <!-- Row 1: Movement · Business Type · Brand-wise -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Movement Breakdown</div>
           <div id="mtd-mov-table"></div>
         </div>
-        <div class="card" style="padding:16px 20px 14px">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact — Business-wise Trends (MTD)</div>
-          <div id="mtd-trend" style="width:100%;"></div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+          <div id="mtd-biz-bars"></div>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Financial Loss</div>
+          <div id="mtd-brand-bars"></div>
         </div>
       </div>
       <div id="mtd-gauge" style="display:none"></div>
+      <!-- Row 2: Top 10 Facilities · Business-wise Bar Chart -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="card">
           <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities by Net COGS</div>
@@ -606,13 +606,9 @@ tbody tr:hover td{background:var(--sf)}
             <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
           </tr></thead><tbody id="mtd-fac-rank"></tbody></table>
         </div>
-        <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-          <div id="mtd-biz-bars"></div>
-        </div>
-        <div class="card" style="margin-top:14px">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Financial Loss</div>
-          <div id="mtd-brand-bars"></div>
+        <div class="card" style="padding:16px 20px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px">COGS Impact — Business-wise (MTD)</div>
+          <div id="mtd-trend" style="width:100%;"></div>
         </div>
       </div>
     </div>
@@ -1566,69 +1562,36 @@ function renderHistory(){
       +'<div class="ci-body"><div class="ci-title">'+insightTitle+'</div>'
       +'<div class="ci-text">'+insightText+'</div></div></div>';
 
-    // ── MULTI-LINE TREND CHART — one line per Business Type ──
-    var BT_LINE_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
+    // ── HORIZONTAL BAR CHART — total COGS per Business Type for period ──
+    var BT_BAR_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
     var el=document.getElementById(pfx+'-trend');
     if(el){
       var btDaily=acc.btDaily||{};
-      var activeBTs=Object.keys(btDaily).filter(function(bt){return Object.keys(btDaily[bt]).length>0;});
-      if(!activeBTs.length){
-        el.innerHTML='<div class="empty" style="padding:20px;text-align:center;color:var(--mu)">No trend data yet</div>';
+      // Sum total COGS per BizType across all dates in the period
+      var btTotals={};
+      Object.keys(btDaily).forEach(function(bt){
+        var s=Object.values(btDaily[bt]).reduce(function(a,v){return a+v;},0);
+        if(s>0) btTotals[bt]=s;
+      });
+      var bts=Object.keys(btTotals).sort(function(a,b){return btTotals[b]-btTotals[a];});
+      if(!bts.length){
+        el.innerHTML='<div style="padding:20px;text-align:center;color:var(--mu);font-size:11px">No data yet</div>';
       } else {
-        // Collect all unique dates across all BTs, sorted
-        var allDatesSet={};
-        activeBTs.forEach(function(bt){Object.keys(btDaily[bt]).forEach(function(d){allDatesSet[d]=1;});});
-        var allDates=Object.keys(allDatesSet).sort(function(a,b){
-          return (parseDate(a)||new Date(0))-(parseDate(b)||new Date(0));
-        });
-        var show=allDates.slice(-14);
-        var n=show.length;
-        // Find global max for Y axis
-        var allVals=[];
-        activeBTs.forEach(function(bt){show.forEach(function(d){allVals.push(btDaily[bt][d]||0);});});
-        var maxV=Math.max.apply(null,allVals)||1;
-        var W=Math.max(el.offsetWidth||0,360);
-        var LEGEND_H=activeBTs.length*18+8;
-        var H=180; var PAD={t:16,b:34,l:8,r:12};
-        var cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
-        function vy(v){return PAD.t+cH-(v/maxV)*cH*0.88;}
-        function vx(i){return PAD.l+(n===1?cW/2:i/(n-1)*cW);}
-        function fmtLbl(s){var p=s.split(' ');return p.length>=3?p[0]+' '+p[1]:s.slice(0,6);}
-        // Grid lines
-        var gridLines='';
-        [0.25,0.5,0.75,1].forEach(function(f){
-          var gy=vy(maxV*f);
-          gridLines+='<line x1="'+PAD.l+'" y1="'+gy.toFixed(1)+'" x2="'+(W-PAD.r)+'" y2="'+gy.toFixed(1)+'" stroke="#e4e8f0" stroke-width="1" stroke-dasharray="3,3"/>';
-          gridLines+='<text x="'+(PAD.l+2)+'" y="'+(gy-3)+'" font-size="8" fill="#b0b8cc" font-family="Inter,sans-serif">'+fv(maxV*f)+'</text>';
-        });
-        // Date tick labels
-        var tickIdxs=[], step=Math.max(1,Math.floor((n-1)/6));
-        for(var ti=0;ti<n;ti+=step) tickIdxs.push(ti);
-        if(tickIdxs[tickIdxs.length-1]!==n-1) tickIdxs.push(n-1);
-        var tickLabels=tickIdxs.map(function(ti){
-          return '<text x="'+vx(ti).toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle" font-size="10" font-family="Inter,sans-serif" fill="#7c85a0">'+fmtLbl(show[ti])+'</text>';
+        var maxV=btTotals[bts[0]]||1;
+        var rows=bts.map(function(bt){
+          var col=BT_BAR_COL[bt]||'#7c85a0';
+          var pct=Math.max(3,Math.round(btTotals[bt]/maxV*100));
+          return '<div style="padding:10px 16px 6px;border-bottom:1px solid rgba(228,232,240,.5)">'
+            +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+              +'<span style="font-size:11px;font-weight:600;color:var(--tx)">'+bt+'</span>'
+              +'<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+col+'">'+fv(btTotals[bt])+'</span>'
+            +'</div>'
+            +'<div style="height:8px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden">'
+              +'<div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:4px;transition:width .5s"></div>'
+            +'</div>'
+          +'</div>';
         }).join('');
-        // Draw one line per BT
-        var lines=activeBTs.map(function(bt){
-          var col=BT_LINE_COL[bt]||'#7c85a0';
-          var pts=show.map(function(d,i){return vx(i).toFixed(1)+','+vy(btDaily[bt][d]||0).toFixed(1);});
-          var path='M'+pts.join(' L');
-          var lastVal=btDaily[bt][show[n-1]]||0;
-          var lx=vx(n-1),ly=vy(lastVal);
-          var dot=lastVal>0?'<circle cx="'+lx.toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="1.5"/>':'';
-          return '<path d="'+path+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>'+dot;
-        }).join('');
-        // Legend
-        var legendItems=activeBTs.map(function(bt,li){
-          var col=BT_LINE_COL[bt]||'#7c85a0';
-          var lx=PAD.l + li*(W/activeBTs.length);
-          return '<circle cx="'+(lx+6)+'" cy="'+(H+12+14)+'" r="4" fill="'+col+'"/>'
-            +'<text x="'+(lx+14)+'" y="'+(H+12+14+4)+'" font-size="10" font-family="Inter,sans-serif" fill="#374151">'+bt+'</text>';
-        }).join('');
-        var totalLegendH=activeBTs.length>3?32:18;
-        el.innerHTML='<svg width="100%" height="'+(H+totalLegendH)+'" viewBox="0 0 '+W+' '+(H+totalLegendH)+'" style="overflow:visible;display:block">'
-          +gridLines+lines+tickLabels+legendItems
-          +'</svg>';
+        el.innerHTML='<div>'+rows+'</div>';
       }
     }
 
@@ -2115,7 +2078,7 @@ function renderTop20Today(){
         +'<td style="padding:9px 12px;text-align:center;font-size:10px">'+fev(ev.event)+'</td>'
         +'<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(ev.cogs)+'</td>'
         +'<td style="padding:9px 12px;max-width:140px">'+(hasRmk?'<span style="font-size:9px;color:#16a34a">&#10003; '+ev.remark.substring(0,30)+(ev.remark.length>30?'…':'')+'</span>':'<span style="font-size:9px;color:#c2410c">Pending</span>')+'</td>'
-        +'<td style="padding:9px 12px;text-align:center"><button onclick="openRmkModal(\''+ev.ehId.replace(/'/g,"\\'")+'\',\''+ev.sku+'\',\''+ev.name.replace(/'/g,'`')+'\',\''+ev.batch+'\',\''+ev.fac+'\',\''+ev.bt+'\',\''+ev.event+'\','+ev.cogs+',\''+ev.date+'\')" style="padding:4px 12px;border:1.5px solid '+col+';border-radius:16px;background:var(--wh);color:'+col+';font-size:9px;font-weight:700;cursor:pointer">'+(hasRmk?'&#9998; Edit':'&#43; Add')+'</button></td>'
+        +'<td style="padding:9px 12px;text-align:center"><button onclick="openRmkModal(\''+ev.ehId.replace(/'/g,"\\'")+'\',\''+ev.sku+'\',\''+ev.name.replace(/'/g,'`')+'\',\''+ev.batch+'\',\''+ev.fac+'\',\''+ev.bt+'\',\''+ev.event+'\','+ev.cogs+',\''+ev.date+'\')" style="padding:6px 14px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">'+(hasRmk?'&#9998; Edit Remark':'&#43; Add Remark')+'</button></td>'
         +'</tr>';
     });
     // brand subtotal row
@@ -2239,18 +2202,17 @@ function renderRmkMonthlyBusiness(){
   var covPct    = (univCogs&&univCogs>0) ? Math.round(top5Cogs/univCogs*100) : '—';
   var TH='padding:10px 14px;background:var(--sf);border-bottom:2px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-align:center;white-space:nowrap';
 
+  var KS='border-radius:10px;padding:11px 12px;min-width:0';
   var html=
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px">'
-      +'<div style="background:var(--sf);border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:22px;font-weight:800;line-height:1.1;margin-top:2px">'+univCount+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">all Financial Loss</div></div>'
-      +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:22px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+(univCogs!=null?fv(univCogs):'—')+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">full universe</div></div>'
-      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">TOP 5 BRAND-WISE</div><div style="font-size:22px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:9px;color:#0284c7;margin-top:2px">'+daysWithData+' days tracked</div></div>'
-      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 COGS</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">tracked events</div></div>'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">'
-      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">COVERAGE %</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+covPct+(covPct!=='—'?'%':'')+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">top 5 of total COGS</div></div>'
-      +'<div style="background:#fff7ed;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">PENDING</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">remarks needed</div></div>'
-      +'<div style="background:#f0fdf4;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">REMARKED</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">completed</div></div>'
-      +'<div style="background:#eff6ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#1d4ed8;letter-spacing:.4px">COMPLETION</div><div style="font-size:22px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:9px;color:#1e40af;margin-top:2px">'+totC+' of '+totT+'</div></div>'
+    '<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px">'
+      +'<div style="background:var(--sf);'+KS+'"><div style="font-size:7px;font-weight:700;color:var(--mu);letter-spacing:.4px;white-space:nowrap">TOTAL EVENTS</div><div style="font-size:18px;font-weight:800;line-height:1.1;margin-top:2px">'+univCount+'</div><div style="font-size:8px;color:var(--mu);margin-top:1px">all Fin. Loss</div></div>'
+      +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+KS+'"><div style="font-size:7px;font-weight:700;color:#7e22ce;letter-spacing:.4px;white-space:nowrap">TOTAL COGS</div><div style="font-size:18px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+(univCogs!=null?fv(univCogs):'—')+'</div><div style="font-size:8px;color:#6b21a8;margin-top:1px">full universe</div></div>'
+      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+KS+'"><div style="font-size:7px;font-weight:700;color:#0369a1;letter-spacing:.4px;white-space:nowrap">TOP 5 COUNT</div><div style="font-size:18px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:8px;color:#0284c7;margin-top:1px">'+daysWithData+' days</div></div>'
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+KS+'"><div style="font-size:7px;font-weight:700;color:#c2410c;letter-spacing:.4px;white-space:nowrap">TOP 5 COGS</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:8px;color:#9a3412;margin-top:1px">tracked events</div></div>'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+KS+'"><div style="font-size:7px;font-weight:700;color:#16a34a;letter-spacing:.4px;white-space:nowrap">COVERAGE</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+covPct+(covPct!=='—'?'%':'')+'</div><div style="font-size:8px;color:#15803d;margin-top:1px">of total COGS</div></div>'
+      +'<div style="background:#fff7ed;'+KS+'"><div style="font-size:7px;font-weight:700;color:#c2410c;letter-spacing:.4px;white-space:nowrap">PENDING</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:8px;color:#9a3412;margin-top:1px">need remarks</div></div>'
+      +'<div style="background:#f0fdf4;'+KS+'"><div style="font-size:7px;font-weight:700;color:#16a34a;letter-spacing:.4px;white-space:nowrap">REMARKED</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:8px;color:#15803d;margin-top:1px">completed</div></div>'
+      +'<div style="background:#eff6ff;'+KS+'"><div style="font-size:7px;font-weight:700;color:#1d4ed8;letter-spacing:.4px;white-space:nowrap">COMPLETION</div><div style="font-size:18px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:8px;color:#1e40af;margin-top:1px">'+totC+'/'+totT+'</div></div>'
     +'</div>'
     +'<div style="padding:6px 16px 10px;font-size:10px;color:var(--mu)">Financial Loss · Top 5 per brand per day · '+monthLabel+'</div>'
     +'<div style="overflow-x:auto;border:1px solid var(--br);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse">'
@@ -2369,18 +2331,17 @@ function renderRmkMonthlyBizType(){
   var covPct    = (univCogs&&univCogs>0) ? Math.round(top5Cogs/univCogs*100) : '—';
   var TH='padding:11px 16px;background:var(--sf);border-bottom:2px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-align:center;white-space:nowrap';
 
+  var KS2='border-radius:10px;padding:11px 12px;min-width:0';
   var html=
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px">'
-      +'<div style="background:var(--sf);border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:22px;font-weight:800;line-height:1.1;margin-top:2px">'+univCount+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">all Financial Loss</div></div>'
-      +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:22px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+(univCogs!=null?fv(univCogs):'—')+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">full universe</div></div>'
-      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">TOP 5 BRAND-WISE</div><div style="font-size:22px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:9px;color:#0284c7;margin-top:2px">'+daysWithData+' days tracked</div></div>'
-      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 COGS</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">tracked events</div></div>'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">'
-      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">COVERAGE %</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+covPct+(covPct!=='—'?'%':'')+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">top 5 of total COGS</div></div>'
-      +'<div style="background:#fff7ed;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">PENDING</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">remarks needed</div></div>'
-      +'<div style="background:#f0fdf4;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">REMARKED</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">completed</div></div>'
-      +'<div style="background:#eff6ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#1d4ed8;letter-spacing:.4px">COMPLETION</div><div style="font-size:22px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:9px;color:#1e40af;margin-top:2px">'+totC+' of '+totT+'</div></div>'
+    '<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px">'
+      +'<div style="background:var(--sf);'+KS2+'"><div style="font-size:7px;font-weight:700;color:var(--mu);letter-spacing:.4px;white-space:nowrap">TOTAL EVENTS</div><div style="font-size:18px;font-weight:800;line-height:1.1;margin-top:2px">'+univCount+'</div><div style="font-size:8px;color:var(--mu);margin-top:1px">all Fin. Loss</div></div>'
+      +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#7e22ce;letter-spacing:.4px;white-space:nowrap">TOTAL COGS</div><div style="font-size:18px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+(univCogs!=null?fv(univCogs):'—')+'</div><div style="font-size:8px;color:#6b21a8;margin-top:1px">full universe</div></div>'
+      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#0369a1;letter-spacing:.4px;white-space:nowrap">TOP 5 COUNT</div><div style="font-size:18px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:8px;color:#0284c7;margin-top:1px">'+daysWithData+' days</div></div>'
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#c2410c;letter-spacing:.4px;white-space:nowrap">TOP 5 COGS</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:8px;color:#9a3412;margin-top:1px">tracked events</div></div>'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#16a34a;letter-spacing:.4px;white-space:nowrap">COVERAGE</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+covPct+(covPct!=='—'?'%':'')+'</div><div style="font-size:8px;color:#15803d;margin-top:1px">of total COGS</div></div>'
+      +'<div style="background:#fff7ed;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#c2410c;letter-spacing:.4px;white-space:nowrap">PENDING</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:8px;color:#9a3412;margin-top:1px">need remarks</div></div>'
+      +'<div style="background:#f0fdf4;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#16a34a;letter-spacing:.4px;white-space:nowrap">REMARKED</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:8px;color:#15803d;margin-top:1px">completed</div></div>'
+      +'<div style="background:#eff6ff;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#1d4ed8;letter-spacing:.4px;white-space:nowrap">COMPLETION</div><div style="font-size:18px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:8px;color:#1e40af;margin-top:1px">'+totC+'/'+totT+'</div></div>'
     +'</div>'
     +'<div style="padding:8px 18px;border-bottom:1px solid var(--br);font-size:10px;color:var(--mu)">All brand-wise events · '+monthLabel+'</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
