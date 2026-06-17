@@ -455,15 +455,21 @@ tbody tr:hover td{background:var(--sf)}
   <!-- ═══ REMARKS TRACKER ═══ -->
   <div class="pg content" id="pg-remarks">
 
-    <!-- Main Toggle: 2 tabs -->
-    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:20px;background:var(--sf);border:1px solid var(--br);border-radius:var(--r2);padding:3px;max-width:100%">
-      <button class="sub-tab on" id="rmk-tog-today"   onclick="switchRmkView('today')"   style="min-width:160px;flex:1">&#128197; Top 20 Today</button>
-      <button class="sub-tab"    id="rmk-tog-monthly" onclick="switchRmkView('monthly')" style="min-width:200px;flex:1">&#128202; Monthly Summary</button>
+    <!-- Main Toggle: Daily / Monthly (colored pill) -->
+    <div style="display:flex;gap:0;margin-bottom:20px;border-radius:10px;overflow:hidden;border:1.5px solid var(--br);width:fit-content">
+      <button id="rmk-tog-today"   onclick="switchRmkView('today')"   style="padding:9px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:#1565c0;color:#fff;letter-spacing:.3px">&#128197; Daily</button>
+      <button id="rmk-tog-monthly" onclick="switchRmkView('monthly')" style="padding:9px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:var(--sf);color:var(--mu);letter-spacing:.3px">&#128202; Monthly</button>
     </div>
 
-    <!-- VIEW A: Top 20 Today — brand-wise only -->
+    <!-- VIEW A: Daily — Business Wise / Brand Wise sub-tabs -->
     <div id="rmk-view-today">
-      <div id="rmk-today-wrap"></div>
+      <!-- Daily sub-tabs: Business Wise first -->
+      <div style="display:flex;gap:0;margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid var(--br);width:fit-content">
+        <button id="rmk-daily-biz"   onclick="switchDailyView('biz')"   style="padding:6px 20px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:#6d4c41;color:#fff">&#127981; Business Wise</button>
+        <button id="rmk-daily-brand" onclick="switchDailyView('brand')" style="padding:6px 20px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:var(--sf);color:var(--mu)">&#127808; Brand Wise</button>
+      </div>
+      <div id="rmk-today-biz-wrap"></div>
+      <div id="rmk-today-wrap" style="display:none"></div>
     </div>
 
     <!-- VIEW B: Monthly Summary — Brand / Business sub-tabs -->
@@ -522,7 +528,7 @@ tbody tr:hover td{background:var(--sf)}
       <div>
         <div class="sec-title">Business Type Impact</div>
         <div class="card"><div id="biz-bars"></div></div>
-        <div class="sec-title" style="margin-top:14px">Brand-wise Financial Loss</div>
+        <div class="sec-title" style="margin-top:14px">Brand-wise Impact</div>
         <div class="card"><div id="brand-bars"></div></div>
       </div>
     </div>
@@ -552,7 +558,7 @@ tbody tr:hover td{background:var(--sf)}
           <div id="wtd-biz-bars"></div>
         </div>
         <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Financial Loss</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Impact</div>
           <div id="wtd-brand-bars"></div>
         </div>
       </div>
@@ -590,7 +596,7 @@ tbody tr:hover td{background:var(--sf)}
           <div id="mtd-biz-bars"></div>
         </div>
         <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Financial Loss</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand-wise Impact</div>
           <div id="mtd-brand-bars"></div>
         </div>
       </div>
@@ -1499,15 +1505,23 @@ function renderHistory(){
     });
     a.brandRanked=Object.keys(brandMap).map(function(k){return Object.assign({brand:k},brandMap[k]);})
       .sort(function(a,b){return b.negV-a.negV;});
-    // Facility ranking from NI_FacHistory
+    // Facility ranking from NI_Events (allEventsData) — NI_FacHistory is a mapping table only
     var facAcc={};
-    (facHistData||[]).forEach(function(row){
-      var d=parseDate(row['Date']); if(!d||d<startDate) return;
+    allEventsData.forEach(function(row){
+      var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
       if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
+      if(d<startDate) return;
       var fac=row['Facility']||''; if(!fac) return;
-      if(!facAcc[fac]) facAcc[fac]={name:fac,bt:row['BizType']||'',city:row['City']||'',negVal:0,posVal:0,negQty:0,posQty:0};
-      facAcc[fac].negVal+=n(row['NegValue']); facAcc[fac].negQty+=n(row['NegQty']);
-      facAcc[fac].posVal+=n(row['PosValue']); facAcc[fac].posQty+=n(row['PosQty']);
+      var bt=row['BizType']||row['Business Type']||'';
+      var city=row['City']||'';
+      var qty=n(row['Qty']), cv=n(row['COGSValue']);
+      var ic=(row['Impact Class']||'').trim();
+      if(!facAcc[fac]) facAcc[fac]={name:fac,bt:bt,city:city,negVal:0,posVal:0,negQty:0,posQty:0};
+      if(ic==='Financial Loss'||ic==='Expiry Risk'){
+        facAcc[fac].negVal+=cv; facAcc[fac].negQty+=qty;
+      } else if(ic==='Recovery'){
+        facAcc[fac].posVal+=cv; facAcc[fac].posQty+=qty;
+      }
     });
     a.facRanked=Object.values(facAcc).map(function(f){ f.netVal=f.negVal-f.posVal; return f; })
       .sort(function(a,b){return b.netVal-a.netVal;});
@@ -1666,31 +1680,34 @@ function renderHistory(){
     var bzArr=Object.keys(acc.bizMap).map(function(k){return Object.assign({bt:k},acc.bizMap[k]);}).sort(function(a,b){return b.netV-a.netV;});
     var mxB=bzArr.length?Math.max.apply(null,bzArr.map(function(b){return b.netV||0;}))||1:1;
     var _bCols={'3PL B2C':'#1558a8','3PL B2B':'#37474f','Dark Store':'#4a148c','Self Warehouse':'#166534','FBA / Marketplace':'#b7410e','Other':'#7c85a0'};
+    var totalBizCogs=bzArr.reduce(function(s,b){return s+(b.netV||0);},0)||1;
     document.getElementById(pfx+'-biz-bars').innerHTML=bzArr.length?'<div class="bars">'+bzArr.map(function(b){
       var col=_bCols[b.bt]||'#7c85a0'; var p=Math.max(3,(b.netV/mxB*100)).toFixed(0);
-      var rec=b.nV>0?(b.pV/b.nV*100).toFixed(0)+'%':'0%';
+      var pctCogs=Math.round(b.netV/totalBizCogs*100);
       return '<div class="bar-row"><div class="bar-lbl">'+b.bt
-        +'<br><span class="bar-sub">'+rec+' recovery</span></div>'
+        +'<br><span class="bar-sub">'+pctCogs+'% of total</span></div>'
         +'<div class="bar-track"><div class="bar-fill" style="width:'+p+'%;background:'+col+'"></div></div>'
-        +'<div style="text-align:right;flex-shrink:0;min-width:72px">'
+        +'<div style="text-align:right;flex-shrink:0;min-width:80px">'
         +'<div style="font-family:var(--mono);font-size:9px;font-weight:700;color:'+col+'">'+fv(b.netV)+'</div>'
         +'<div style="font-size:8px;color:var(--mu)">'+fq(b.negQ||0)+' units</div>'
         +'</div></div>';
     }).join('')+'</div>':'<div class="empty" style="padding:14px;font-size:11px;color:var(--mu)">No data yet for this period</div>';
 
-    // Brand bars (Financial Loss only)
+    // Brand-wise Impact (Financial Loss only)
     var brEl2=document.getElementById(pfx+'-brand-bars');
     if(brEl2){
       var BRANDS=['Be Bodywise','Man Matters','Little Joys','OWN','Root Labs'];
       var brArr=(acc.brandRanked||[]).filter(function(b){return BRANDS.indexOf(b.brand)>=0;});
       var mxBr2=brArr.length?Math.max.apply(null,brArr.map(function(b){return b.negV||0;}))||1:1;
+      var totalBrCogs=brArr.reduce(function(s,b){return s+(b.negV||0);},0)||1;
       brEl2.innerHTML=brArr.length?'<div class="bars">'+brArr.map(function(b){
         var col=BRAND_COLS[b.brand]||'#7c85a0';
         var p=Math.max(3,(b.negV/mxBr2*100)).toFixed(0);
+        var pctCogs=Math.round(b.negV/totalBrCogs*100);
         return '<div class="bar-row"><div class="bar-lbl">'+b.brand
-          +'<br><span class="bar-sub">Financial Loss</span></div>'
+          +'<br><span class="bar-sub">'+pctCogs+'% of total</span></div>'
           +'<div class="bar-track"><div class="bar-fill" style="width:'+p+'%;background:'+col+'"></div></div>'
-          +'<div style="text-align:right;flex-shrink:0;min-width:72px">'
+          +'<div style="text-align:right;flex-shrink:0;min-width:80px">'
           +'<div style="font-family:var(--mono);font-size:9px;font-weight:700;color:'+col+'">'+fv(b.negV)+'</div>'
           +'<div style="font-size:8px;color:var(--mu)">'+fq(b.negQ||0)+' units</div>'
           +'</div></div>';
@@ -1975,9 +1992,11 @@ function renderRemarksView(r, filterBt, rmkDateFilter){
 function switchRmkView(v){
   document.getElementById('rmk-view-today').style.display   = v==='today'   ?'block':'none';
   document.getElementById('rmk-view-monthly').style.display = v==='monthly' ?'block':'none';
-  document.getElementById('rmk-tog-today').classList.toggle('on',   v==='today');
-  document.getElementById('rmk-tog-monthly').classList.toggle('on', v==='monthly');
-  if(v==='today'){ renderTop20Today(); return; }
+  var btnToday=document.getElementById('rmk-tog-today');
+  var btnMonthly=document.getElementById('rmk-tog-monthly');
+  if(btnToday){btnToday.style.background=v==='today'?'#1565c0':'var(--sf)';btnToday.style.color=v==='today'?'#fff':'var(--mu)';}
+  if(btnMonthly){btnMonthly.style.background=v==='monthly'?'#6d4c41':'var(--sf)';btnMonthly.style.color=v==='monthly'?'#fff':'var(--mu)';}
+  if(v==='today'){ switchDailyView('biz'); return; }
   // Monthly — fetch NI_DailyTop5 + NI_Events (for total universe counts) in parallel
   var loadEl=document.getElementById('rmk-monthly-brand-wrap');
   if(loadEl) loadEl.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">&#8635; Loading...</div>';
@@ -2004,6 +2023,158 @@ function switchRmkView(v){
   });
 }
 
+function switchDailyView(v){
+  var bizWrap=document.getElementById('rmk-today-biz-wrap');
+  var brandWrap=document.getElementById('rmk-today-wrap');
+  var btnBiz=document.getElementById('rmk-daily-biz');
+  var btnBrand=document.getElementById('rmk-daily-brand');
+  if(bizWrap) bizWrap.style.display=v==='biz'?'block':'none';
+  if(brandWrap) brandWrap.style.display=v==='brand'?'block':'none';
+  if(btnBiz){btnBiz.style.background=v==='biz'?'#6d4c41':'var(--sf)';btnBiz.style.color=v==='biz'?'#fff':'var(--mu)';}
+  if(btnBrand){btnBrand.style.background=v==='brand'?'#1565c0':'var(--sf)';btnBrand.style.color=v==='brand'?'#fff':'var(--mu)';}
+  if(v==='biz') renderTop20BizWise();
+  else renderTop20Today();
+}
+
+function renderTop20BizWise(){
+  var wrap=document.getElementById('rmk-today-biz-wrap');
+  if(!wrap) return;
+  var now=new Date();
+  var todayStr=now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  var BT_LIST=['Self Warehouse','Dark Store','3PL B2C','3PL B2B','FBA / Marketplace','Quality'];
+  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e','Quality':'#9c3838'};
+  var BT_ICON={'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;','FBA / Marketplace':'&#128722;','Quality':'&#128202;'};
+
+  if(!R||!R.flat){
+    wrap.innerHTML='<div style="padding:48px;text-align:center;color:var(--mu)">No data for today yet</div>';
+    return;
+  }
+
+  // Build events grouped by BizType from R.flat (Financial Loss only)
+  var btEvs={};
+  BT_LIST.forEach(function(bt){btEvs[bt]=[];});
+  R.flat.filter(function(x){return x.ic==='Financial Loss';})
+    .sort(function(a,b){return (b.cogsVal||0)-(a.cogsVal||0);})
+    .forEach(function(x){
+      var bt=x.bt||'Other';
+      if(!btEvs[bt]) btEvs[bt]=[];
+      // Cap at 5 per BizType
+      if(btEvs[bt].length>=5) return;
+      var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
+      var existing=dailyTop5Data.find(function(r){return (r['EH_ID']||'')===ehId;});
+      btEvs[bt].push({sku:x.sku,name:x.name||'—',batch:x.batch||'',fac:x.fac,bt:bt,
+        event:x.event,cogs:x.cogsVal||0,qty:x.qty||0,
+        remark:(existing&&existing['Remark'])||'',ehId:ehId,date:todayStr,brand:x.brand||''});
+    });
+
+  // KPI: full universe stats
+  var allFL=R.flat.filter(function(x){return x.ic==='Financial Loss';});
+  var allFlCogs=allFL.reduce(function(s,x){return s+(x.cogsVal||0);},0);
+  var allTracked=[];
+  BT_LIST.forEach(function(bt){btEvs[bt].forEach(function(e){allTracked.push(e);});});
+  var top5Cogs=allTracked.reduce(function(s,e){return s+e.cogs;},0);
+  var top5Pct=allFlCogs>0?Math.round(top5Cogs/allFlCogs*100):0;
+  var totRemarked=allTracked.filter(function(e){return e.remark;}).length;
+  var totPending=allTracked.length-totRemarked;
+
+  var TH='padding:9px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
+
+  // Summary table: BizType | COGS | Qty | % of Total
+  var summaryRows='';
+  var totalBizCogs=0, totalBizQty=0;
+  BT_LIST.forEach(function(bt){
+    var evs=btEvs[bt]; if(!evs.length) return;
+    totalBizCogs+=evs.reduce(function(s,e){return s+e.cogs;},0);
+    totalBizQty+=evs.reduce(function(s,e){return s+e.qty;},0);
+  });
+  BT_LIST.forEach(function(bt){
+    var evs=btEvs[bt]; if(!evs.length) return;
+    var bCogs=evs.reduce(function(s,e){return s+e.cogs;},0);
+    var bQty=evs.reduce(function(s,e){return s+e.qty;},0);
+    var bPct=totalBizCogs>0?Math.round(bCogs/totalBizCogs*100):0;
+    var col=BT_COL[bt]||'#555';
+    summaryRows+='<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+      +'<td style="padding:8px 14px"><span style="font-size:13px;margin-right:6px">'+BT_ICON[bt]+'</span><span style="font-size:11px;font-weight:700;color:'+col+'">'+bt+'</span></td>'
+      +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--re)">'+fv(bCogs)+'</td>'
+      +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--tx2)">'+fq(bQty)+'</td>'
+      +'<td style="padding:8px 14px"><div style="display:flex;align-items:center;gap:6px">'
+        +'<div style="flex:1;height:6px;background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+bPct+'%;background:'+col+';border-radius:3px"></div></div>'
+        +'<span style="font-size:10px;font-weight:700;color:'+col+';min-width:32px">'+bPct+'%</span>'
+      +'</div></td>'
+      +'</tr>';
+  });
+
+  var html=
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">'
+      +'<div style="background:var(--sf);border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:24px;font-weight:800;line-height:1.1;margin-top:2px">'+allFL.length+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">all Financial Loss</div></div>'
+      +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:24px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+fv(allFlCogs)+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">full universe</div></div>'
+      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">TOP 5 BIZ-WISE</div><div style="font-size:24px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+allTracked.length+'</div><div style="font-size:9px;color:#0284c7;margin-top:2px">events tracked</div></div>'
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 COGS</div><div style="font-size:24px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">tracked events</div></div>'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">COVERAGE</div><div style="font-size:24px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+top5Pct+'%</div><div style="font-size:9px;color:#15803d;margin-top:2px">of total COGS</div></div>'
+    +'</div>'
+    // COGS/Qty/% summary table
+    +'<div style="border:1px solid var(--br);border-radius:10px;overflow:hidden;margin-bottom:16px">'
+    +'<table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr>'
+    +'<th style="'+TH+';text-align:left;padding-left:14px">Business Type</th>'
+    +'<th style="'+TH+';text-align:right">COGS</th>'
+    +'<th style="'+TH+';text-align:right">Qty</th>'
+    +'<th style="'+TH+'">% of Total COGS</th>'
+    +'</tr></thead><tbody>'+summaryRows
+    +'<tr style="background:var(--sf);border-top:2px solid var(--br)">'
+    +'<td style="padding:8px 14px;font-size:11px;font-weight:800">Total</td>'
+    +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--re)">'+fv(totalBizCogs)+'</td>'
+    +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700">'+fq(totalBizQty)+'</td>'
+    +'<td style="padding:8px 14px;font-size:10px;font-weight:700;color:var(--mu)">100%</td>'
+    +'</tr></tbody></table></div>'
+    // Detail table
+    +'<div style="overflow-x:auto;border:1px solid var(--br);border-radius:10px;overflow:hidden">'
+    +'<table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr>'
+    +'<th style="'+TH+';text-align:left;padding-left:14px">Business Type</th>'
+    +'<th style="'+TH+';text-align:left">SKU / Name</th>'
+    +'<th style="'+TH+'">Facility</th>'
+    +'<th style="'+TH+'">Event</th>'
+    +'<th style="'+TH+';text-align:right">COGS</th>'
+    +'<th style="'+TH+'">Remark</th>'
+    +'<th style="'+TH+'">Action</th>'
+    +'</tr></thead><tbody>';
+
+  BT_LIST.forEach(function(bt){
+    var evs=btEvs[bt]; if(!evs.length) return;
+    var col=BT_COL[bt]||'#555';
+    evs.forEach(function(ev,i){
+      var hasRmk=!!ev.remark;
+      html+='<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+        +'<td style="padding:9px 14px">'+(i===0?'<span style="font-size:13px;margin-right:5px">'+BT_ICON[bt]+'</span><span style="font-size:11px;font-weight:700;color:'+col+'">'+bt+'</span>':'')+'</td>'
+        +'<td style="padding:9px 12px"><div style="font-family:var(--mono);font-size:10px;font-weight:700">'+ev.sku+'</div><div style="font-size:9px;color:var(--mu)">'+ev.name+'</div></td>'
+        +'<td style="padding:9px 12px;text-align:center;font-size:10px;color:var(--tx2)">'+ev.fac+'</td>'
+        +'<td style="padding:9px 12px;text-align:center;font-size:10px">'+fev(ev.event)+'</td>'
+        +'<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(ev.cogs)+'</td>'
+        +'<td style="padding:9px 12px;max-width:140px">'+(hasRmk?'<span style="font-size:9px;color:#16a34a">&#10003; '+ev.remark.substring(0,30)+(ev.remark.length>30?'…':'')+'</span>':'<span style="font-size:9px;color:#c2410c">Pending</span>')+'</td>'
+        +'<td style="padding:9px 12px;text-align:center"><button onclick="openRmkModal(\''+ev.ehId.replace(/'/g,"\\'")+'\',\''+ev.sku+'\',\''+ev.name.replace(/'/g,'`')+'\',\''+ev.batch+'\',\''+ev.fac+'\',\''+ev.bt+'\',\''+ev.event+'\','+ev.cogs+',\''+ev.date+'\')" style="padding:6px 14px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">'+(hasRmk?'&#9998; Edit Remark':'&#43; Add Remark')+'</button></td>'
+        +'</tr>';
+    });
+    // BizType subtotal
+    var btRemarked=evs.filter(function(e){return e.remark;}).length;
+    var btCogs=evs.reduce(function(s,e){return s+e.cogs;},0);
+    html+='<tr style="background:rgba(0,0,0,.02);border-bottom:2px solid var(--br)">'
+      +'<td colspan="4" style="padding:6px 14px;font-size:9px;font-weight:700;color:'+col+'">'+bt+' subtotal</td>'
+      +'<td style="padding:6px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(btCogs)+'</td>'
+      +'<td style="padding:6px 12px;text-align:center;font-size:9px;color:#16a34a;font-weight:700">'+btRemarked+'/'+evs.length+' remarked</td>'
+      +'<td></td></tr>';
+  });
+
+  html+='<tr style="background:var(--sf);border-top:2px solid var(--br)">'
+    +'<td colspan="4" style="padding:10px 14px;font-size:11px;font-weight:800">Grand Total — '+allTracked.length+' events</td>'
+    +'<td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--re)">'+fv(top5Cogs)+'</td>'
+    +'<td style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:#16a34a">'+totRemarked+'/'+allTracked.length+'</td>'
+    +'<td></td></tr>'
+    +'</tbody></table></div>';
+
+  wrap.innerHTML=html;
+}
+
 // ── Top 20 Today — brand-wise, 5 per brand, Financial Loss ──
 function renderTop20Today(){
   var wrap=document.getElementById('rmk-today-wrap');
@@ -2024,7 +2195,7 @@ function renderTop20Today(){
         .forEach(function(x){
           var ehId=[todayStr,x.sku,x.batch||'',x.fac,x.event].join('|');
           var existing=dailyTop5Data.find(function(r){return (r['EH_ID']||'')===ehId;});
-          todayEvs.push({brand:br,sku:x.sku,name:x.name||'—',batch:x.batch||'',fac:x.fac,bt:x.bt||'',event:x.event,cogs:x.cogsVal||0,remark:(existing&&existing['Remark'])||'',ehId:ehId,date:todayStr});
+          todayEvs.push({brand:br,sku:x.sku,name:x.name||'—',batch:x.batch||'',fac:x.fac,bt:x.bt||'',event:x.event,cogs:x.cogsVal||0,qty:x.qty||0,remark:(existing&&existing['Remark'])||'',ehId:ehId,date:todayStr});
         });
     });
   }
@@ -2044,14 +2215,54 @@ function renderTop20Today(){
   var top5Pct=allFlCogs>0?Math.round(top5Cogs/allFlCogs*100):0;
   var TH='padding:9px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
 
+  // Brand-level COGS/Qty/% summary
+  var brandSummaryRows='';
+  var totalBrCogs=0, totalBrQty=0;
+  PRIMARY_BRANDS.forEach(function(br){
+    var evs=todayEvs.filter(function(e){return e.brand===br;});
+    totalBrCogs+=evs.reduce(function(s,e){return s+e.cogs;},0);
+    totalBrQty+=evs.reduce(function(s,e){return s+(e.qty||0);},0);
+  });
+  PRIMARY_BRANDS.forEach(function(br){
+    var evs=todayEvs.filter(function(e){return e.brand===br;}); if(!evs.length) return;
+    var bCogs=evs.reduce(function(s,e){return s+e.cogs;},0);
+    var bQty=evs.reduce(function(s,e){return s+(e.qty||0);},0);
+    var bPct=totalBrCogs>0?Math.round(bCogs/totalBrCogs*100):0;
+    var col=BRAND_COLS[br]||'#555';
+    brandSummaryRows+='<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+      +'<td style="padding:8px 14px"><span style="font-size:11px;font-weight:700;color:'+col+'">'+br+'</span></td>'
+      +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--re)">'+fv(bCogs)+'</td>'
+      +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--tx2)">'+fq(bQty)+'</td>'
+      +'<td style="padding:8px 14px"><div style="display:flex;align-items:center;gap:6px">'
+        +'<div style="flex:1;height:6px;background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+bPct+'%;background:'+col+';border-radius:3px"></div></div>'
+        +'<span style="font-size:10px;font-weight:700;color:'+col+';min-width:32px">'+bPct+'%</span>'
+      +'</div></td>'
+      +'</tr>';
+  });
+
   var html=
-    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">'
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">'
       +'<div style="background:var(--sf);border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS TODAY</div><div style="font-size:24px;font-weight:800;line-height:1.1;margin-top:2px">'+allFlCount+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">all Financial Loss</div></div>'
       +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS TODAY</div><div style="font-size:24px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+fv(allFlCogs)+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">full universe</div></div>'
       +'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">TOP 5 BRAND-WISE</div><div style="font-size:24px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+todayEvs.length+'</div><div style="font-size:9px;color:#0284c7;margin-top:2px">events tracked</div></div>'
       +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 COGS</div><div style="font-size:24px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">tracked events</div></div>'
       +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">COVERAGE</div><div style="font-size:24px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+top5Pct+'%</div><div style="font-size:9px;color:#15803d;margin-top:2px">of total COGS</div></div>'
     +'</div>'
+    // Brand COGS/Qty/% summary
+    +'<div style="border:1px solid var(--br);border-radius:10px;overflow:hidden;margin-bottom:16px">'
+    +'<table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr>'
+    +'<th style="'+TH+';text-align:left;padding-left:14px">Brand</th>'
+    +'<th style="'+TH+';text-align:right">COGS</th>'
+    +'<th style="'+TH+';text-align:right">Qty</th>'
+    +'<th style="'+TH+'">% of Total COGS</th>'
+    +'</tr></thead><tbody>'+brandSummaryRows
+    +'<tr style="background:var(--sf);border-top:2px solid var(--br)">'
+    +'<td style="padding:8px 14px;font-size:11px;font-weight:800">Total</td>'
+    +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--re)">'+fv(totalBrCogs)+'</td>'
+    +'<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700">'+fq(totalBrQty)+'</td>'
+    +'<td style="padding:8px 14px;font-size:10px;font-weight:700;color:var(--mu)">100%</td>'
+    +'</tr></tbody></table></div>'
     +'<div style="overflow-x:auto;border:1px solid var(--br);border-radius:10px;overflow:hidden">'
     +'<table style="width:100%;border-collapse:collapse">'
     +'<thead><tr>'
@@ -2180,11 +2391,13 @@ function renderRmkMonthlyBusiness(){
 
   // Aggregate by brand — init primary brands with targets; secondary (Root Labs) only if data exists
   var brandMap={};
-  PRIMARY_BRANDS.forEach(function(br){brandMap[br]={total:0,pending:0,completed:0,isPrimary:true,target:daysWithData*TARGET_PER_BRAND_DAY};});
-  SECONDARY_BRANDS.forEach(function(br){brandMap[br]={total:0,pending:0,completed:0,isPrimary:false,target:null};});
+  PRIMARY_BRANDS.forEach(function(br){brandMap[br]={total:0,pending:0,completed:0,isPrimary:true,target:daysWithData*TARGET_PER_BRAND_DAY,cogs:0,qty:0};});
+  SECONDARY_BRANDS.forEach(function(br){brandMap[br]={total:0,pending:0,completed:0,isPrimary:false,target:null,cogs:0,qty:0};});
   allEvs.forEach(function(ev){
     var br=ev.brand; if(!brandMap[br]) return;
     brandMap[br].total++;
+    brandMap[br].cogs+=(ev.cogs||0);
+    brandMap[br].qty+=(ev.qty||0);
     if(ev.remark) brandMap[br].completed++; else brandMap[br].pending++;
   });
 
@@ -2204,21 +2417,20 @@ function renderRmkMonthlyBusiness(){
 
   var KS='border-radius:10px;padding:11px 12px;min-width:0';
   var html=
-    '<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px">'
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px">'
       +'<div style="background:var(--sf);'+KS+'"><div style="font-size:7px;font-weight:700;color:var(--mu);letter-spacing:.4px;white-space:nowrap">TOTAL EVENTS</div><div style="font-size:18px;font-weight:800;line-height:1.1;margin-top:2px">'+univCount+'</div><div style="font-size:8px;color:var(--mu);margin-top:1px">all Fin. Loss</div></div>'
       +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+KS+'"><div style="font-size:7px;font-weight:700;color:#7e22ce;letter-spacing:.4px;white-space:nowrap">TOTAL COGS</div><div style="font-size:18px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+(univCogs!=null?fv(univCogs):'—')+'</div><div style="font-size:8px;color:#6b21a8;margin-top:1px">full universe</div></div>'
       +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+KS+'"><div style="font-size:7px;font-weight:700;color:#0369a1;letter-spacing:.4px;white-space:nowrap">TOP 5 COUNT</div><div style="font-size:18px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:8px;color:#0284c7;margin-top:1px">'+daysWithData+' days</div></div>'
       +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+KS+'"><div style="font-size:7px;font-weight:700;color:#c2410c;letter-spacing:.4px;white-space:nowrap">TOP 5 COGS</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:8px;color:#9a3412;margin-top:1px">tracked events</div></div>'
       +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+KS+'"><div style="font-size:7px;font-weight:700;color:#16a34a;letter-spacing:.4px;white-space:nowrap">COVERAGE</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+covPct+(covPct!=='—'?'%':'')+'</div><div style="font-size:8px;color:#15803d;margin-top:1px">of total COGS</div></div>'
-      +'<div style="background:#fff7ed;'+KS+'"><div style="font-size:7px;font-weight:700;color:#c2410c;letter-spacing:.4px;white-space:nowrap">PENDING</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:8px;color:#9a3412;margin-top:1px">need remarks</div></div>'
-      +'<div style="background:#f0fdf4;'+KS+'"><div style="font-size:7px;font-weight:700;color:#16a34a;letter-spacing:.4px;white-space:nowrap">REMARKED</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:8px;color:#15803d;margin-top:1px">completed</div></div>'
-      +'<div style="background:#eff6ff;'+KS+'"><div style="font-size:7px;font-weight:700;color:#1d4ed8;letter-spacing:.4px;white-space:nowrap">COMPLETION</div><div style="font-size:18px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:8px;color:#1e40af;margin-top:1px">'+totC+'/'+totT+'</div></div>'
     +'</div>'
     +'<div style="padding:6px 16px 10px;font-size:10px;color:var(--mu)">Financial Loss · Top 5 per brand per day · '+monthLabel+'</div>'
     +'<div style="overflow-x:auto;border:1px solid var(--br);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse">'
     +'<thead><tr>'
     +'<th style="'+TH+';text-align:left;padding-left:18px">Brand</th>'
     +'<th style="'+TH+'">Captured</th>'
+    +'<th style="'+TH+';text-align:right">COGS</th>'
+    +'<th style="'+TH+';text-align:right">Qty</th>'
     +'<th style="'+TH+';color:#c2410c">Pending</th>'
     +'<th style="'+TH+';color:#16a34a">Remarked</th>'
     +'<th style="'+TH+'">Completion</th>'
@@ -2238,6 +2450,8 @@ function renderRmkMonthlyBusiness(){
         +'<div style="font-size:9px;color:var(--mu)">Top 5/day · Financial Loss</div></div>'
       +'</div></td>'
       +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+s.total+'</td>'
+      +'<td style="padding:12px 14px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--re)">'+fv(s.cogs)+'</td>'
+      +'<td style="padding:12px 14px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--tx2)">'+fq(s.qty)+'</td>'
       +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+s.pending+'</td>'
       +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+s.completed+'</td>'
       +'<td style="padding:12px 18px"><div style="display:flex;align-items:center;gap:8px">'
@@ -2255,9 +2469,13 @@ function renderRmkMonthlyBusiness(){
   // Summary row
   var totPct=totT>0?Math.round(totC/totT*100):0;
   var totBarCol=totPct>=80?'#16a34a':totPct>=40?'#d97706':'#dc2626';
+  var totBrCogs=RENDER_BRANDS.reduce(function(s,br){return s+(brandMap[br]?brandMap[br].cogs:0);},0);
+  var totBrQty=RENDER_BRANDS.reduce(function(s,br){return s+(brandMap[br]?brandMap[br].qty:0);},0);
   html+='<tr style="background:var(--sf);border-top:2px solid var(--br)">'
     +'<td style="padding:12px 18px;font-size:12px;font-weight:800;color:var(--tx)">Summary</td>'
     +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+totT+'</td>'
+    +'<td style="padding:12px 14px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:800;color:var(--re)">'+fv(totBrCogs)+'</td>'
+    +'<td style="padding:12px 14px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700">'+fq(totBrQty)+'</td>'
     +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+totP+'</td>'
     +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+totC+'</td>'
     +'<td style="padding:12px 18px"><div style="display:flex;align-items:center;gap:8px">'
@@ -2285,7 +2503,7 @@ function renderRmkMonthlyBizType(){
 
   // Aggregate ALL events from dailyTop5Data directly by BizType (no top-5-per-day slicing)
   var btMap={};
-  BT_LIST.forEach(function(bt){btMap[bt]={total:0,pending:0,completed:0};});
+  BT_LIST.forEach(function(bt){btMap[bt]={total:0,pending:0,completed:0,cogs:0,qty:0};});
   var datesWithData={};
 
   dailyTop5Data.forEach(function(ev){
@@ -2294,8 +2512,10 @@ function renderRmkMonthlyBizType(){
     if(!bt) return;
     var ds=(ev['EH_ID']||'').split('|')[0]||ev['Date']||'';
     if(ds) datesWithData[ds]=1;
-    if(!btMap[bt]) btMap[bt]={total:0,pending:0,completed:0};
+    if(!btMap[bt]) btMap[bt]={total:0,pending:0,completed:0,cogs:0,qty:0};
     btMap[bt].total++;
+    btMap[bt].cogs+=(parseFloat(ev['COGSValue'])||0);
+    btMap[bt].qty+=(parseFloat(ev['Qty'])||0);
     if((ev['Remark']||'').trim()) btMap[bt].completed++;
     else btMap[bt].pending++;
   });
@@ -2310,8 +2530,10 @@ function renderRmkMonthlyBizType(){
       if(existingIds[ehId]) return;
       var bt=x.bt||'';
       if(!bt) return;
-      if(!btMap[bt]) btMap[bt]={total:0,pending:0,completed:0};
+      if(!btMap[bt]) btMap[bt]={total:0,pending:0,completed:0,cogs:0,qty:0};
       btMap[bt].total++;
+      btMap[bt].cogs+=(x.cogsVal||0);
+      btMap[bt].qty+=(x.qty||0);
       btMap[bt].pending++;
     });
   }
@@ -2333,21 +2555,20 @@ function renderRmkMonthlyBizType(){
 
   var KS2='border-radius:10px;padding:11px 12px;min-width:0';
   var html=
-    '<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px">'
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px">'
       +'<div style="background:var(--sf);'+KS2+'"><div style="font-size:7px;font-weight:700;color:var(--mu);letter-spacing:.4px;white-space:nowrap">TOTAL EVENTS</div><div style="font-size:18px;font-weight:800;line-height:1.1;margin-top:2px">'+univCount+'</div><div style="font-size:8px;color:var(--mu);margin-top:1px">all Fin. Loss</div></div>'
       +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#7e22ce;letter-spacing:.4px;white-space:nowrap">TOTAL COGS</div><div style="font-size:18px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+(univCogs!=null?fv(univCogs):'—')+'</div><div style="font-size:8px;color:#6b21a8;margin-top:1px">full universe</div></div>'
       +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#0369a1;letter-spacing:.4px;white-space:nowrap">TOP 5 COUNT</div><div style="font-size:18px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:8px;color:#0284c7;margin-top:1px">'+daysWithData+' days</div></div>'
       +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#c2410c;letter-spacing:.4px;white-space:nowrap">TOP 5 COGS</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:8px;color:#9a3412;margin-top:1px">tracked events</div></div>'
       +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#16a34a;letter-spacing:.4px;white-space:nowrap">COVERAGE</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+covPct+(covPct!=='—'?'%':'')+'</div><div style="font-size:8px;color:#15803d;margin-top:1px">of total COGS</div></div>'
-      +'<div style="background:#fff7ed;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#c2410c;letter-spacing:.4px;white-space:nowrap">PENDING</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:8px;color:#9a3412;margin-top:1px">need remarks</div></div>'
-      +'<div style="background:#f0fdf4;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#16a34a;letter-spacing:.4px;white-space:nowrap">REMARKED</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:8px;color:#15803d;margin-top:1px">completed</div></div>'
-      +'<div style="background:#eff6ff;'+KS2+'"><div style="font-size:7px;font-weight:700;color:#1d4ed8;letter-spacing:.4px;white-space:nowrap">COMPLETION</div><div style="font-size:18px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:8px;color:#1e40af;margin-top:1px">'+totC+'/'+totT+'</div></div>'
     +'</div>'
     +'<div style="padding:8px 18px;border-bottom:1px solid var(--br);font-size:10px;color:var(--mu)">All brand-wise events · '+monthLabel+'</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
     +'<thead><tr>'
     +'<th style="'+TH+';text-align:left;padding-left:20px">Business Unit</th>'
     +'<th style="'+TH+'">Captured</th>'
+    +'<th style="'+TH+';text-align:right">COGS</th>'
+    +'<th style="'+TH+';text-align:right">Qty</th>'
     +'<th style="'+TH+';color:#c2410c">Pending</th>'
     +'<th style="'+TH+';color:#16a34a">Remarked</th>'
     +'<th style="'+TH+'">Completion</th>'
@@ -2365,6 +2586,8 @@ function renderRmkMonthlyBizType(){
         +'<span style="font-size:12px;font-weight:700;color:'+col+'">'+bt+'</span>'
       +'</div></td>'
       +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+s.total+'</td>'
+      +'<td style="padding:14px 16px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--re)">'+fv(s.cogs)+'</td>'
+      +'<td style="padding:14px 16px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--tx2)">'+fq(s.qty)+'</td>'
       +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+s.pending+'</td>'
       +'<td style="padding:14px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+s.completed+'</td>'
       +'<td style="padding:14px 24px"><div style="display:flex;align-items:center;gap:10px">'
@@ -2383,9 +2606,13 @@ function renderRmkMonthlyBizType(){
 
   var totPct=totT>0?Math.round(totC/totT*100):0;
   var totBarCol=totPct>=80?'#16a34a':totPct>=40?'#d97706':'#dc2626';
+  var totBtCogs=BT_LIST.reduce(function(s,bt){return s+(btMap[bt]?btMap[bt].cogs:0);},0);
+  var totBtQty=BT_LIST.reduce(function(s,bt){return s+(btMap[bt]?btMap[bt].qty:0);},0);
   html+='<tr style="background:var(--sf);border-top:2px solid var(--br)">'
     +'<td style="padding:13px 20px;font-size:12px;font-weight:800">Summary</td>'
     +'<td style="padding:13px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+totT+'</td>'
+    +'<td style="padding:13px 16px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:800;color:var(--re)">'+fv(totBtCogs)+'</td>'
+    +'<td style="padding:13px 16px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:700">'+fq(totBtQty)+'</td>'
     +'<td style="padding:13px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+totP+'</td>'
     +'<td style="padding:13px 16px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+totC+'</td>'
     +'<td style="padding:13px 24px"><div style="display:flex;align-items:center;gap:10px">'
@@ -3076,11 +3303,13 @@ function saveRmk(){
       renderActiveRmkView();
     });}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
 function renderActiveRmkView(){
-  var todayOn=document.getElementById('rmk-tog-today');
-  var monthlyOn=document.getElementById('rmk-tog-monthly');
-  if(todayOn&&todayOn.classList.contains('on')){
-    renderTop20Today();
-  } else if(monthlyOn&&monthlyOn.classList.contains('on')){
+  var todayView=document.getElementById('rmk-view-today');
+  var monthlyView=document.getElementById('rmk-view-monthly');
+  if(todayView&&todayView.style.display!=='none'){
+    var bizWrap=document.getElementById('rmk-today-biz-wrap');
+    if(bizWrap&&bizWrap.style.display!=='none') renderTop20BizWise();
+    else renderTop20Today();
+  } else if(monthlyView&&monthlyView.style.display!=='none'){
     renderRmkMonthlyBusiness();
     renderRmkMonthlyBizType();
   }
