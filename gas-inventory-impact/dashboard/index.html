@@ -2015,17 +2015,27 @@ function switchRmkView(v){
   document.getElementById('rmk-tog-today').classList.toggle('on',   v==='today');
   document.getElementById('rmk-tog-monthly').classList.toggle('on', v==='monthly');
   if(v==='today'){ renderTop20Today(); return; }
-  // Monthly — fetch fresh NI_DailyTop5 then render both sub-tabs
+  // Monthly — fetch NI_DailyTop5 + NI_Events (for total universe counts) in parallel
   var loadEl=document.getElementById('rmk-monthly-brand-wrap');
   if(loadEl) loadEl.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">&#8635; Loading...</div>';
-  fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
-    if(Array.isArray(rows)){
-      dailyTop5Data  = rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
+  Promise.all([
+    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).catch(function(){return[];}),
+    fetchJ(EVENTS_URL+'&curmonth=1&t='+Date.now()).catch(function(){return[];})
+  ]).then(function(results){
+    var top5Rows=results[0], evRows=results[1];
+    if(Array.isArray(top5Rows)){
+      dailyTop5Data  = top5Rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
       allEventHistory = dailyTop5Data;
     }
-    renderRmkMonthlyBusiness();
-    renderRmkMonthlyBizType();
-  }).catch(function(){
+    // Cache monthly all-events totals (Financial Loss only) for KPI cards
+    if(Array.isArray(evRows)){
+      var fl=evRows.filter(function(r){return (r['Impact Class']||r['ic']||'')==='Financial Loss';});
+      window._monthlyTotalEvCount = fl.length;
+      window._monthlyTotalEvCOGS  = fl.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0);
+    } else {
+      window._monthlyTotalEvCount = null;
+      window._monthlyTotalEvCOGS  = null;
+    }
     renderRmkMonthlyBusiness();
     renderRmkMonthlyBizType();
   });
@@ -2063,13 +2073,21 @@ function renderTop20Today(){
 
   var totRemarked=todayEvs.filter(function(e){return e.remark;}).length;
   var totPending=todayEvs.length-totRemarked;
+  // Full universe from R.flat — all Financial Loss events today (not just top 5)
+  var allFL=(R&&R.flat)?R.flat.filter(function(x){return x.ic==='Financial Loss';}):[];
+  var allFlCount=allFL.length;
+  var allFlCogs=allFL.reduce(function(s,x){return s+(x.cogsVal||0);},0);
+  var top5Cogs=todayEvs.reduce(function(s,e){return s+e.cogs;},0);
+  var top5Pct=allFlCogs>0?Math.round(top5Cogs/allFlCogs*100):0;
   var TH='padding:9px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
 
   var html=
-    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">'
-      +'<div style="background:var(--sf);border-radius:10px;padding:14px 16px"><div style="font-size:9px;font-weight:700;color:var(--mu);letter-spacing:.4px">EVENTS TODAY</div><div style="font-size:26px;font-weight:800;line-height:1.1;margin-top:2px">'+todayEvs.length+'</div><div style="font-size:10px;color:var(--mu);margin-top:2px">top 5 per brand</div></div>'
-      +'<div style="background:#fff7ed;border-radius:10px;padding:14px 16px"><div style="font-size:9px;font-weight:700;color:#c2410c;letter-spacing:.4px">PENDING REMARKS</div><div style="font-size:26px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totPending+'</div><div style="font-size:10px;color:#9a3412;margin-top:2px">need remarks today</div></div>'
-      +'<div style="background:#f0fdf4;border-radius:10px;padding:14px 16px"><div style="font-size:9px;font-weight:700;color:#16a34a;letter-spacing:.4px">REMARKED</div><div style="font-size:26px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totRemarked+'</div><div style="font-size:10px;color:#15803d;margin-top:2px">completed today</div></div>'
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">'
+      +'<div style="background:var(--sf);border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS TODAY</div><div style="font-size:24px;font-weight:800;line-height:1.1;margin-top:2px">'+allFlCount+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">all Financial Loss</div></div>'
+      +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS TODAY</div><div style="font-size:24px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+fv(allFlCogs)+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">full universe</div></div>'
+      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">TOP 5 BRAND-WISE</div><div style="font-size:24px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+todayEvs.length+'</div><div style="font-size:9px;color:#0284c7;margin-top:2px">events tracked</div></div>'
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 COGS</div><div style="font-size:24px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">tracked events</div></div>'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">COVERAGE</div><div style="font-size:24px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+top5Pct+'%</div><div style="font-size:9px;color:#15803d;margin-top:2px">of total COGS</div></div>'
     +'</div>'
     +'<div style="overflow-x:auto;border:1px solid var(--br);border-radius:10px;overflow:hidden">'
     +'<table style="width:100%;border-collapse:collapse">'
@@ -2214,15 +2232,25 @@ function renderRmkMonthlyBusiness(){
 
   var totT=allEvs.length, totC=allEvs.filter(function(e){return e.remark;}).length;
   var totP=totT-totC, resRate=totT>0?Math.round(totC/totT*100):0;
+  var top5Cogs=allEvs.reduce(function(s,e){return s+(e.cogs||0);},0);
+  // Total universe from NI_Events (fetched in switchRmkView)
+  var univCount = window._monthlyTotalEvCount!=null ? window._monthlyTotalEvCount : '—';
+  var univCogs  = window._monthlyTotalEvCOGS!=null  ? window._monthlyTotalEvCOGS  : null;
+  var covPct    = (univCogs&&univCogs>0) ? Math.round(top5Cogs/univCogs*100) : '—';
   var TH='padding:10px 14px;background:var(--sf);border-bottom:2px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-align:center;white-space:nowrap';
 
   var html=
-    // ── KPI strip — 4 cards, no Monthly Target ──
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
-      +'<div style="background:var(--sf);border-radius:10px;padding:14px 16px"><div style="font-size:9px;font-weight:700;color:var(--mu);letter-spacing:.4px">EVENTS CAPTURED</div><div style="font-size:26px;font-weight:800;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:10px;color:var(--mu);margin-top:2px">'+daysWithData+' days of data</div></div>'
-      +'<div style="background:#fff7ed;border-radius:10px;padding:14px 16px"><div style="font-size:9px;font-weight:700;color:#c2410c;letter-spacing:.4px">PENDING</div><div style="font-size:26px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:10px;color:#9a3412;margin-top:2px">remarks needed</div></div>'
-      +'<div style="background:#f0fdf4;border-radius:10px;padding:14px 16px"><div style="font-size:9px;font-weight:700;color:#16a34a;letter-spacing:.4px">REMARKED</div><div style="font-size:26px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:10px;color:#15803d;margin-top:2px">events with remarks</div></div>'
-      +'<div style="background:#eff6ff;border-radius:10px;padding:14px 16px"><div style="font-size:9px;font-weight:700;color:#1d4ed8;letter-spacing:.4px">RESOLUTION</div><div style="font-size:26px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:10px;color:#1e40af;margin-top:2px">'+totC+' of '+totT+' resolved</div></div>'
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px">'
+      +'<div style="background:var(--sf);border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:22px;font-weight:800;line-height:1.1;margin-top:2px">'+univCount+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">all Financial Loss</div></div>'
+      +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:22px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+(univCogs!=null?fv(univCogs):'—')+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">full universe</div></div>'
+      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">TOP 5 BRAND-WISE</div><div style="font-size:22px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:9px;color:#0284c7;margin-top:2px">'+daysWithData+' days tracked</div></div>'
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 COGS</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">tracked events</div></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">COVERAGE %</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+covPct+(covPct!=='—'?'%':'')+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">top 5 of total COGS</div></div>'
+      +'<div style="background:#fff7ed;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">PENDING</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">remarks needed</div></div>'
+      +'<div style="background:#f0fdf4;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">REMARKED</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">completed</div></div>'
+      +'<div style="background:#eff6ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#1d4ed8;letter-spacing:.4px">COMPLETION</div><div style="font-size:22px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:9px;color:#1e40af;margin-top:2px">'+totC+' of '+totT+'</div></div>'
     +'</div>'
     +'<div style="padding:6px 16px 10px;font-size:10px;color:var(--mu)">Financial Loss · Top 5 per brand per day · '+monthLabel+'</div>'
     +'<div style="overflow-x:auto;border:1px solid var(--br);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse">'
@@ -2330,26 +2358,29 @@ function renderRmkMonthlyBizType(){
   BT_LIST.forEach(function(bt){totT+=btMap[bt].total;totC+=btMap[bt].completed;});
   var totP=totT-totC, resRate=totT>0?Math.round(totC/totT*100):0;
   var daysWithData=Object.keys(datesWithData).length;
+  var top5Cogs=0;
+  BT_LIST.forEach(function(bt){
+    dailyTop5Data.forEach(function(ev){
+      if((ev['BizType']||ev['Business Type']||'')=== bt) top5Cogs+=(parseFloat(ev['COGSValue'])||0);
+    });
+  });
+  var univCount = window._monthlyTotalEvCount!=null ? window._monthlyTotalEvCount : '—';
+  var univCogs  = window._monthlyTotalEvCOGS!=null  ? window._monthlyTotalEvCOGS  : null;
+  var covPct    = (univCogs&&univCogs>0) ? Math.round(top5Cogs/univCogs*100) : '—';
   var TH='padding:11px 16px;background:var(--sf);border-bottom:2px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-align:center;white-space:nowrap';
 
   var html=
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
-      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:16px 18px">'
-        +'<div style="font-size:9px;font-weight:700;color:#0369a1;letter-spacing:.5px;margin-bottom:4px">EVENTS CAPTURED</div>'
-        +'<div style="font-size:28px;font-weight:800;color:#0369a1;line-height:1.1">'+totT+'</div>'
-        +'<div style="font-size:10px;color:#0284c7;margin-top:3px">'+daysWithData+' days of data</div></div>'
-      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 18px">'
-        +'<div style="font-size:9px;font-weight:700;color:#c2410c;letter-spacing:.5px;margin-bottom:4px">PENDING</div>'
-        +'<div style="font-size:28px;font-weight:800;color:#c2410c;line-height:1.1">'+totP+'</div>'
-        +'<div style="font-size:10px;color:#9a3412;margin-top:3px">remarks needed</div></div>'
-      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 18px">'
-        +'<div style="font-size:9px;font-weight:700;color:#16a34a;letter-spacing:.5px;margin-bottom:4px">REMARKED</div>'
-        +'<div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1.1">'+totC+'</div>'
-        +'<div style="font-size:10px;color:#15803d;margin-top:3px">events with remarks</div></div>'
-      +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px">'
-        +'<div style="font-size:9px;font-weight:700;color:#1d4ed8;letter-spacing:.5px;margin-bottom:4px">RESOLUTION</div>'
-        +'<div style="font-size:28px;font-weight:800;color:#1d4ed8;line-height:1.1">'+resRate+'%</div>'
-        +'<div style="font-size:10px;color:#1e40af;margin-top:3px">'+totC+' of '+totT+' resolved</div></div>'
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px">'
+      +'<div style="background:var(--sf);border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:22px;font-weight:800;line-height:1.1;margin-top:2px">'+univCount+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">all Financial Loss</div></div>'
+      +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:22px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:2px">'+(univCogs!=null?fv(univCogs):'—')+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">full universe</div></div>'
+      +'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#0369a1;letter-spacing:.4px">TOP 5 BRAND-WISE</div><div style="font-size:22px;font-weight:800;color:#0369a1;line-height:1.1;margin-top:2px">'+totT+'</div><div style="font-size:9px;color:#0284c7;margin-top:2px">'+daysWithData+' days tracked</div></div>'
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 COGS</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+fv(top5Cogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">tracked events</div></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">COVERAGE %</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+covPct+(covPct!=='—'?'%':'')+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">top 5 of total COGS</div></div>'
+      +'<div style="background:#fff7ed;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">PENDING</div><div style="font-size:22px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:2px">'+totP+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">remarks needed</div></div>'
+      +'<div style="background:#f0fdf4;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">REMARKED</div><div style="font-size:22px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:2px">'+totC+'</div><div style="font-size:9px;color:#15803d;margin-top:2px">completed</div></div>'
+      +'<div style="background:#eff6ff;border-radius:10px;padding:13px 14px"><div style="font-size:8px;font-weight:700;color:#1d4ed8;letter-spacing:.4px">COMPLETION</div><div style="font-size:22px;font-weight:800;color:#1d4ed8;line-height:1.1;margin-top:2px">'+resRate+'%</div><div style="font-size:9px;color:#1e40af;margin-top:2px">'+totC+' of '+totT+'</div></div>'
     +'</div>'
     +'<div style="padding:8px 18px;border-bottom:1px solid var(--br);font-size:10px;color:var(--mu)">All brand-wise events · '+monthLabel+'</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
