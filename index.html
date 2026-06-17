@@ -3464,7 +3464,7 @@ function switchMonth(month) {
 
   // Show loading state
   var suffix = month === 'current' ? '' : '_' + month;
-  var evUrl   = PROXY + '?sheet=NI_Events'    + suffix;
+  var evUrl   = PROXY + '?sheet=NI_Events'    + (suffix || '&curmonth=1');
   var histUrl = PROXY + '?sheet=NI_History'   + suffix;
   var facUrl  = PROXY + '?sheet=NI_FacHistory'+ suffix;
   var ehUrl   = PROXY + '?sheet=NI_DailyTop5&curmonth=1' + suffix;
@@ -3570,7 +3570,7 @@ function boot(){
   step('Connecting to Apps Script...',10);
   // Fetch events + today's full stock in parallel
   Promise.all([
-    fetchJ(EVENTS_URL),
+    fetchJ(EVENTS_URL+'&curmonth=1'),
     fetchJ(STOCK_URL).catch(function(){return [];}),
     fetchJ(DAILY_TOP5_URL).catch(function(){return [];})
   ])
