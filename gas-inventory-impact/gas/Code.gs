@@ -1272,6 +1272,34 @@ if (!e || !e.parameter) {
 return ContentService.createTextOutput(JSON.stringify({error:'doGet must be called via Web App URL, not run directly. Deploy as Web App and call via browser.'})).setMimeType(ContentService.MimeType.JSON);
 }
 const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+// -- Diagnostic action: NI_Events row count + date range --
+if (e.parameter.action === 'diag') {
+  var diagSh = ss.getSheetByName('NI_Events');
+  if (!diagSh) return ContentService.createTextOutput(JSON.stringify({error:'NI_Events not found'})).setMimeType(ContentService.MimeType.JSON);
+  var diagData = diagSh.getDataRange().getValues();
+  var totalRows = diagData.length - 1;
+  var dates = [];
+  for (var di = 1; di < diagData.length; di++) {
+    var dv = diagData[di][0];
+    if (dv instanceof Date && !isNaN(dv.getTime())) dates.push(dv.getTime());
+    else if (dv) { var dp = new Date(String(dv)); if (!isNaN(dp.getTime())) dates.push(dp.getTime()); }
+  }
+  dates.sort(function(a,b){return a-b;});
+  var fmt = function(ts){ return ts ? Utilities.formatDate(new Date(ts), Session.getScriptTimeZone(), 'dd MMM yyyy') : 'N/A'; };
+  var last7 = {};
+  var now7 = new Date().getTime();
+  var cutoff7 = now7 - 7*24*60*60*1000;
+  dates.forEach(function(ts){ if(ts>=cutoff7){ var k=Utilities.formatDate(new Date(ts),Session.getScriptTimeZone(),'dd MMM yyyy'); last7[k]=(last7[k]||0)+1; }});
+  return ContentService.createTextOutput(JSON.stringify({
+    sheet_id: NI_CONFIG.SHEET_ID,
+    total_rows: totalRows,
+    rows_with_dates: dates.length,
+    earliest_date: fmt(dates[0]),
+    latest_date: fmt(dates[dates.length-1]),
+    last_7_days: last7
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
 // -- Special action: list available archive months --
 if (e.parameter.action === 'listArchives') {
 const allSheets = ss.getSheets().map(s =>
