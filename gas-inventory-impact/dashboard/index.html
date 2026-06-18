@@ -4780,7 +4780,6 @@ function sendChatMessage(){
   showChatLoading();
   fetch(PROXY, {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
     body: JSON.stringify({action:'chatQuery', question: question})
   })
   .then(function(res){ return res.json(); })
