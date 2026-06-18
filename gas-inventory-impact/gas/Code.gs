@@ -3653,7 +3653,7 @@ function fetchQueryData_(spec) {
   if (rows.length > 500) rows = rows.slice(0, 500);
 
   if (spec.fallback) {
-    var brandSum = {}, evSum = {};
+    var brandSum = {}, evSum = {}, skuSum = {};
     rows.forEach(function(row) {
       if (!brandSum[row.Brand]) brandSum[row.Brand] = {cogs:0, count:0};
       brandSum[row.Brand].cogs  += row.COGSValue;
@@ -3661,8 +3661,15 @@ function fetchQueryData_(spec) {
       if (!evSum[row.Event]) evSum[row.Event] = {cogs:0, count:0};
       evSum[row.Event].cogs  += row.COGSValue;
       evSum[row.Event].count += 1;
+      var skuKey = row.SKU;
+      if (!skuSum[skuKey]) skuSum[skuKey] = {name:row.Name, brand:row.Brand, cogs:0, count:0};
+      skuSum[skuKey].cogs  += row.COGSValue;
+      skuSum[skuKey].count += 1;
     });
-    return {summary: true, brandTotals: brandSum, eventTotals: evSum, totalRows: rows.length};
+    var topSkus = Object.keys(skuSum).map(function(k){ return {sku:k, name:skuSum[k].name, brand:skuSum[k].brand, cogs:skuSum[k].cogs, count:skuSum[k].count}; });
+    topSkus.sort(function(a,b){ return b.cogs - a.cogs; });
+    topSkus = topSkus.slice(0, 20);
+    return {summary: true, brandTotals: brandSum, eventTotals: evSum, topSkusByCOGS: topSkus, totalRows: rows.length};
   }
 
   return rows;
