@@ -4695,6 +4695,143 @@ function renderRmkSummaryTable(period){
 }
 
 
+// ── CHAT FAB ──────────────────────────────────────────────────
+var _chatOpen = false;
+var _chatLoading = false;
+var CHAT_STARTERS = [
+  'Top 5 products by COGS loss this month',
+  'Which facility had most recalls?',
+  'Brand-wise Financial Loss breakdown'
+];
+
+function toggleChat(){
+  _chatOpen = !_chatOpen;
+  var panel = document.getElementById('chat-panel');
+  var fab   = document.getElementById('chat-fab');
+  panel.style.display = _chatOpen ? 'flex' : 'none';
+  if(fab) fab.style.transform = _chatOpen ? 'scale(0.92)' : 'scale(1)';
+  if(_chatOpen && document.getElementById('chat-messages').children.length === 0){
+    renderChatStarters();
+  }
+  if(_chatOpen) document.getElementById('chat-input').focus();
+}
+
+function renderChatStarters(){
+  var el = document.getElementById('chat-starters');
+  if(!el) return;
+  el.innerHTML = CHAT_STARTERS.map(function(s){
+    return '<button onclick="useChatStarter(\''+s.replace(/'/g,"\\'")+'\')" '
+      +'style="text-align:left;font-size:10px;padding:6px 10px;border:1px solid var(--br);'
+      +'border-radius:12px;background:var(--sf);color:var(--tx);cursor:pointer;line-height:1.3">'+s+'</button>';
+  }).join('');
+}
+
+function useChatStarter(text){
+  document.getElementById('chat-starters').innerHTML = '';
+  document.getElementById('chat-input').value = text;
+  sendChatMessage();
+}
+
+function appendBubble(text, role){
+  var msgs = document.getElementById('chat-messages');
+  if(!msgs) return;
+  var div = document.createElement('div');
+  var isUser = role === 'user';
+  div.style.cssText = 'max-width:85%;padding:8px 12px;border-radius:12px;font-size:11px;line-height:1.5;'
+    + (isUser
+      ? 'align-self:flex-end;background:var(--tl);color:#fff;border-radius:12px 12px 2px 12px'
+      : 'align-self:flex-start;background:var(--sf);color:var(--tx);border:1px solid var(--br);border-radius:2px 12px 12px 12px');
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function showChatLoading(){
+  var msgs = document.getElementById('chat-messages');
+  if(!msgs) return null;
+  var div = document.createElement('div');
+  div.id = 'chat-loading-bubble';
+  div.style.cssText = 'align-self:flex-start;padding:8px 14px;border-radius:2px 12px 12px 12px;'
+    +'background:var(--sf);border:1px solid var(--br);font-size:16px;letter-spacing:2px';
+  div.textContent = '···';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function hideChatLoading(){
+  var el = document.getElementById('chat-loading-bubble');
+  if(el) el.parentElement.removeChild(el);
+}
+
+function sendChatMessage(){
+  if(_chatLoading) return;
+  var inp = document.getElementById('chat-input');
+  var question = inp.value.trim();
+  if(!question) return;
+  inp.value = '';
+  document.getElementById('chat-starters').innerHTML = '';
+  appendBubble(question, 'user');
+  _chatLoading = true;
+  showChatLoading();
+  fetch(PROXY, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({action:'chatQuery', question: question})
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    hideChatLoading();
+    _chatLoading = false;
+    if(data.answer){
+      appendBubble(data.answer, 'assistant');
+    } else if(data.error === 'api_key_not_configured'){
+      appendBubble('The Claude API key has not been configured in Apps Script. Please add CLAUDE_API_KEY to Script Properties.', 'assistant');
+    } else {
+      appendBubble('Couldn\'t get an answer right now — please try again. (' + (data.error||'unknown error') + ')', 'assistant');
+    }
+  })
+  .catch(function(){
+    hideChatLoading();
+    _chatLoading = false;
+    appendBubble('Couldn\'t reach the data service — please try again.', 'assistant');
+  });
+}
+
 </script>
+
+<!-- ═══ CHAT FAB ═══ -->
+<button id="chat-fab" onclick="toggleChat()" title="Ask Inventory Data"
+  style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;
+    background:var(--tl);color:#fff;border:none;font-size:22px;cursor:pointer;
+    box-shadow:0 4px 16px rgba(0,0,0,.22);z-index:9999;display:flex;align-items:center;
+    justify-content:center;transition:transform .15s">&#129302;</button>
+
+<div id="chat-panel" style="display:none;position:fixed;bottom:88px;right:24px;
+  width:360px;height:480px;background:var(--wh);border:1px solid var(--br);
+  border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:9998;
+  flex-direction:column;overflow:hidden">
+  <!-- Header -->
+  <div style="padding:12px 16px;background:var(--tl);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <span style="font-size:13px;font-weight:700;color:#fff">&#129302; Ask Inventory Data</span>
+    <button onclick="toggleChat()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;padding:0">&times;</button>
+  </div>
+  <!-- Messages -->
+  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
+  <!-- Starter chips -->
+  <div id="chat-starters" style="padding:0 12px 8px;display:flex;flex-direction:column;gap:6px"></div>
+  <!-- Input row -->
+  <div style="padding:10px 12px;border-top:1px solid var(--br);display:flex;gap:8px;flex-shrink:0">
+    <input id="chat-input" type="text" placeholder="Ask about inventory data…"
+      onkeydown="if(event.key==='Enter')sendChatMessage()"
+      style="flex:1;font-size:11px;padding:7px 10px;border:1px solid var(--br);
+        border-radius:20px;background:var(--sf);color:var(--tx);outline:none" />
+    <button onclick="sendChatMessage()"
+      style="padding:7px 14px;background:var(--tl);color:#fff;border:none;
+        border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Send</button>
+  </div>
+</div>
+
 </body>
 </html>
