@@ -3561,11 +3561,11 @@ function routeQuery_(question) {
   else if (q.indexOf('expir') >= 0 || q.indexOf('near expiry') >= 0) spec.dirFilter = ['a2ne','a2e','ne2e'];
   else if (q.indexOf('recover') >= 0) spec.dirFilter = ['POS'];
 
-  var SKIP = ['what','which','where','when','this','month','week','loss','cogs','cost','most','least','high','low','top','show','tell','give','how','many','much','have','been','the','and','for','with','that','from','brand','facility','event','impact','product'];
+  var SKIP = ['what','which','where','when','this','month','week','loss','cogs','cost','most','least','high','low','top','show','tell','give','how','many','much','have','been','the','and','for','with','that','from','brand','facility','event','impact','product','products','item','items','sku','skus','name','type','value','rate','unit','units','total','count','number','percent','data','report','list','find','view','check','each','last','past','over','across','recent','today','daily','weekly','monthly','yesterday','analysis','inventory','movement','movements'];
   var words = q.replace(/[^a-z0-9 ]/g,' ').split(/\s+/);
   for (var i = 0; i < words.length; i++) {
     var w = words[i];
-    if (w.length > 3 && SKIP.indexOf(w) < 0 && !spec.brandFilter && !spec.btFilter) {
+    if (w.length > 5 && SKIP.indexOf(w) < 0 && !spec.brandFilter && !spec.btFilter) {
       spec.facilityKeyword = w; break;
     }
   }
