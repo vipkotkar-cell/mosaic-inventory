@@ -1394,6 +1394,10 @@ if (data.action==='saveRemark') {
 const id=saveRemark_(data);
 return ContentService.createTextOutput(JSON.stringify({success:true,id:id})).setMimeType(ContentService.MimeType.JSON);
 }
+if (data.action==='chatQuery') {
+  const result = handleChatQuery_(data.question || '');
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
 if (data.action==='saveUserComment') {
   const result = saveUserComment_(data.ehId, data.comment || '');
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
@@ -3484,4 +3488,195 @@ function reKeyDailyTop5() {
   });
   SpreadsheetApp.flush();
   Logger.log('reKeyDailyTop5: DONE — updated ' + updates.length + ' rows.');
+}
+
+function routeQuery_(question) {
+  var q = (question || '').toLowerCase();
+  var spec = {brandFilter:null, btFilter:null, dirFilter:null, facilityKeyword:null, fallback:false};
+
+  // Brand detection
+  if (q.indexOf('be bodywise') >= 0 || q.indexOf('bodywise') >= 0) spec.brandFilter = 'Be Bodywise';
+  else if (q.indexOf('man matters') >= 0) spec.brandFilter = 'Man Matters';
+  else if (q.indexOf('little joys') >= 0) spec.brandFilter = 'Little Joys';
+  else if (q.indexOf('root labs') >= 0) spec.brandFilter = 'Root Labs';
+  else if (q.indexOf(' own') >= 0 || q.indexOf('own ') >= 0) spec.brandFilter = 'OWN';
+
+  // BizType detection
+  if (q.indexOf('3pl b2c') >= 0 || q.indexOf('m2c') >= 0) spec.btFilter = '3PL B2C';
+  else if (q.indexOf('3pl b2b') >= 0 || q.indexOf('m2b') >= 0) spec.btFilter = '3PL B2B';
+  else if (q.indexOf('self warehouse') >= 0 || q.indexOf('self wh') >= 0) spec.btFilter = 'Self Warehouse';
+  else if (q.indexOf('dark store') >= 0) spec.btFilter = 'Dark Store';
+  else if (q.indexOf('fba') >= 0 || q.indexOf('marketplace') >= 0) spec.btFilter = 'FBA / Marketplace';
+
+  // Event/direction detection
+  if (q.indexOf('recall') >= 0) spec.dirFilter = ['g2rc','a2rc'];
+  else if (q.indexOf('good to bad') >= 0 || q.indexOf('g2b') >= 0) spec.dirFilter = ['g2b'];
+  else if (q.indexOf(' qc') >= 0 || q.indexOf('qc ') >= 0 || q.indexOf('qc rejected') >= 0) spec.dirFilter = ['g2q'];
+  else if (q.indexOf('grn') >= 0 || q.indexOf('direct bad') >= 0 || q.indexOf('new bad') >= 0) spec.dirFilter = ['newBad','newQC'];
+  else if (q.indexOf('expir') >= 0 || q.indexOf('near expiry') >= 0) spec.dirFilter = ['a2ne','a2e','ne2e'];
+  else if (q.indexOf('recover') >= 0) spec.dirFilter = ['POS'];
+
+  var SKIP = ['what','which','where','when','this','month','week','loss','cogs','cost','most','least','high','low','top','show','tell','give','how','many','much','have','been','the','and','for','with','that','from','brand','facility','event','impact','product'];
+  var words = q.replace(/[^a-z0-9 ]/g,' ').split(/\s+/);
+  for (var i = 0; i < words.length; i++) {
+    var w = words[i];
+    if (w.length > 3 && SKIP.indexOf(w) < 0 && !spec.brandFilter && !spec.btFilter) {
+      spec.facilityKeyword = w; break;
+    }
+  }
+
+  if (!spec.brandFilter && !spec.btFilter && !spec.dirFilter && !spec.facilityKeyword) {
+    spec.fallback = true;
+  }
+
+  return spec;
+}
+
+function fetchQueryData_(spec) {
+  var ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  var sh = ss.getSheetByName('NI_Events');
+  if (!sh) return {error:'NI_Events sheet not found'};
+
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  var headers = data[0].map(function(h){ return String(h).trim(); });
+  var iDate  = headers.indexOf('Date');
+  var iBrand = headers.indexOf('Brand');
+  var iSKU   = headers.indexOf('SKU');
+  var iName  = headers.indexOf('Name');
+  var iFac   = headers.indexOf('Facility');
+  var iBT    = headers.indexOf('BizType');
+  var iDir   = headers.indexOf('Direction');
+  var iEv    = headers.indexOf('Event');
+  var iIC    = headers.indexOf('Impact Class');
+  var iQty   = headers.indexOf('Qty');
+  var iCOGS  = headers.indexOf('COGSValue');
+  var iType  = headers.indexOf('Type');
+
+  var now = new Date();
+  var cy = now.getFullYear(), cm = now.getMonth();
+
+  function parseDate_(val) {
+    if (!val) return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    var s = String(val).trim();
+    var d = new Date(s); if (!isNaN(d.getTime())) return d;
+    var MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    var parts = s.split(/[\s\-\/]+/);
+    if (parts.length >= 3) {
+      var mon = MONTHS[(parts[1]||'').toLowerCase().slice(0,3)];
+      if (mon !== undefined) { var dd=parseInt(parts[0]),yy=parseInt(parts[2]); if(dd&&yy) return new Date(yy,mon,dd); }
+    }
+    return null;
+  }
+
+  var rows = [];
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    var d = parseDate_(r[iDate]);
+    if (!d || d.getFullYear() !== cy || d.getMonth() !== cm) continue;
+
+    if (spec.brandFilter && String(r[iBrand]||'').trim() !== spec.brandFilter) continue;
+    if (spec.btFilter    && String(r[iBT]||'').trim()    !== spec.btFilter)    continue;
+    if (spec.dirFilter) {
+      var dir = String(r[iDir]||'').trim();
+      var type = String(r[iType]||'').trim();
+      var dirMatch = spec.dirFilter.indexOf(dir) >= 0 || (spec.dirFilter.indexOf('POS') >= 0 && type === 'POS');
+      if (!dirMatch) continue;
+    }
+    if (spec.facilityKeyword) {
+      if (String(r[iFac]||'').toLowerCase().indexOf(spec.facilityKeyword) < 0) continue;
+    }
+
+    rows.push({
+      Date:   Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd MMM yyyy'),
+      Brand:  String(r[iBrand]||'').trim(),
+      SKU:    String(r[iSKU]||'').trim(),
+      Name:   String(r[iName]||'').trim(),
+      Facility: String(r[iFac]||'').trim(),
+      BizType:  String(r[iBT]||'').trim(),
+      Direction:String(r[iDir]||'').trim(),
+      Event:    String(r[iEv]||'').trim(),
+      ImpactClass: String(r[iIC]||'').trim(),
+      Qty:    parseFloat(r[iQty])||0,
+      COGSValue: parseFloat(r[iCOGS])||0
+    });
+  }
+
+  rows.sort(function(a,b){ return b.COGSValue - a.COGSValue; });
+  if (rows.length > 500) rows = rows.slice(0, 500);
+
+  if (spec.fallback) {
+    var brandSum = {}, evSum = {};
+    rows.forEach(function(row) {
+      if (!brandSum[row.Brand]) brandSum[row.Brand] = {cogs:0, count:0};
+      brandSum[row.Brand].cogs  += row.COGSValue;
+      brandSum[row.Brand].count += 1;
+      if (!evSum[row.Event]) evSum[row.Event] = {cogs:0, count:0};
+      evSum[row.Event].cogs  += row.COGSValue;
+      evSum[row.Event].count += 1;
+    });
+    return {summary: true, brandTotals: brandSum, eventTotals: evSum, totalRows: rows.length};
+  }
+
+  return rows;
+}
+
+function callClaude_(dataJson, question) {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('CLAUDE_API_KEY');
+  if (!apiKey) return {error:'api_key_not_configured'};
+
+  var systemPrompt = 'You are an inventory quality analyst for Mosaic Wellness, an Indian health & wellness brand.\n'
+    + 'You are given inventory event data for the current month and must answer the user\'s question concisely.\n\n'
+    + 'Data schema:\n'
+    + '- Date: event date (dd MMM yyyy)\n'
+    + '- Brand: Be Bodywise | Man Matters | Little Joys | Root Labs | OWN\n'
+    + '- SKU: product code, Name: product name\n'
+    + '- Facility: warehouse/3PL name, BizType: Self Warehouse | 3PL B2C | 3PL B2B | Dark Store | FBA / Marketplace\n'
+    + '- Direction: g2b=Good->Bad, g2q=Good->QC Rejected, g2rc=Good->Recalled, a2ne=Active->NearExpiry, a2rc=Active->Recalled, newBad/newQC=Direct bad GRN, POS=Recovery\n'
+    + '- ImpactClass: Financial Loss | Expiry Risk | Recovery\n'
+    + '- Qty: units affected, COGSValue: cost in INR (Rs)\n\n'
+    + 'Rules:\n'
+    + '- Answer in 2-4 sentences. Be specific with numbers, brand names, facility names.\n'
+    + '- Use Rs symbol and Indian number format (e.g. Rs 1,23,456).\n'
+    + '- If data is insufficient to answer, say so clearly.\n'
+    + '- Do not invent data not present in the provided rows.';
+
+  var userContent = 'Data:\n' + dataJson + '\n\nQuestion: ' + question;
+
+  var payload = JSON.stringify({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 300,
+    system: systemPrompt,
+    messages: [{role:'user', content: userContent}]
+  });
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {'x-api-key': apiKey, 'anthropic-version': '2023-06-01'},
+    payload: payload,
+    muteHttpExceptions: true
+  };
+
+  try {
+    var resp = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', options);
+    var code = resp.getResponseCode();
+    if (code !== 200) return {error:'claude_api_error', detail:'HTTP ' + code + ': ' + resp.getContentText().slice(0,200)};
+    var json = JSON.parse(resp.getContentText());
+    var block = json.content && json.content[0];
+    return {answer: (block && block.text) ? block.text : 'No response from Claude.'};
+  } catch(e) {
+    return {error:'claude_api_error', detail: e.message};
+  }
+}
+
+function handleChatQuery_(question) {
+  if (!question || !question.trim()) return {error:'empty_question'};
+  var spec = routeQuery_(question);
+  var data = fetchQueryData_(spec);
+  if (data && data.error) return {error: data.error};
+  var dataJson = JSON.stringify(data);
+  return callClaude_(dataJson, question);
 }
