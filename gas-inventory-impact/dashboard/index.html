@@ -475,7 +475,7 @@ tbody tr:hover td{background:var(--sf)}
     <!-- Category breakdown strip -->
     <div class="mv-strip"><div class="mv-inner" id="mv-today"></div></div>
 
-    <!-- Negative + Positive side by side -->
+    <!-- Negative + Positive + Impact sections side by side -->
     <div class="two-col" style="margin-bottom:14px">
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
@@ -483,6 +483,8 @@ tbody tr:hover td{background:var(--sf)}
           <span class="badge bdg-r" id="neg-badge">0 events</span>
         </div>
         <div class="card" id="neg-card"></div>
+        <div class="sec-title" style="margin-top:14px">Brand-wise Impact</div>
+        <div class="card"><div id="brand-bars"></div></div>
       </div>
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
@@ -490,26 +492,8 @@ tbody tr:hover td{background:var(--sf)}
           <span class="badge bdg-g" id="pos-badge">0 recoveries</span>
         </div>
         <div class="card" id="pos-card"></div>
-      </div>
-    </div>
-
-    <!-- Facility + Business bars -->
-    <div class="two-col">
-      <div>
-        <div class="sec-title">Facility Impact</div>
-        <div class="card">
-          <div class="card-h" style="padding:8px 14px">
-            <div class="card-t" style="font-size:11px">by Net COGS</div>
-            <span class="badge bdg-r" id="fac-cnt-b">-</span>
-          </div>
-          <div id="fac-bars"></div>
-        </div>
-      </div>
-      <div>
-        <div class="sec-title">Business Type Impact</div>
+        <div class="sec-title" style="margin-top:14px">Business Type Impact</div>
         <div class="card"><div id="biz-bars"></div></div>
-        <div class="sec-title" style="margin-top:14px">Brand-wise Impact</div>
-        <div class="card"><div id="brand-bars"></div></div>
         <div class="sec-title" style="margin-top:14px">Top 5 Facilities by Net COGS</div>
         <div class="card"><div id="today-fac5"></div></div>
       </div>
@@ -1135,28 +1119,6 @@ function renderImpact(r){
 
   
 
-  // Fac bars
-  var topF=r.facRanked.slice(0,6);var mxF=topF.length?Math.max.apply(null,topF.map(function(f){return f.netVal||0;}))||1:1;
-  document.getElementById('fac-cnt-b').textContent=r.facRanked.length+' facilities';
-  document.getElementById('fac-bars').innerHTML='<div class="bars">'+topF.map(function(f,i){
-    var col=i===0?'var(--re)':i<3?'var(--re2)':'var(--am)';
-    var p=Math.max(3,(f.netVal/mxF*100)).toFixed(0);
-    var bt=f.bt||getBT(f.name); var city=f.city||getCity(f.name);
-    var negPct=f.negVal>0?((f.posVal/f.negVal)*100).toFixed(0)+'% rec':'';
-    return '<div class="bar-row" style="padding:7px 14px">'
-      +'<div class="bar-lbl" style="width:145px">'
-      +'<div style="font-size:10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+f.name+(city?' — '+city:'')+'">'+f.name+'</div>'
-      +'<div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'
-      +'<span class="biz '+btCls(bt)+'">'+bt+'</span>'
-      +(city?'<span style="font-size:8px;color:var(--mu)">'+city+'</span>':'')
-      +(negPct?'<span style="font-size:8px;color:var(--gn)">&#8679; '+negPct+'</span>':'')
-      +'</div></div>'
-      +'<div class="bar-track"><div class="bar-fill" style="width:'+p+'%;background:'+col+'"></div></div>'
-      +'<div style="text-align:right;flex-shrink:0;min-width:60px">'
-      +'<div style="font-family:var(--mono);font-size:9px;font-weight:700;color:'+col+'">'+fv(f.netVal)+'</div>'
-      +'<div style="font-size:8px;color:var(--mu)">'+fq(f.negQty||0)+' units</div>'
-      +'</div></div>';
-  }).join('')+'</div>';
 
   // Biz bars
   var bCols={'3PL B2C':'#1558a8','3PL B2B':'#37474f','Dark Store':'#4a148c','Self Warehouse':'#166534','FBA / Marketplace':'#b7410e'};
@@ -1505,8 +1467,8 @@ function renderHistory(){
         if(dir==='g2b'||dir==='g2rc'||dir==='g2q'){ a.g2bQ+=qty; a.g2bV+=cv; }
         if(dir==='newBad'||dir==='newQC'){ a.grnQ+=qty; }
       }
-      // movBuckets: all non-POS events split by revised event type
-      if(type!=='POS'){
+      // movBuckets: Financial Loss events only, split by revised event type
+      if(ic==='Financial Loss'){
         var _re=getRevisedEvent(dir,row['StateTo']||'',row['Event']||'');
         if(!a.movBuckets[_re.label]) a.movBuckets[_re.label]={label:_re.label,source:_re.source,icon:_re.icon,col:_re.col,qty:0,val:0};
         a.movBuckets[_re.label].qty+=qty; a.movBuckets[_re.label].val+=cv;
@@ -1684,6 +1646,7 @@ function renderHistory(){
 
     // ── MOVEMENT BREAKDOWN TABLE ──
     var movRows=Object.values(acc.movBuckets||{}).filter(function(r){return r.qty>0;}).sort(function(a,b){return b.val-a.val;});
+    var totalFLVal=movRows.reduce(function(s,r){return s+r.val;},0)||1;
     if(acc.posQ>0) movRows=movRows.concat([{label:'Recovery',source:'Remediation',icon:'&#8679;',col:'var(--gn)',qty:acc.posQ,val:acc.posV}]);
     var movEl=document.getElementById(pfx+'-mov-table');
     if(movEl){
@@ -1692,14 +1655,17 @@ function renderHistory(){
         +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:left">Type</th>'
         +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>'
         +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS</th>'
+        +'<th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">% FL</th>'
         +'</tr></thead><tbody>'
         +movRows.map(function(r){
+          var pct=r.label==='Recovery'?'—':(r.val/totalFLVal*100).toFixed(1)+'%';
           return '<tr>'
             +'<td style="padding:7px 10px"><span style="margin-right:5px">'+r.icon+'</span>'
             +'<span style="font-size:10px;font-weight:600">'+r.label+'</span>'
             +'<br><span style="font-size:8px;color:var(--mu)">'+(r.source||r.src||'')+'</span></td>'
             +'<td style="padding:7px 10px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--tx2)">'+fq(r.qty)+'</td>'
             +'<td style="padding:7px 10px;font-family:var(--mono);font-size:10px;font-weight:700;text-align:right;color:'+r.col+'">'+fv(r.val)+'</td>'
+            +'<td style="padding:7px 10px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--mu)">'+pct+'</td>'
             +'</tr>';
         }).join('')
         +'</tbody></table>'
