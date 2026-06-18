@@ -3435,7 +3435,7 @@ function goRmkTab(tab){
   else renderRmkMonthly();
 }
 
-var SYS_REMARKS = ['System Triggered - Expiry workflow','QC Triggered - Batch Recalled'];
+var SYS_REMARKS = ['QC Triggered - Batch Recalled'];
 
 function renderSysRemarks(){
   var wrap = document.getElementById('rmk-sysrmk-wrap');
@@ -3444,66 +3444,126 @@ function renderSysRemarks(){
   var now = new Date();
   var cy = now.getFullYear(), cm = now.getMonth();
   var rows = (dailyTop5Data||[]).filter(function(r){
-    if((r['Impact Class']||'').trim() !== 'Financial Loss') return false;
     if(SYS_REMARKS.indexOf((r['Remark']||'').trim()) < 0) return false;
     var d = parseDate(r['Date']); if(!d||isNaN(d)) return false;
     return d.getFullYear()===cy && d.getMonth()===cm;
   });
 
   if(!rows.length){
-    wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">No system-triggered remarks for this month</div>';
+    wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">No QC-triggered recall remarks for this month</div>';
     return;
   }
 
-  var byDate = {};
-  rows.forEach(function(r){ var d=r['Date']||''; if(!byDate[d]) byDate[d]=[]; byDate[d].push(r); });
-  var dates = Object.keys(byDate).sort(function(a,b){ return parseDate(b)-parseDate(a); });
+  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
+  var BT_ICON={'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;','FBA / Marketplace':'&#128722;'};
 
-  var html = '';
-  dates.forEach(function(dt){
-    html += '<div style="margin-bottom:18px">'
-      +'<div style="font-size:11px;font-weight:700;color:var(--tl);padding:6px 0;border-bottom:1px solid var(--br);margin-bottom:8px">'+dt+'</div>';
-    byDate[dt].forEach(function(r){
-      var ehId = r['EH_ID']||'';
-      var uc   = (r['UserComment']||'').trim();
-      var rmkPill = '<span style="display:inline-block;background:var(--sf);border:1px solid var(--br);'
-        +'border-radius:10px;padding:2px 8px;font-size:9px;color:var(--mu);margin-bottom:6px">'
-        +(r['Remark']||'')+'</span>';
+  // Group by BizType
+  var btMap = {};
+  rows.forEach(function(r){
+    var bt = r['BizType']||'Other';
+    if(!btMap[bt]) btMap[bt]={cnt:0,commented:0,rows:[]};
+    btMap[bt].cnt++;
+    btMap[bt].rows.push(r);
+    if((r['UserComment']||'').trim()) btMap[bt].commented++;
+  });
+  var btKeys = Object.keys(btMap).sort(function(a,b){ return btMap[b].cnt - btMap[a].cnt; });
 
-      var commentHtml;
-      if(uc){
-        commentHtml = '<div style="font-size:11px;color:var(--tx);background:var(--sf);'
-          +'border:1px solid var(--br);border-radius:6px;padding:7px 10px;margin-top:4px">'
-          +'<span style="font-size:9px;color:var(--mu);display:block;margin-bottom:2px">User Comment (locked)</span>'
-          +uc+'</div>';
-      } else {
-        commentHtml = '<div style="display:flex;gap:6px;margin-top:4px" id="uc-row-'+ehId+'">'
-          +'<input id="uc-inp-'+ehId+'" type="text" placeholder="Add observation…" '
-          +'style="flex:1;font-size:11px;padding:5px 8px;border:1px solid var(--br);border-radius:6px;'
-          +'background:var(--wh);color:var(--tx);outline:none" />'
-          +'<button onclick="saveSysUserComment(\''+ehId+'\')" '
-          +'style="font-size:10px;font-weight:700;padding:5px 12px;border-radius:6px;border:none;'
-          +'background:var(--tl);color:#fff;cursor:pointer">Save</button>'
-          +'</div>';
-      }
+  var TH='padding:9px 12px;background:var(--sf);border-bottom:2px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
+  var html='<div style="overflow-x:auto;border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-bottom:14px">'
+    +'<table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr>'
+    +'<th style="'+TH+';text-align:left;padding-left:16px">Business Type</th>'
+    +'<th style="'+TH+';text-align:right">Total</th>'
+    +'<th style="'+TH+';text-align:right;color:#16a34a">Commented</th>'
+    +'<th style="'+TH+';text-align:right;color:#c2410c">Pending</th>'
+    +'<th style="'+TH+'">Action</th>'
+    +'</tr></thead><tbody>';
 
-      html += '<div style="background:var(--wh);border:1px solid var(--br);border-radius:8px;'
-        +'padding:10px 14px;margin-bottom:8px">'
-        +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;margin-bottom:4px">'
-        +'<span style="font-size:10px;font-weight:700;color:var(--tx)">'+fv(parseFloat(r['COGSValue'])||0)+'</span>'
-        +'<span style="font-size:10px;color:var(--tx2)">'+(r['Name']||r['SKU']||'')+'</span>'
-        +'<span style="font-size:9px;color:var(--mu)">'+(r['Facility']||'')+'</span>'
-        +'<span style="font-size:9px;color:var(--mu)">'+(r['Brand']||'')+'</span>'
-        +'<span style="font-size:9px;color:var(--mu)">Batch: '+(r['Batch']||'')+'</span>'
-        +'</div>'
-        +rmkPill
-        +commentHtml
-        +'</div>';
-    });
-    html += '</div>';
+  btKeys.forEach(function(bt){
+    var b = btMap[bt];
+    var col = BT_COL[bt]||'#555';
+    var safeBt = bt.replace(/['"\\]/g,'_');
+    var panelId = 'sysrmk-panel-'+safeBt;
+    var pending = b.cnt - b.commented;
+    html += '<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+      +'<td style="padding:11px 16px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:'+col+'">'+(BT_ICON[bt]||'')+'&nbsp;'+bt+'</span></td>'
+      +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px">'+b.cnt+'</td>'
+      +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px;color:#16a34a">'+b.commented+'</td>'
+      +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px;color:#c2410c">'+pending+'</td>'
+      +'<td style="padding:11px 12px;text-align:center">'
+        +'<button onclick="toggleSysRmkPanel(\''+safeBt+'\')" style="padding:5px 13px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:9px;font-weight:700;cursor:pointer">&#9660; View</button>'
+      +'</td></tr>'
+      +'<tr id="sysrmk-row-'+safeBt+'" style="display:none"><td colspan="5" style="padding:0 12px 14px">'
+        +'<div id="'+panelId+'"></div>'
+      +'</td></tr>';
   });
 
+  html += '</tbody></table></div>';
   wrap.innerHTML = html;
+
+  // Pre-populate panels so content is ready when expanded
+  btKeys.forEach(function(bt){
+    var safeBt = bt.replace(/['"\\]/g,'_');
+    _renderSysRmkPanel(bt, safeBt, btMap[bt].rows, BT_COL[bt]||'#555');
+  });
+}
+
+function _renderSysRmkPanel(bt, safeBt, rows, col){
+  var panel = document.getElementById('sysrmk-panel-'+safeBt);
+  if(!panel) return;
+  var TH='padding:7px 11px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
+  var html='<div class="card" style="margin-top:0;border-top:none;border-radius:0 0 10px 10px">'
+    +'<div style="padding:10px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:'+col+'">'+bt+' — Batch Recalled ('+rows.length+')</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
+    +'<th style="'+TH+'">#</th>'
+    +'<th style="'+TH+'">SKU / Name</th>'
+    +'<th style="'+TH+'">Brand</th>'
+    +'<th style="'+TH+'">Facility</th>'
+    +'<th style="'+TH+'">Date</th>'
+    +'<th style="'+TH+';text-align:right">COGS</th>'
+    +'<th style="'+TH+'">Observation</th>'
+    +'</tr></thead><tbody>';
+
+  rows.sort(function(a,b){ return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0); })
+    .forEach(function(r,i){
+      var ehId = r['EH_ID']||'';
+      var uc = (r['UserComment']||'').trim();
+      var obsCell;
+      if(uc){
+        obsCell = '<div style="font-size:10px;color:var(--tx);background:var(--sf);border:1px solid var(--br);border-radius:5px;padding:4px 8px">'
+          +'<span style="font-size:8px;color:var(--mu);display:block">locked</span>'+uc+'</div>';
+      } else {
+        obsCell = '<div style="display:flex;gap:4px" id="uc-row-'+ehId+'">'
+          +'<input id="uc-inp-'+ehId+'" type="text" placeholder="Add observation…" '
+          +'style="flex:1;font-size:10px;padding:4px 7px;border:1px solid var(--br);border-radius:5px;background:var(--wh);color:var(--tx);outline:none;min-width:120px" />'
+          +'<button onclick="saveSysUserComment(\''+ehId+'\')" '
+          +'style="font-size:9px;font-weight:700;padding:4px 10px;border-radius:5px;border:none;background:var(--tl);color:#fff;cursor:pointer;white-space:nowrap">Save</button>'
+          +'</div>';
+      }
+      html += '<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
+        +'<td style="padding:7px 11px;color:var(--mu)">'+(i+1)+'</td>'
+        +'<td style="padding:7px 11px"><div style="font-weight:700;font-size:10px">'+r['SKU']+'</div>'
+          +'<div style="font-size:9px;color:var(--mu)">'+((r['Name']||'').substring(0,28)||'—')+'</div></td>'
+        +'<td style="padding:7px 11px;font-size:10px">'+( r['Brand']||'' )+'</td>'
+        +'<td style="padding:7px 11px;font-size:10px">'+( r['Facility']||'' )+'</td>'
+        +'<td style="padding:7px 11px;font-size:10px;white-space:nowrap">'+( r['Date']||'' )+'</td>'
+        +'<td style="padding:7px 11px;font-family:var(--mono);font-size:10px;font-weight:700;text-align:right;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
+        +'<td style="padding:7px 11px;min-width:200px">'+obsCell+'</td>'
+        +'</tr>';
+    });
+
+  html += '</tbody></table></div>';
+  panel.innerHTML = html;
+}
+
+function toggleSysRmkPanel(safeBt){
+  var row = document.getElementById('sysrmk-row-'+safeBt);
+  if(!row) return;
+  var hidden = row.style.display === 'none';
+  row.style.display = hidden ? 'table-row' : 'none';
+  // Update button chevron
+  var btn = row.previousElementSibling && row.previousElementSibling.querySelector('button');
+  if(btn) btn.innerHTML = hidden ? '&#9650; Hide' : '&#9660; View';
 }
 
 function saveSysUserComment(ehId){
