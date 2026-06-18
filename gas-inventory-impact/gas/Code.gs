@@ -3680,20 +3680,18 @@ function callClaude_(dataJson, question) {
   if (!apiKey) return {error:'api_key_not_configured'};
 
   var systemPrompt = 'You are an inventory quality analyst for Mosaic Wellness, an Indian health & wellness brand.\n'
-    + 'You are given inventory event data for the current month and must answer the user\'s question concisely.\n\n'
-    + 'Data schema:\n'
-    + '- Date: event date (dd MMM yyyy)\n'
-    + '- Brand: Be Bodywise | Man Matters | Little Joys | Root Labs | OWN\n'
-    + '- SKU: product code, Name: product name\n'
-    + '- Facility: warehouse/3PL name, BizType: Self Warehouse | 3PL B2C | 3PL B2B | Dark Store | FBA / Marketplace\n'
-    + '- Direction: g2b=Good->Bad, g2q=Good->QC Rejected, g2rc=Good->Recalled, a2ne=Active->NearExpiry, a2rc=Active->Recalled, newBad/newQC=Direct bad GRN, POS=Recovery\n'
-    + '- ImpactClass: Financial Loss | Expiry Risk | Recovery\n'
-    + '- Qty: units affected, COGSValue: cost in INR (Rs)\n\n'
+    + 'You will receive inventory event data in ONE of two formats — use whichever is provided:\n\n'
+    + 'FORMAT A — Summary object (for general/overview questions):\n'
+    + '{ summary:true, totalRows:N, brandTotals:{BrandName:{cogs:N,count:N},...}, eventTotals:{EventName:{cogs:N,count:N},...}, topSkusByCOGS:[{sku,name,brand,cogs,count},...] }\n'
+    + 'topSkusByCOGS is already sorted by COGS descending — use it to answer "top products/SKUs by loss".\n\n'
+    + 'FORMAT B — Array of event rows (for filtered/specific questions):\n'
+    + '[{Date, Brand, SKU, Name, Facility, BizType, Direction, Event, ImpactClass, Qty, COGSValue}, ...]\n'
+    + 'Direction codes: g2b=Good->Bad, g2q=Good->QC, newBad/newQC=Direct bad GRN, a2ne=Near Expiry, POS=Recovery\n\n'
     + 'Rules:\n'
-    + '- Answer in 2-4 sentences. Be specific with numbers, brand names, facility names.\n'
-    + '- Use Rs symbol and Indian number format (e.g. Rs 1,23,456).\n'
-    + '- If data is insufficient to answer, say so clearly.\n'
-    + '- Do not invent data not present in the provided rows.';
+    + '- Answer in 2-4 sentences. Be specific with numbers, SKU names, brand names.\n'
+    + '- Use Rs and Indian number format (e.g. Rs 1,23,456).\n'
+    + '- Do not say data is unavailable if it exists in topSkusByCOGS or brandTotals — use it.\n'
+    + '- Do not invent data not present in the provided JSON.';
 
   var userContent = 'Data:\n' + dataJson + '\n\nQuestion: ' + question;
 
