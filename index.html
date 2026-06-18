@@ -510,6 +510,8 @@ tbody tr:hover td{background:var(--sf)}
         <div class="card"><div id="biz-bars"></div></div>
         <div class="sec-title" style="margin-top:14px">Brand-wise Impact</div>
         <div class="card"><div id="brand-bars"></div></div>
+        <div class="sec-title" style="margin-top:14px">Top 5 Facilities by Net COGS</div>
+        <div class="card"><div id="today-fac5"></div></div>
       </div>
     </div>
 
@@ -538,21 +540,15 @@ tbody tr:hover td{background:var(--sf)}
           <div id="wtd-brand-bars"></div>
         </div>
       </div>
-      <!-- Business Type Impact -->
-      <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-        <div id="wtd-trend"></div>
-      </div>
-      <!-- Row 2: Top 10 Facilities -->
-      <div style="margin-bottom:14px">
+      <!-- Row 2: Business Type · Top 5 Facilities -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities by Net COGS</div>
-          <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>
-            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">#</th>
-            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>
-            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
-            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
-          </tr></thead><tbody id="wtd-fac-rank"></tbody></table>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+          <div id="wtd-trend"></div>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 5 Facilities by Net COGS</div>
+          <div id="wtd-fac5"></div>
         </div>
       </div>
     </div>
@@ -572,21 +568,15 @@ tbody tr:hover td{background:var(--sf)}
           <div id="mtd-brand-bars"></div>
         </div>
       </div>
-      <!-- Business Type Impact -->
-      <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
-        <div id="mtd-trend"></div>
-      </div>
-      <!-- Row 2: Top 10 Facilities -->
-      <div style="margin-bottom:14px">
+      <!-- Row 2: Business Type · Top 5 Facilities -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 10 Facilities by Net COGS</div>
-          <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>
-            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">#</th>
-            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Facility</th>
-            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Qty</th>
-            <th style="padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Net COGS</th>
-          </tr></thead><tbody id="mtd-fac-rank"></tbody></table>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Business Type Impact</div>
+          <div id="mtd-trend"></div>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 5 Facilities by Net COGS</div>
+          <div id="mtd-fac5"></div>
         </div>
       </div>
     </div>
@@ -1158,6 +1148,30 @@ function renderImpact(r){
     }).join('')+'</div>':'<div class="empty" style="padding:14px;font-size:11px;color:var(--mu)">No Financial Loss data</div>';
   }
 
+  // Today's Impact — Top 5 Facilities
+  var todayFac5El=document.getElementById('today-fac5');
+  if(todayFac5El){
+    var tf5=r.facRanked?r.facRanked.slice(0,5):[];
+    var totalNegToday=r.totVal||1;
+    var TH5t='padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)';
+    todayFac5El.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
+      +'<th style="'+TH5t+'">#</th><th style="'+TH5t+'">Facility</th>'
+      +'<th style="'+TH5t+';text-align:right">Net COGS</th><th style="'+TH5t+';text-align:right">% Impact</th>'
+      +'</tr></thead><tbody>'
+      +(tf5.length?tf5.map(function(f,i){
+        var pct=totalNegToday>0?Math.round(f.netVal/totalNegToday*100):0;
+        var bt=f.bt||getBT(f.name);
+        return '<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
+          +'<td style="padding:7px 10px;font-size:9px;color:var(--mu);font-family:var(--mono)">'+(i+1)+'</td>'
+          +'<td style="padding:7px 10px"><div style="font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">'+f.name+'</div>'
+          +'<span class="biz '+btCls(bt)+'" style="font-size:8px">'+bt+'</span></td>'
+          +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:800;color:var(--re)">'+fv(f.netVal)+'</td>'
+          +'<td style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--am)">'+pct+'%</td>'
+          +'</tr>';
+      }).join(''):'<tr><td colspan="4" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No facility data</td></tr>')
+      +'</tbody></table>';
+  }
+
   // Build movement summary table (per category) + flat list for collapsible
   var CAT_META={
     g2b: {label:'Good to Bad Inventory', dir:'Negative', src:'Warehouse Adjustment', icon:'&#128308;', col:'var(--re)'},
@@ -1604,23 +1618,31 @@ function renderHistory(){
       +'<div class="gauge-desc" style="margin-top:6px">Ratio of positive recoveries to total negative COGS</div>'
       +'</div></div>';
 
-    // ── FACILITY RANK — Top 10 by Net COGS for this period ──
-    var facRows = (acc.facRanked&&acc.facRanked.length) ? acc.facRanked.slice(0,10)
-                : (R&&R.facRanked ? R.facRanked.slice(0,10) : []);
-    document.getElementById(pfx+'-fac-rank').innerHTML=facRows.length
-      ? facRows.map(function(f,i){
-          var bt=f.bt||getBT(f.name); var city=f.city||getCity(f.name);
-          return '<tr>'
-            +'<td style="padding:6px 10px;font-size:9px;color:var(--mu);font-family:var(--mono)">'+(i+1)+'</td>'
-            +'<td style="padding:6px 10px"><div style="font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">'+f.name+'</div>'
-            +'<div style="display:flex;gap:4px;margin-top:2px">'
-            +'<span class="biz '+btCls(bt)+'">'+bt+'</span>'
-            +(city?'<span style="font-size:8px;color:var(--mu)">'+city+'</span>':'')
-            +'</div></td>'
-            +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:9px;color:var(--mu)">'+fq(f.negQty||0)+'</td>'
-            +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:800;color:var(--re)">'+fv(f.netVal)+'</td></tr>';
-        }).join('')
-      : '<tr><td colspan="4" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No facility data for this period</td></tr>';
+    // ── TOP 5 FACILITIES ──
+    var fac5El=document.getElementById(pfx+'-fac5');
+    if(fac5El){
+      var facRows=(acc.facRanked&&acc.facRanked.length)?acc.facRanked.slice(0,5):(R&&R.facRanked?R.facRanked.slice(0,5):[]);
+      var totalNegCogs=acc.negV||1;
+      var TH5='padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)';
+      fac5El.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
+        +'<th style="'+TH5+'">#</th>'
+        +'<th style="'+TH5+'">Facility</th>'
+        +'<th style="'+TH5+';text-align:right">Net COGS</th>'
+        +'<th style="'+TH5+';text-align:right">% Impact</th>'
+        +'</tr></thead><tbody>'
+        +(facRows.length?facRows.map(function(f,i){
+          var pct=totalNegCogs>0?Math.round(f.netVal/totalNegCogs*100):0;
+          var bt=f.bt||getBT(f.name);
+          return '<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
+            +'<td style="padding:7px 10px;font-size:9px;color:var(--mu);font-family:var(--mono)">'+(i+1)+'</td>'
+            +'<td style="padding:7px 10px"><div style="font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">'+f.name+'</div>'
+            +'<span class="biz '+btCls(bt)+'" style="font-size:8px">'+bt+'</span></td>'
+            +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:800;color:var(--re)">'+fv(f.netVal)+'</td>'
+            +'<td style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--am)">'+pct+'%</td>'
+            +'</tr>';
+        }).join(''):'<tr><td colspan="4" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No facility data</td></tr>')
+        +'</tbody></table>';
+    }
 
     // ── MOVEMENT BREAKDOWN TABLE ──
     var movRows=[
@@ -3583,6 +3605,7 @@ function _rmkKpis(allRows, top5Rows, totalCogs){
 function _rmkBizTable(rows, panelId){
   // BizType summary table: BizType | Captured | Remarked | Pending | Done% | Update button
   var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
+  var BT_ICON={'Self Warehouse':'&#127981;','Dark Store':'&#127748;','3PL B2C':'&#128666;','3PL B2B':'&#128230;','FBA / Marketplace':'&#128722;'};
   var n=function(v){return parseFloat(v)||0;};
   var btMap={};
   rows.forEach(function(r){
@@ -3609,7 +3632,7 @@ function _rmkBizTable(rows, panelId){
     var barCol=pct>=80?'#16a34a':pct>=40?'#d97706':'#dc2626';
     var safeBt=bt.replace(/'/g,"\\'").replace(/\//g,'\\/');
     html+='<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
-      +'<td style="padding:11px 16px"><span class="biz '+btCls(bt)+'" style="color:'+col+'">'+bt+'</span></td>'
+      +'<td style="padding:11px 16px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:'+col+'">'+(BT_ICON[bt]||'')+'&nbsp;'+bt+'</span></td>'
       +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px">'+b.cnt+'</td>'
       +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px;color:#16a34a">'+b.remarked+'</td>'
       +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px;color:#c2410c">'+(b.cnt-b.remarked)+'</td>'
@@ -3721,9 +3744,17 @@ function renderRmkMonthly(){
     var d=parseDate(r['Date']);
     return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
   });
-  // total COGS: use allEventsData if loaded, else fall back to dailyTop5Data
-  var totalCogs=mtd.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0);
-  var html=_rmkKpis(mtd.length, mtd, totalCogs);
+  // Total FL events + COGS from NI_Events (allEventsData), fall back to dailyTop5Data
+  var allMtdFL=allEventsData.filter(function(r){
+    var d=parseDate(r['Date']);
+    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()
+      &&(r['Impact Class']||'').trim()==='Financial Loss';
+  });
+  var totalAllEvents=allMtdFL.length||mtd.length;
+  var totalCogs=allMtdFL.length
+    ?allMtdFL.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0)
+    :mtd.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0);
+  var html=_rmkKpis(totalAllEvents, mtd, totalCogs);
   if(!mtd.length){
     wrap.innerHTML=html+'<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">No data for this month yet.</div>';
     return;
