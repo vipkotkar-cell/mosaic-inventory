@@ -402,7 +402,7 @@ tbody tr:hover td{background:var(--sf)}
     <div class="sb-grp">Inventory Impact Tracking</div>
     <button class="nav-item on" onclick="goPage('today')" id="nav-today"><span class="nav-icon">&#9888;</span>Today&apos;s Impact<span class="nav-bdg" id="nb-today">-</span></button>
     <button class="nav-item" onclick="goPage('wtd')" id="nav-wtd"><span class="nav-icon">&#128200;</span>WTD &amp; MTD<span class="nav-bdg nav-bdg-g" id="nb-wtd">-</span></button>
-    <button class="nav-item" onclick="goPage('remarks')" id="nav-remarks"><span class="nav-icon">&#128203;</span>Ops Tracker<span class="nav-bdg nav-bdg-a" id="nb-remarks">-</span></button>
+    <button class="nav-item" onclick="goPage('remarks')" id="nav-remarks"><span class="nav-icon">&#128203;</span>Remarks<span class="nav-bdg nav-bdg-a" id="nb-remarks">-</span></button>
 
     
     
@@ -455,92 +455,14 @@ tbody tr:hover td{background:var(--sf)}
   <!-- ═══ REMARKS TRACKER ═══ -->
   <div class="pg content" id="pg-remarks">
 
-    <!-- 2 tabs: Analysis | Remarks -->
+    <!-- 2 tabs: Top 5 Today | Monthly Summary -->
     <div class="sub-tabs" style="margin-bottom:20px">
-      <div class="sub-tab on" onclick="goOpsTab('analysis')" id="ops-tab-analysis">&#128200; Analysis</div>
-      <div class="sub-tab"    onclick="goOpsTab('remarks')"  id="ops-tab-remarks">&#128203; Remarks</div>
+      <div class="sub-tab on" onclick="goRmkTab('top5')"   id="rmk-tab-top5">&#128202; Top 5 Today</div>
+      <div class="sub-tab"    onclick="goRmkTab('monthly')" id="rmk-tab-monthly">&#128197; Monthly Summary</div>
     </div>
 
-    <!-- VIEW: Analysis (Today | MTD side by side) -->
-    <div id="ops-view-analysis">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-
-        <!-- TODAY column -->
-        <div>
-          <div class="sec-title" style="margin-bottom:10px">Today&rsquo;s Impact</div>
-          <div id="ops-d-kpis" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"></div>
-          <div class="card" style="margin-bottom:10px">
-            <div style="padding:8px 12px;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--tx)">Business Type</div>
-            <table style="width:100%;border-collapse:collapse;font-size:10px">
-              <thead><tr>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">BizType</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Events</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Total COGS</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Top5 COGS</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Top5 %</th>
-              </tr></thead>
-              <tbody id="ops-d-biz-tbody"></tbody>
-            </table>
-          </div>
-          <div class="card">
-            <div style="padding:8px 12px;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--tx)">Top 5 Brands</div>
-            <table style="width:100%;border-collapse:collapse;font-size:10px">
-              <thead><tr>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Brand</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Events</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Total COGS</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Top5 COGS</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Top5 %</th>
-              </tr></thead>
-              <tbody id="ops-d-brand-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- MTD column -->
-        <div>
-          <div class="sec-title" style="margin-bottom:10px">Month to Date</div>
-          <div id="ops-m-kpis" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"></div>
-          <div class="card" style="margin-bottom:10px">
-            <div style="padding:8px 12px;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--tx)">Business Type</div>
-            <table style="width:100%;border-collapse:collapse;font-size:10px">
-              <thead><tr>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">BizType</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Events</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Total COGS</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Top5 COGS</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Top5 %</th>
-              </tr></thead>
-              <tbody id="ops-m-biz-tbody"></tbody>
-            </table>
-          </div>
-          <div class="card">
-            <div style="padding:8px 12px;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--tx)">Top 5 Brands</div>
-            <table style="width:100%;border-collapse:collapse;font-size:10px">
-              <thead><tr>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)">Brand</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Events</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Total COGS</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Top5 COGS</th>
-                <th style="padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">Top5 %</th>
-              </tr></thead>
-              <tbody id="ops-m-brand-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- VIEW: Remarks -->
-    <div id="ops-view-remarks" style="display:none">
-      <div style="display:flex;gap:0;margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid var(--br);width:fit-content">
-        <button id="rmk-sub-btn-today"   onclick="goRmkSub('today')"   style="padding:7px 22px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:#1565c0;color:#fff">&#128197; Today</button>
-        <button id="rmk-sub-btn-monthly" onclick="goRmkSub('monthly')" style="padding:7px 22px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:var(--sf);color:var(--mu)">&#128202; Monthly</button>
-      </div>
-      <div id="rmk-sub-today-wrap"></div>
-      <div id="rmk-sub-monthly-wrap" style="display:none"></div>
-    </div>
+    <div id="rmk-view-top5"><div id="rmk-top5-wrap"></div></div>
+    <div id="rmk-view-monthly" style="display:none"><div id="rmk-monthly-wrap"></div></div>
 
   </div>
 
@@ -1978,7 +1900,7 @@ function ceoKpi(lbl,val,sub,col,trend,trendTxt){
 
 
 // NAVIGATION
-var PGN={overview:'Inventory Overview',expiry:'Expiry Watch',today:"Today's Impact",wtd:'WTD & MTD',remarks:'Ops Tracker'};
+var PGN={overview:'Inventory Overview',expiry:'Expiry Watch',today:"Today's Impact",wtd:'WTD & MTD',remarks:'Remarks'};
 function goPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('on');});
   document.querySelectorAll('.pg').forEach(function(el){el.classList.remove('on');});
@@ -1991,7 +1913,7 @@ function goPage(p){
   if(p==='wtd') goWtdTab('wtd');
   if(p==='mtd') goWtdTab('mtd');
   if(p==='wtd'||p==='mtd') renderHistory();
-  if(p==='remarks') goOpsTab('analysis');
+  if(p==='remarks') goRmkTab('top5');
 }
 
 
@@ -3459,16 +3381,11 @@ function saveRmk(){
       renderActiveRmkView();
     });}).catch(function(e){btn.disabled=false;btn.textContent='Save Remark';showToast('&#9888; '+e.message,true);});}
 function renderActiveRmkView(){
-  var analysisView=document.getElementById('ops-view-analysis');
-  if(analysisView&&analysisView.style.display!=='none'){ renderOpsAnalysis(); return; }
-  var rmkView=document.getElementById('ops-view-remarks');
-  if(rmkView&&rmkView.style.display!=='none'){
-    var mWrap=document.getElementById('rmk-sub-monthly-wrap');
-    if(mWrap&&mWrap.style.display!=='none') renderRmkSubMonthly();
-    else renderRmkSubToday();
-  }
+  var mView=document.getElementById('rmk-view-monthly');
+  if(mView&&mView.style.display!=='none') renderRmkMonthly();
+  else renderRmkTop5();
 }
-function switchRmkView(v){ goOpsTab(v==='monthly'?'monthly':'daily'); }
+function switchRmkView(v){ goRmkTab(v==='monthly'?'monthly':'top5'); }
 function updSt(id,status){fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'updateStatus',id:id,status:status}),mode:'no-cors'}).catch(function(){});allRemarks.forEach(function(r){if(r['ID']===id)r['Status']=status;});renderActiveRmkView();}
 
 // ══════════════════════════════════════════════
@@ -3482,13 +3399,13 @@ function _obsolete_toggleBtExpand(grp){
   if(ic) ic.textContent=show?'▲':'▼';
 }
 
-function goOpsTab(tab){
-  ['analysis','remarks'].forEach(function(t){
-    var v=document.getElementById('ops-view-'+t); if(v) v.style.display=t===tab?'block':'none';
-    var b=document.getElementById('ops-tab-'+t); if(b) b.classList.toggle('on',t===tab);
+function goRmkTab(tab){
+  ['top5','monthly'].forEach(function(t){
+    var v=document.getElementById('rmk-view-'+t); if(v) v.style.display=t===tab?'block':'none';
+    var b=document.getElementById('rmk-tab-'+t); if(b) b.classList.toggle('on',t===tab);
   });
-  if(tab==='analysis') renderOpsAnalysis();
-  else goRmkSub('today');
+  if(tab==='top5') renderRmkTop5();
+  else renderRmkMonthly();
 }
 
 function renderOpsDaily(){
@@ -3648,416 +3565,172 @@ function renderOpsMonthly(){
   wrap.innerHTML=html;
 }
 
-function goRmkSub(sub){
-  ['today','monthly'].forEach(function(s){
-    var v=document.getElementById('rmk-sub-'+s+'-wrap'); if(v) v.style.display=s===sub?'block':'none';
-    var b=document.getElementById('rmk-sub-btn-'+s);
-    if(b){b.style.background=s===sub?'#1565c0':'var(--sf)'; b.style.color=s===sub?'#fff':'var(--mu)';}
-  });
-  if(sub==='today') renderRmkSubToday();
-  else renderRmkSubMonthly();
-}
-
-function renderRmkSubToday(){
-  var wrap=document.getElementById('rmk-sub-today-wrap'); if(!wrap) return;
-  var now=new Date();
-  var rows=dailyTop5Data.filter(function(r){
-    var d=parseDate(r['Date']);
-    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate();
-  });
-  rows=rows.slice().sort(function(a,b){return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0);}).slice(0,15);
-  var remarked=rows.filter(function(r){return (r['Remark']||'').trim();}).length;
-  var pending=rows.length-remarked;
-  var HC='border-radius:10px;padding:13px 14px;min-width:0';
-  var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'
-    +'<div style="background:var(--sf);'+HC+'"><div style="font-size:8px;font-weight:700;color:var(--mu)">ITEMS TODAY</div><div style="font-size:22px;font-weight:800;margin-top:2px">'+rows.length+'</div><div style="font-size:9px;color:var(--mu)">top 15</div></div>'
-    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><div style="font-size:8px;font-weight:700;color:#16a34a">REMARKED</div><div style="font-size:22px;font-weight:800;color:#16a34a;margin-top:2px">'+remarked+'</div></div>'
-    +'<div style="background:#fef3c7;border:1px solid #fde68a;'+HC+'"><div style="font-size:8px;font-weight:700;color:#b45309">PENDING</div><div style="font-size:22px;font-weight:800;color:#b45309;margin-top:2px">'+pending+'</div></div>'
+// ── REMARKS PAGE ─────────────────────────────────────────────────
+function _rmkKpis(allRows, top5Rows, totalCogs){
+  // 5 KPI cards: Total Events, Total COGS, Top5 Count, Top5 COGS, Top5 COGS %
+  var t5Cogs=top5Rows.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0);
+  var t5Pct=totalCogs>0?Math.round(t5Cogs/totalCogs*100):0;
+  var HC='border-radius:12px;padding:14px 16px';
+  return '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">'
+    +'<div style="background:var(--sf);border:1px solid var(--br);'+HC+'"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:24px;font-weight:800;line-height:1.1;margin-top:4px">'+allRows+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">Financial Loss</div></div>'
+    +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+HC+'"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:24px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:4px">'+fv(totalCogs)+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">all events</div></div>'
+    +'<div style="background:var(--sf);border:1px solid var(--br);'+HC+'"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOP 5 EVENTS</div><div style="font-size:24px;font-weight:800;line-height:1.1;margin-top:4px">'+top5Rows.length+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">brand-wise top 5</div></div>'
+    +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+HC+'"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 COGS</div><div style="font-size:24px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:4px">'+fv(t5Cogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">top 5 exposure</div></div>'
+    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">TOP 5 COGS %</div><div style="font-size:24px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:4px">'+t5Pct+'%</div><div style="font-size:9px;color:#15803d;margin-top:2px">of total COGS</div></div>'
     +'</div>';
-  if(!rows.length){
-    wrap.innerHTML=html+'<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">No NI_DailyTop5 entries for today yet</div>';
-    return;
-  }
-  var TH='padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
-  html+='<div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-    +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU</th><th style="'+TH+'">Facility</th>'
-    +'<th style="'+TH+'">Brand</th><th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Status</th>'
-    +'</tr></thead><tbody>';
-  rows.forEach(function(r,i){
-    var rmk=(r['Remark']||'').trim();
-    html+='<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
-      +'<td style="padding:7px 10px;font-size:9px;color:var(--mu)">'+(i+1)+'</td>'
-      +'<td style="padding:7px 10px"><div style="font-size:10px;font-weight:700">'+r['SKU']+'</div><div style="font-size:9px;color:var(--mu)">'+((r['Name']||'').substring(0,28)||'—')+'</div></td>'
-      +'<td style="padding:7px 10px;font-size:9px">'+r['Facility']+'</td>'
-      +'<td style="padding:7px 10px;font-size:9px">'+r['Brand']+'</td>'
-      +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
-      +'<td style="padding:7px 10px"><span style="font-size:9px;font-weight:700;color:'+(rmk?'var(--gn)':'var(--am)')+'">'+( rmk?'Done':'Pending')+'</span>'+(rmk?'<div style="font-size:9px;color:var(--mu);margin-top:1px">'+rmk.substring(0,36)+'</div>':'')+'</td>'
-      +'</tr>';
-  });
-  html+='</tbody></table></div>';
-  wrap.innerHTML=html;
 }
 
-
-function renderRmkSubAdd(){
-  var wrap=document.getElementById('rmk-sub-add-wrap'); if(!wrap) return;
-  var pending=dailyTop5Data.filter(function(r){return !(r['Remark']||'').trim();})
-    .sort(function(a,b){return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0);});
-  if(!pending.length){
-    wrap.innerHTML='<div style="padding:48px;text-align:center;color:var(--gn);font-size:13px;font-weight:700">&#10003; All remarks captured!</div>';
-    return;
-  }
-  var TH='padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
-  var html='<div style="margin-bottom:10px;font-size:11px;color:var(--mu)">'+pending.length+' pending remarks</div>'
-    +'<div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-    +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU / Name</th><th style="'+TH+'">Facility</th>'
-    +'<th style="'+TH+'">Brand</th><th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Action</th>'
-    +'</tr></thead><tbody>';
-  pending.forEach(function(r,i){
-    var ba='data-sku="'+r['SKU']+'" data-batch="'+(r['Batch']||'')+'" data-fac="'+r['Facility']+'" data-bt="'+(r['BizType']||'')+'" data-ev="'+(r['Event']||'')+'" data-cogs="'+(r['COGSValue']||0)+'"';
-    html+='<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
-      +'<td style="padding:7px 10px;font-size:9px;color:var(--mu)">'+(i+1)+'</td>'
-      +'<td style="padding:7px 10px"><div style="font-size:10px;font-weight:700">'+r['SKU']+'</div><div style="font-size:9px;color:var(--mu)">'+((r['Name']||'').substring(0,28)||'—')+'</div></td>'
-      +'<td style="padding:7px 10px;font-size:9px">'+r['Facility']+'</td>'
-      +'<td style="padding:7px 10px;font-size:9px">'+r['Brand']+'</td>'
-      +'<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
-      +'<td style="padding:7px 10px"><button onclick="openRmk(this)" '+ba+' style="padding:4px 10px;font-size:10px;font-weight:600;background:#1565c0;color:#fff;border:none;border-radius:6px;cursor:pointer">Add</button></td>'
-      +'</tr>';
-  });
-  html+='</tbody></table></div>';
-  wrap.innerHTML=html;
-}
-
-// ── NEW OPS TRACKER RENDERS ──────────────────────────────────────
-// Shared helper: build BizType + Brand maps from an array of NI_DailyTop5 rows
-function _opsCalc(rows){
-  var n=function(v){return parseFloat(v)||0;};
-  var totalCogs=0, totalCnt=rows.length;
-  var btMap={}, brMap={};
-  rows.forEach(function(r){
-    var bt=r['BizType']||'Other'; var br=r['Brand']||'Other';
-    var cv=n(r['COGSValue']); var qty=n(r['Qty']);
-    totalCogs+=cv;
-    if(!btMap[bt]) btMap[bt]={cnt:0,cogs:0,events:[]};
-    btMap[bt].cnt++; btMap[bt].cogs+=cv; btMap[bt].events.push({cogs:cv,qty:qty,r:r});
-    if(!brMap[br]) brMap[br]={cnt:0,cogs:0,events:[]};
-    brMap[br].cnt++; brMap[br].cogs+=cv; brMap[br].events.push({cogs:cv,qty:qty,r:r});
-  });
-  // compute top-5 COGS per group
-  [btMap,brMap].forEach(function(m){
-    Object.keys(m).forEach(function(k){
-      var evs=m[k].events.slice().sort(function(a,b){return b.cogs-a.cogs;});
-      m[k].top5Cogs=evs.slice(0,5).reduce(function(s,e){return s+e.cogs;},0);
-    });
-  });
-  var btSorted=Object.keys(btMap).sort(function(a,b){return btMap[b].cogs-btMap[a].cogs;});
-  var brSorted=Object.keys(brMap).sort(function(a,b){return brMap[b].cogs-brMap[a].cogs;}).slice(0,5);
-  // top-5 brands COGS total
-  var top5BrCogs=brSorted.reduce(function(s,br){return s+brMap[br].cogs;},0);
-  var top5BrPct=totalCogs>0?Math.round(top5BrCogs/totalCogs*100):0;
-  return {totalCnt:totalCnt,totalCogs:totalCogs,btMap:btMap,brMap:brMap,btSorted:btSorted,brSorted:brSorted,top5BrCogs:top5BrCogs,top5BrPct:top5BrPct};
-}
-
-function _opsRenderColumn(pfx, rows, label){
-  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
-  var BRAND_COL={'Be Bodywise':'#1558a8','Man Matters':'#6d4c41','Little Joys':'#1a6b1a','Root Labs':'#7c3aed','OWN':'#475569'};
-  var c=_opsCalc(rows);
-  var HC='border-radius:10px;padding:11px 12px;min-width:0';
-  var kpi=document.getElementById(pfx+'-kpis');
-  if(kpi) kpi.innerHTML=
-    '<div style="background:var(--sf);'+HC+'"><div style="font-size:8px;font-weight:700;color:var(--mu);letter-spacing:.4px">TOTAL EVENTS</div><div style="font-size:18px;font-weight:800;line-height:1.1;margin-top:3px">'+c.totalCnt+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px">'+label+' top-5 rows</div></div>'
-    +'<div style="background:#fdf4ff;border:1px solid #e9d5ff;'+HC+'"><div style="font-size:8px;font-weight:700;color:#7e22ce;letter-spacing:.4px">TOTAL COGS</div><div style="font-size:18px;font-weight:800;color:#7e22ce;line-height:1.1;margin-top:3px">'+fv(c.totalCogs)+'</div><div style="font-size:9px;color:#6b21a8;margin-top:2px">'+label+'</div></div>'
-    +'<div style="background:#fff7ed;border:1px solid #fed7aa;'+HC+'"><div style="font-size:8px;font-weight:700;color:#c2410c;letter-spacing:.4px">TOP 5 BRANDS COGS</div><div style="font-size:18px;font-weight:800;color:#c2410c;line-height:1.1;margin-top:3px">'+fv(c.top5BrCogs)+'</div><div style="font-size:9px;color:#9a3412;margin-top:2px">combined top 5</div></div>'
-    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><div style="font-size:8px;font-weight:700;color:#16a34a;letter-spacing:.4px">TOP 5 BRANDS %</div><div style="font-size:18px;font-weight:800;color:#16a34a;line-height:1.1;margin-top:3px">'+c.top5BrPct+'%</div><div style="font-size:9px;color:#15803d;margin-top:2px">of total COGS</div></div>';
-
-  var TD='padding:6px 8px;border-bottom:1px solid rgba(228,232,240,.45)';
-  // BizType table
-  var bizTbody=document.getElementById(pfx+'-biz-tbody');
-  if(bizTbody) bizTbody.innerHTML=c.btSorted.length
-    ? c.btSorted.map(function(bt){
-        var b=c.btMap[bt]; var col=BT_COL[bt]||'#555';
-        var pct=c.totalCogs>0?Math.round(b.top5Cogs/c.totalCogs*100):0;
-        return '<tr style="'+TD+'">'
-          +'<td style="padding:6px 8px"><span class="biz '+btCls(bt)+'" style="color:'+col+'">'+bt+'</span></td>'
-          +'<td style="'+TD+';text-align:right;font-weight:600">'+b.cnt+'</td>'
-          +'<td style="'+TD+';text-align:right;font-family:var(--mono);font-weight:700;color:var(--re)">'+fv(b.cogs)+'</td>'
-          +'<td style="'+TD+';text-align:right;font-family:var(--mono);font-weight:600;color:#c2410c">'+fv(b.top5Cogs)+'</td>'
-          +'<td style="'+TD+';text-align:right;font-weight:700;color:'+(pct>=30?'var(--re)':'var(--am)')+'">'+pct+'%</td>'
-          +'</tr>';
-      }).join('')
-    : '<tr><td colspan="5" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No data</td></tr>';
-
-  // Brand table (top 5 only)
-  var brTbody=document.getElementById(pfx+'-brand-tbody');
-  if(brTbody) brTbody.innerHTML=c.brSorted.length
-    ? c.brSorted.map(function(br){
-        var b=c.brMap[br]; var col=BRAND_COL[br]||'#555';
-        var pct=c.totalCogs>0?Math.round(b.top5Cogs/c.totalCogs*100):0;
-        return '<tr style="'+TD+'">'
-          +'<td style="padding:6px 8px;font-weight:700;color:'+col+'">'+br+'</td>'
-          +'<td style="'+TD+';text-align:right;font-weight:600">'+b.cnt+'</td>'
-          +'<td style="'+TD+';text-align:right;font-family:var(--mono);font-weight:700;color:var(--re)">'+fv(b.cogs)+'</td>'
-          +'<td style="'+TD+';text-align:right;font-family:var(--mono);font-weight:600;color:#c2410c">'+fv(b.top5Cogs)+'</td>'
-          +'<td style="'+TD+';text-align:right;font-weight:700;color:'+(pct>=30?'var(--re)':'var(--am)')+'">'+pct+'%</td>'
-          +'</tr>';
-      }).join('')
-    : '<tr><td colspan="5" style="padding:14px;text-align:center;font-size:11px;color:var(--mu)">No data</td></tr>';
-}
-
-function renderOpsAnalysis(){
-  var now=new Date();
-  // TODAY — from dailyTop5Data filtered to today
-  var todayRows=dailyTop5Data.filter(function(r){
-    var d=parseDate(r['Date']);
-    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate();
-  });
-  _opsRenderColumn('ops-d', todayRows, 'today');
-  // MTD — from dailyTop5Data filtered to current month
-  var mtdRows=dailyTop5Data.filter(function(r){
-    var d=parseDate(r['Date']);
-    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
-  });
-  _opsRenderColumn('ops-m', mtdRows, 'MTD');
-}
-
-// Shared: render BizType collapsible cards into a wrapper element
-function _rmkBizCards(rows, wrapId, emptyMsg){
-  var wrap=document.getElementById(wrapId); if(!wrap) return;
-  if(!rows.length){
-    wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:11px">'+emptyMsg+'</div>';
-    return;
-  }
+function _rmkBizTable(rows, panelId){
+  // BizType summary table: BizType | Captured | Remarked | Pending | Done% | Update button
   var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
   var n=function(v){return parseFloat(v)||0;};
-  // Build BizType map
   var btMap={};
   rows.forEach(function(r){
     var bt=r['BizType']||'Other';
     if(!btMap[bt]) btMap[bt]={cnt:0,remarked:0,events:[]};
-    btMap[bt].cnt++;
+    btMap[bt].cnt++; btMap[bt].events.push(r);
     if((r['Remark']||'').trim()) btMap[bt].remarked++;
-    btMap[bt].events.push(r);
   });
   var btKeys=Object.keys(btMap).sort(function(a,b){return btMap[b].cnt-btMap[a].cnt;});
-  var totalAll=rows.length;
-  var remarkedAll=rows.filter(function(r){return (r['Remark']||'').trim();}).length;
-  var covPct=totalAll>0?Math.round(remarkedAll/totalAll*100):0;
-  var TH='padding:6px 9px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu)';
-  // Summary bar
-  var HC='border-radius:8px;padding:9px 14px';
-  var html='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
-    +'<div style="background:var(--sf);'+HC+'"><span style="font-size:8px;font-weight:700;color:var(--mu)">TOTAL</span> <span style="font-size:15px;font-weight:800">'+totalAll+'</span></div>'
-    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+HC+'"><span style="font-size:8px;font-weight:700;color:#16a34a">REMARKED</span> <span style="font-size:15px;font-weight:800;color:#16a34a">'+remarkedAll+'</span></div>'
-    +'<div style="background:#fef3c7;border:1px solid #fde68a;'+HC+'"><span style="font-size:8px;font-weight:700;color:#b45309">PENDING</span> <span style="font-size:15px;font-weight:800;color:#b45309">'+(totalAll-remarkedAll)+'</span></div>'
-    +'<div style="background:#f0f9ff;border:1px solid #bae6fd;'+HC+'"><span style="font-size:8px;font-weight:700;color:#0369a1">COVERAGE</span> <span style="font-size:15px;font-weight:800;color:#0369a1">'+covPct+'%</span></div>'
-    +'</div>';
-  // One card per BizType
-  btKeys.forEach(function(bt){
-    var b=btMap[bt]; var col=BT_COL[bt]||'#555';
-    var pct=b.cnt>0?Math.round(b.remarked/b.cnt*100):0;
-    var pctCol=pct>=80?'var(--gn)':pct>=50?'var(--am)':'var(--re)';
-    var cid='rmk-bt-'+wrapId+'-'+bt.replace(/\s/g,'_').replace(/\//g,'-');
-    var pending=b.events.filter(function(r){return !(r['Remark']||'').trim();})
-      .sort(function(a,z){return n(z['COGSValue'])-n(a['COGSValue']);});
-    html+='<div class="card" style="margin-bottom:10px">'
-      // collapsible header
-      +'<div onclick="(function(el){var tb=document.getElementById(\''+cid+'\');if(tb){tb.style.display=tb.style.display===\'none\'?\'table-row-group\':\'none\';var arr=el.querySelector(\'.rmk-arr\');if(arr)arr.textContent=tb.style.display===\'none\'?\'+\':\'&#8722;\'};})(this)" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;user-select:none">'
-      +'<span class="biz '+btCls(bt)+'" style="color:'+col+';flex:1">'+bt+'</span>'
-      +'<span style="font-size:10px;font-weight:600">'+b.cnt+' events</span>'
-      +'<span style="font-size:10px;color:var(--gn);font-weight:600">'+b.remarked+' done</span>'
-      +'<span style="font-size:10px;color:var(--am);font-weight:600">'+pending.length+' pending</span>'
-      +'<span style="font-size:11px;font-weight:800;color:'+pctCol+'">'+pct+'%</span>'
-      +'<span class="rmk-arr" style="font-size:14px;font-weight:700;color:var(--mu);min-width:16px;text-align:right">+</span>'
-      +'</div>'
-      // collapsible body (hidden by default)
-      +'<table style="width:100%;border-collapse:collapse;font-size:10px"><tbody id="'+cid+'" style="display:none">';
-    if(!pending.length){
-      html+='<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--gn);font-weight:700">&#10003; All remarks captured!</td></tr>';
-    } else {
-      html+='<tr style="background:var(--sf)">'
-        +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU / Name</th><th style="'+TH+'">Brand</th>'
-        +'<th style="'+TH+'">Facility</th><th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Action</th></tr>';
-      pending.forEach(function(r,i){
-        var rmk=(r['Remark']||'').trim();
-        var ba='data-sku="'+r['SKU']+'" data-batch="'+(r['Batch']||'')+'" data-fac="'+r['Facility']+'" data-bt="'+(r['BizType']||'')+'" data-ev="'+(r['Event']||'')+'" data-cogs="'+(r['COGSValue']||0)+'"';
-        html+='<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
-          +'<td style="padding:6px 9px;color:var(--mu)">'+(i+1)+'</td>'
-          +'<td style="padding:6px 9px"><div style="font-weight:700">'+r['SKU']+'</div><div style="font-size:9px;color:var(--mu)">'+(r['Name']||r['Event']||'')+'</div></td>'
-          +'<td style="padding:6px 9px">'+r['Brand']+'</td>'
-          +'<td style="padding:6px 9px;font-size:9px">'+r['Facility']+'</td>'
-          +'<td style="padding:6px 9px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--re)">'+fv(n(r['COGSValue']))+'</td>'
-          +'<td style="padding:6px 9px">'
-          +(rmk?'<span style="font-size:9px;color:var(--gn)">&#10003; '+rmk.substring(0,20)+'</span>'
-               :'<button onclick="openRmk(this)" '+ba+' style="padding:3px 10px;font-size:9px;font-weight:600;background:#1565c0;color:#fff;border:none;border-radius:5px;cursor:pointer">Add</button>')
-          +'</td></tr>';
-      });
-    }
-    html+='</tbody></table></div>';
-  });
-  wrap.innerHTML=html;
-}
-
-function renderRmkSubToday(){
-  var now=new Date();
-  var todayRows=dailyTop5Data.filter(function(r){
-    var d=parseDate(r['Date']);
-    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate();
-  });
-  _rmkBizCards(todayRows,'rmk-sub-today-wrap','No NI_DailyTop5 entries for today yet. Run the daily GAS trigger or wait for 8 AM data.');
-}
-
-function renderRmkSubMonthly(){
-  var wrap=document.getElementById('rmk-sub-monthly-wrap'); if(!wrap) return;
-  if(!dailyTop5Data.length){
-    wrap.innerHTML='<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">Loading data&hellip;</div>';
-    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
-      if(rows&&rows.length){ dailyTop5Data=rows.filter(function(r){return r['EH_ID']||r['SKU'];}); renderRmkSubMonthly(); }
-    }).catch(function(){});
-    return;
-  }
-  var now=new Date();
-  var monthLabel=now.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-  var PRIMARY_BRANDS=['Be Bodywise','Man Matters','Little Joys','OWN'];
-  var SECONDARY_BRANDS=['Root Labs'];
-  var ALL_TRACKED=PRIMARY_BRANDS.concat(SECONDARY_BRANDS);
-  var BRAND_LOGO={'Be Bodywise':'assets/be-bodywise.png','Man Matters':'assets/man-matters.png','Little Joys':'assets/little-joys.png','OWN':'assets/own.png','Root Labs':'assets/root-labs.png'};
-  var BRAND_AVT={'Be Bodywise':{initials:'BB',bg:'#fce4ef',fg:'#c2185b'},'Man Matters':{initials:'MM',bg:'#e3f2fd',fg:'#1565c0'},'Little Joys':{initials:'LJ',bg:'#fff3e0',fg:'#e65100'},'OWN':{initials:'OW',bg:'#efebe9',fg:'#6d4c41'},'Root Labs':{initials:'RL',bg:'#e8f5e9',fg:'#2e7d32'}};
-  function brandAvatar(br){
-    var logo=BRAND_LOGO[br]; var a=BRAND_AVT[br]||{initials:br.substring(0,2).toUpperCase(),bg:'#eee',fg:'#555'};
-    var fs='width:40px;height:40px;border-radius:10px;background:'+a.bg+';display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:'+a.fg+';flex-shrink:0';
-    if(logo) return '<img src="'+logo+'" alt="'+br+'" style="width:40px;height:40px;border-radius:10px;object-fit:contain;border:0.5px solid rgba(0,0,0,.08);background:#fff;flex-shrink:0;vertical-align:middle" onerror="this.outerHTML=\'<div style=&quot;'+fs+'&quot;>'+a.initials+'</div>\'">';
-    return '<div style="'+fs+'">'+a.initials+'</div>';
-  }
-  // Build brand map from MTD dailyTop5Data
-  var mtdRows=dailyTop5Data.filter(function(r){
-    var d=parseDate(r['Date']);
-    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
-  });
-  var uniqueDays=[]; mtdRows.forEach(function(r){var ds=r['Date']||''; if(ds&&uniqueDays.indexOf(ds)<0) uniqueDays.push(ds);});
-  var daysWithData=uniqueDays.length||1;
-  var brandMap={};
-  PRIMARY_BRANDS.forEach(function(br){brandMap[br]={total:0,pending:0,completed:0,isPrimary:true,target:daysWithData*5,events:[]};});
-  SECONDARY_BRANDS.forEach(function(br){brandMap[br]={total:0,pending:0,completed:0,isPrimary:false,target:null,events:[]};});
-  mtdRows.forEach(function(r){
-    var br=r['Brand']||''; if(ALL_TRACKED.indexOf(br)<0) return;
-    brandMap[br].total++; brandMap[br].events.push(r);
-    if((r['Remark']||'').trim()) brandMap[br].completed++; else brandMap[br].pending++;
-  });
-  var RENDER_BRANDS=PRIMARY_BRANDS.concat(SECONDARY_BRANDS.filter(function(br){return brandMap[br].total>0;}));
-  var totT=mtdRows.filter(function(r){return ALL_TRACKED.indexOf(r['Brand']||'')>=0;}).length;
-  var totC=mtdRows.filter(function(r){return ALL_TRACKED.indexOf(r['Brand']||'')>=0&&(r['Remark']||'').trim();}).length;
-  var totP=totT-totC, resRate=totT>0?Math.round(totC/totT*100):0;
-  var monthTarget=daysWithData*PRIMARY_BRANDS.length*5;
-  var TH='padding:10px 14px;background:var(--sf);border-bottom:2px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-align:center;white-space:nowrap';
-  var html=
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
-      +'<div style="background:var(--sf);border:1px solid var(--br);border-radius:12px;padding:16px 18px"><div style="font-size:9px;font-weight:700;color:var(--mu);letter-spacing:.5px;margin-bottom:4px">MONTHLY TARGET</div><div style="font-size:28px;font-weight:800;line-height:1">'+monthTarget+'</div><div style="font-size:10px;color:var(--mu);margin-top:3px">'+daysWithData+' days × 20/day</div></div>'
-      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 18px"><div style="font-size:9px;font-weight:700;color:#c2410c;letter-spacing:.5px;margin-bottom:4px">PENDING</div><div style="font-size:28px;font-weight:800;color:#c2410c;line-height:1">'+totP+'</div><div style="font-size:10px;color:#9a3412;margin-top:3px">of '+totT+' captured</div></div>'
-      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 18px"><div style="font-size:9px;font-weight:700;color:#16a34a;letter-spacing:.5px;margin-bottom:4px">REMARKED</div><div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">'+totC+'</div><div style="font-size:10px;color:#15803d;margin-top:3px">events with remarks</div></div>'
-      +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px"><div style="font-size:9px;font-weight:700;color:#1d4ed8;letter-spacing:.5px;margin-bottom:4px">RESOLUTION RATE</div><div style="font-size:28px;font-weight:800;color:#1d4ed8;line-height:1">'+resRate+'%</div><div style="font-size:10px;color:#1e40af;margin-top:3px">'+totC+'/'+totT+' resolved</div></div>'
-    +'</div>'
-    +'<div style="overflow-x:auto;border:1px solid var(--br);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse">'
+  var totT=rows.length, totC=rows.filter(function(r){return (r['Remark']||'').trim();}).length;
+  var TH='padding:9px 12px;background:var(--sf);border-bottom:2px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
+  var html='<div style="overflow-x:auto;border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-bottom:14px"><table style="width:100%;border-collapse:collapse">'
     +'<thead><tr>'
-    +'<th style="'+TH+';text-align:left;padding-left:18px">Brand</th>'
-    +'<th style="'+TH+'">Target</th>'
-    +'<th style="'+TH+'">Captured</th>'
-    +'<th style="'+TH+';color:#c2410c">Pending</th>'
-    +'<th style="'+TH+';color:#16a34a">Remarked</th>'
+    +'<th style="'+TH+';text-align:left;padding-left:16px">Business Type</th>'
+    +'<th style="'+TH+';text-align:right">Captured</th>'
+    +'<th style="'+TH+';text-align:right;color:#16a34a">Remarked</th>'
+    +'<th style="'+TH+';text-align:right;color:#c2410c">Pending</th>'
     +'<th style="'+TH+'">Completion</th>'
     +'<th style="'+TH+'">Action</th>'
     +'</tr></thead><tbody>';
-  RENDER_BRANDS.forEach(function(br){
-    var s=brandMap[br]; var col=BRAND_COLS[br]||'#555';
-    var pct=s.total>0?Math.round(s.completed/s.total*100):0;
+  btKeys.forEach(function(bt){
+    var b=btMap[bt]; var col=BT_COL[bt]||'#555';
+    var pct=b.cnt>0?Math.round(b.remarked/b.cnt*100):0;
     var barCol=pct>=80?'#16a34a':pct>=40?'#d97706':'#dc2626';
-    var safeBr=br.replace(/'/g,"\\'");
-    html+='<tr style="border-bottom:1px solid rgba(228,232,240,.6)">'
-      +'<td style="padding:12px 18px"><div style="display:flex;align-items:center;gap:10px">'
-        +brandAvatar(br)
-        +'<div><div style="font-size:12px;font-weight:700;color:'+col+'">'+br+'</div>'
-        +'<div style="font-size:9px;color:var(--mu)">'+(s.isPrimary?'Primary':'Secondary')+' · Top 5/day · Financial Loss</div></div>'
-      +'</div></td>'
-      +'<td style="padding:12px 14px;text-align:center">'+(s.isPrimary?'<span style="font-family:var(--mono);font-size:13px;color:var(--mu)">'+s.target+'</span>':'<span style="color:var(--mu)">—</span>')+'</td>'
-      +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+s.total+'</td>'
-      +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+s.pending+'</td>'
-      +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+s.completed+'</td>'
-      +'<td style="padding:12px 18px"><div style="display:flex;align-items:center;gap:8px">'
-        +'<span style="font-size:12px;font-weight:800;color:'+barCol+';min-width:34px">'+pct+'%</span>'
-        +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
+    var safeBt=bt.replace(/'/g,"\\'").replace(/\//g,'\\/');
+    html+='<tr style="border-bottom:1px solid rgba(228,232,240,.5)">'
+      +'<td style="padding:11px 16px"><span class="biz '+btCls(bt)+'" style="color:'+col+'">'+bt+'</span></td>'
+      +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px">'+b.cnt+'</td>'
+      +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px;color:#16a34a">'+b.remarked+'</td>'
+      +'<td style="padding:11px 12px;text-align:right;font-family:var(--mono);font-weight:700;font-size:14px;color:#c2410c">'+(b.cnt-b.remarked)+'</td>'
+      +'<td style="padding:11px 16px"><div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:12px;font-weight:800;color:'+barCol+';min-width:32px">'+pct+'%</span>'
+        +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden;min-width:60px">'
           +'<div style="height:100%;width:'+pct+'%;background:'+barCol+';border-radius:3px;transition:width .4s"></div>'
         +'</div>'
-        +'<span style="font-size:9px;color:var(--mu)">'+s.completed+'/'+s.total+'</span>'
       +'</div></td>'
-      +'<td style="padding:12px 14px;text-align:center">'
-        +(s.total>0
-          ?'<button onclick="openBrandPendingPanel(\''+safeBr+'\')" style="padding:6px 14px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">&#9998; Update Remarks</button>'
-          :'<span style="color:var(--mu);font-size:10px">—</span>')
+      +'<td style="padding:11px 12px;text-align:center">'
+        +(b.cnt-b.remarked>0
+          ?'<button onclick="openBizPendingPanel(\''+safeBt+'\',\''+panelId+'\')" style="padding:5px 13px;border:1.5px solid '+col+';border-radius:20px;background:var(--wh);color:'+col+';font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap">&#9998; Update</button>'
+          :'<span style="font-size:10px;color:var(--gn)">&#10003; Done</span>')
       +'</td></tr>';
   });
-  // Totals row
+  // totals row
   var totPct=totT>0?Math.round(totC/totT*100):0;
   var totBarCol=totPct>=80?'#16a34a':totPct>=40?'#d97706':'#dc2626';
   html+='<tr style="background:var(--sf);border-top:2px solid var(--br)">'
-    +'<td style="padding:12px 18px;font-size:12px;font-weight:800">Total</td>'
-    +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-size:13px;color:var(--mu)">'+monthTarget+'</td>'
-    +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px">'+totT+'</td>'
-    +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#c2410c">'+totP+'</td>'
-    +'<td style="padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:800;font-size:15px;color:#16a34a">'+totC+'</td>'
-    +'<td style="padding:12px 18px"><div style="display:flex;align-items:center;gap:8px">'
-      +'<span style="font-size:12px;font-weight:800;color:'+totBarCol+';min-width:34px">'+totPct+'%</span>'
-      +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden">'
+    +'<td style="padding:10px 16px;font-weight:800;font-size:12px">Total</td>'
+    +'<td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-weight:800;font-size:14px">'+totT+'</td>'
+    +'<td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-weight:800;font-size:14px;color:#16a34a">'+totC+'</td>'
+    +'<td style="padding:10px 12px;text-align:right;font-family:var(--mono);font-weight:800;font-size:14px;color:#c2410c">'+(totT-totC)+'</td>'
+    +'<td style="padding:10px 16px"><div style="display:flex;align-items:center;gap:8px">'
+      +'<span style="font-size:12px;font-weight:800;color:'+totBarCol+';min-width:32px">'+totPct+'%</span>'
+      +'<div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden;min-width:60px">'
         +'<div style="height:100%;width:'+totPct+'%;background:'+totBarCol+';border-radius:3px"></div>'
-      +'</div>'
-      +'<span style="font-size:9px;color:var(--mu)">'+totC+'/'+totT+'</span>'
-    +'</div></td>'
-    +'<td style="padding:12px 14px;text-align:center;color:var(--mu)">—</td>'
-    +'</tr></tbody></table></div>'
-    // Expandable panel for per-brand pending events
-    +'<div id="brand-pending-panel" style="margin-top:16px"></div>';
-  wrap.innerHTML=totT>0?html:'<div style="padding:40px;text-align:center;color:var(--mu)">No Financial Loss events found for this month.</div>';
+      +'</div></div></td>'
+    +'<td></td></tr>'
+    +'</tbody></table></div>';
+  return html;
 }
 
-function openBrandPendingPanel(br){
-  var panel=document.getElementById('brand-pending-panel'); if(!panel) return;
+function openBizPendingPanel(bt, panelId){
+  var panel=document.getElementById(panelId); if(!panel) return;
+  var BT_COL={'Self Warehouse':'#166534','Dark Store':'#7c3aed','3PL B2C':'#1558a8','3PL B2B':'#475569','FBA / Marketplace':'#b7410e'};
+  var col=BT_COL[bt]||'#555';
   var now=new Date();
   var pending=dailyTop5Data.filter(function(r){
     var d=parseDate(r['Date']);
     return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()
-      &&r['Brand']===br&&!(r['Remark']||'').trim();
+      &&r['BizType']===bt&&!(r['Remark']||'').trim();
   }).sort(function(a,b){return (parseFloat(b['COGSValue'])||0)-(parseFloat(a['COGSValue'])||0);});
-  var col=BRAND_COLS[br]||'#555';
-  var TH='padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
   if(!pending.length){
-    panel.innerHTML='<div class="card" style="padding:20px;text-align:center;color:var(--gn);font-weight:700">&#10003; All '+br+' remarks captured!</div>';
-    panel.scrollIntoView({behavior:'smooth',block:'nearest'});
-    return;
+    panel.innerHTML='<div class="card" style="padding:18px;text-align:center;color:var(--gn);font-weight:700">&#10003; All '+bt+' remarks captured!</div>';
+    panel.scrollIntoView({behavior:'smooth',block:'nearest'}); return;
   }
+  var TH='padding:7px 11px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu)';
+  var safeId=panelId.replace(/'/g,"\\'");
   var html='<div class="card">'
-    +'<div style="padding:12px 16px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between">'
-      +'<span style="font-size:13px;font-weight:700;color:'+col+'">'+br+' — Pending Remarks ('+pending.length+')</span>'
-      +'<button onclick="document.getElementById(\'brand-pending-panel\').innerHTML=\'\'" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--mu)">&times;</button>'
+    +'<div style="padding:11px 16px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between">'
+      +'<span style="font-size:13px;font-weight:700;color:'+col+'">'+bt+' — Pending ('+pending.length+')</span>'
+      +'<button onclick="document.getElementById(\''+safeId+'\').innerHTML=\'\'" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--mu);line-height:1">&times;</button>'
     +'</div>'
     +'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
-    +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU</th><th style="'+TH+'">Name</th>'
-    +'<th style="'+TH+'">Facility</th><th style="'+TH+'">BizType</th><th style="'+TH+'">Date</th>'
+    +'<th style="'+TH+'">#</th><th style="'+TH+'">SKU</th><th style="'+TH+'">Brand</th>'
+    +'<th style="'+TH+'">Facility</th><th style="'+TH+'">Date</th>'
     +'<th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Action</th>'
     +'</tr></thead><tbody>';
   pending.forEach(function(r,i){
     var ba='data-sku="'+r['SKU']+'" data-batch="'+(r['Batch']||'')+'" data-fac="'+r['Facility']+'" data-bt="'+(r['BizType']||'')+'" data-ev="'+(r['Event']||'')+'" data-cogs="'+(r['COGSValue']||0)+'"';
     html+='<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
-      +'<td style="padding:7px 12px;color:var(--mu)">'+(i+1)+'</td>'
-      +'<td style="padding:7px 12px;font-weight:700">'+r['SKU']+'</td>'
-      +'<td style="padding:7px 12px;color:var(--mu);font-size:10px">'+((r['Name']||'').substring(0,24)||'—')+'</td>'
-      +'<td style="padding:7px 12px;font-size:10px">'+r['Facility']+'</td>'
-      +'<td style="padding:7px 12px;font-size:10px">'+r['BizType']+'</td>'
-      +'<td style="padding:7px 12px;font-size:10px;color:var(--mu)">'+r['Date']+'</td>'
-      +'<td style="padding:7px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
-      +'<td style="padding:7px 12px"><button onclick="openRmk(this)" '+ba+' style="padding:4px 12px;font-size:10px;font-weight:600;background:#1565c0;color:#fff;border:none;border-radius:6px;cursor:pointer">Add</button></td>'
+      +'<td style="padding:6px 11px;color:var(--mu)">'+(i+1)+'</td>'
+      +'<td style="padding:6px 11px"><div style="font-weight:700">'+r['SKU']+'</div><div style="font-size:9px;color:var(--mu)">'+((r['Name']||'').substring(0,24)||'—')+'</div></td>'
+      +'<td style="padding:6px 11px;font-size:10px">'+r['Brand']+'</td>'
+      +'<td style="padding:6px 11px;font-size:10px">'+r['Facility']+'</td>'
+      +'<td style="padding:6px 11px;font-size:10px;color:var(--mu)">'+r['Date']+'</td>'
+      +'<td style="padding:6px 11px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--re)">'+fv(parseFloat(r['COGSValue'])||0)+'</td>'
+      +'<td style="padding:6px 11px"><button onclick="openRmk(this)" '+ba+' style="padding:4px 12px;font-size:10px;font-weight:600;background:#1565c0;color:#fff;border:none;border-radius:6px;cursor:pointer">Add</button></td>'
       +'</tr>';
   });
   html+='</tbody></table></div>';
   panel.innerHTML=html;
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function renderRmkTop5(){
+  var wrap=document.getElementById('rmk-top5-wrap'); if(!wrap) return;
+  var now=new Date();
+  // All today's Financial Loss from R.flat for total counts/COGS
+  var allToday=R&&R.flat?R.flat.filter(function(x){return x.ic==='Financial Loss';}):[];
+  var totalCogs=allToday.reduce(function(s,x){return s+(parseFloat(x.cogsVal)||0);},0);
+  // Top 5 entries (brand-wise) from NI_DailyTop5
+  var top5=dailyTop5Data.filter(function(r){
+    var d=parseDate(r['Date']);
+    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate();
+  });
+  var html=_rmkKpis(allToday.length, top5, totalCogs||top5.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0));
+  if(!top5.length){
+    wrap.innerHTML=html+'<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">No NI_DailyTop5 entries for today yet. Check back after 8 AM.</div>';
+    return;
+  }
+  html+=_rmkBizTable(top5,'rmk-top5-biz-panel');
+  html+='<div id="rmk-top5-biz-panel"></div>';
+  wrap.innerHTML=html;
+}
+
+function renderRmkMonthly(){
+  var wrap=document.getElementById('rmk-monthly-wrap'); if(!wrap) return;
+  if(!dailyTop5Data.length){
+    wrap.innerHTML='<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">Loading&hellip;</div>';
+    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+      if(rows&&rows.length){ dailyTop5Data=rows.filter(function(r){return r['EH_ID']||r['SKU'];}); renderRmkMonthly(); }
+    }).catch(function(){});
+    return;
+  }
+  var now=new Date();
+  var mtd=dailyTop5Data.filter(function(r){
+    var d=parseDate(r['Date']);
+    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
+  });
+  // total COGS: use allEventsData if loaded, else fall back to dailyTop5Data
+  var totalCogs=mtd.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0);
+  var html=_rmkKpis(mtd.length, mtd, totalCogs);
+  if(!mtd.length){
+    wrap.innerHTML=html+'<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">No data for this month yet.</div>';
+    return;
+  }
+  html+=_rmkBizTable(mtd,'rmk-monthly-biz-panel');
+  html+='<div id="rmk-monthly-biz-panel"></div>';
+  wrap.innerHTML=html;
 }
 
 // DOWNLOAD
