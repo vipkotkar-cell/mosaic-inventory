@@ -1278,22 +1278,39 @@ if (e.parameter.action === 'diag') {
   if (!diagSh) return ContentService.createTextOutput(JSON.stringify({error:'NI_Events not found'})).setMimeType(ContentService.MimeType.JSON);
   var diagData = diagSh.getDataRange().getValues();
   var totalRows = diagData.length - 1;
-  var dates = [];
+  var diagHeaders = diagData[0].map(function(h){ return String(h).trim(); });
+  var iDateDiag = diagHeaders.indexOf('Date');
+  var now_d = new Date();
+  var cutoff30 = new Date(now_d.getTime() - 30*24*60*60*1000);
+  var cutoffCurMon_y = now_d.getFullYear(), cutoffCurMon_m = now_d.getMonth();
+  var dates = [], passedCutoff30 = 0, passedCurMonth = 0, failNull = 0;
   for (var di = 1; di < diagData.length; di++) {
-    var dv = diagData[di][0];
-    if (dv instanceof Date && !isNaN(dv.getTime())) dates.push(dv.getTime());
-    else if (dv) { var dp = new Date(String(dv)); if (!isNaN(dp.getTime())) dates.push(dp.getTime()); }
+    var dv = diagData[di][iDateDiag < 0 ? 0 : iDateDiag];
+    var dp = null;
+    if (dv instanceof Date && !isNaN(dv.getTime())) dp = dv;
+    else if (dv) { var tmp = new Date(String(dv)); if (!isNaN(tmp.getTime())) dp = tmp; }
+    if (!dp) { failNull++; continue; }
+    dates.push(dp.getTime());
+    if (dp >= cutoff30) passedCutoff30++;
+    if (dp.getFullYear() === cutoffCurMon_y && dp.getMonth() === cutoffCurMon_m) passedCurMonth++;
   }
   dates.sort(function(a,b){return a-b;});
   var fmt = function(ts){ return ts ? Utilities.formatDate(new Date(ts), Session.getScriptTimeZone(), 'dd MMM yyyy') : 'N/A'; };
   var last7 = {};
-  var now7 = new Date().getTime();
-  var cutoff7 = now7 - 7*24*60*60*1000;
+  var cutoff7 = now_d.getTime() - 7*24*60*60*1000;
   dates.forEach(function(ts){ if(ts>=cutoff7){ var k=Utilities.formatDate(new Date(ts),Session.getScriptTimeZone(),'dd MMM yyyy'); last7[k]=(last7[k]||0)+1; }});
+  var sampleDate = dates.length ? diagData[1][iDateDiag < 0 ? 0 : iDateDiag] : null;
   return ContentService.createTextOutput(JSON.stringify({
     sheet_id: NI_CONFIG.SHEET_ID,
     total_rows: totalRows,
-    rows_with_dates: dates.length,
+    date_col_index: iDateDiag,
+    date_col_header: iDateDiag >= 0 ? diagHeaders[iDateDiag] : 'NOT FOUND',
+    sample_raw_date: String(sampleDate),
+    sample_date_type: sampleDate ? typeof sampleDate + (sampleDate instanceof Date ? '(Date)' : '') : 'null',
+    rows_date_parsed: dates.length,
+    rows_null_date: failNull,
+    pass_30day_filter: passedCutoff30,
+    pass_curmonth_filter: passedCurMonth,
     earliest_date: fmt(dates[0]),
     latest_date: fmt(dates[dates.length-1]),
     last_7_days: last7
