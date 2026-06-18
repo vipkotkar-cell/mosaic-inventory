@@ -459,10 +459,12 @@ tbody tr:hover td{background:var(--sf)}
     <div class="sub-tabs" style="margin-bottom:20px">
       <div class="sub-tab on" onclick="goRmkTab('top5')"   id="rmk-tab-top5">&#128202; Top 5 Today</div>
       <div class="sub-tab"    onclick="goRmkTab('monthly')" id="rmk-tab-monthly">&#128197; Monthly Summary</div>
+      <div class="sub-tab"    onclick="goRmkTab('sysrmk')"  id="rmk-tab-sysrmk">&#129302; System Remarks</div>
     </div>
 
     <div id="rmk-view-top5"><div id="rmk-top5-wrap"></div></div>
     <div id="rmk-view-monthly" style="display:none"><div id="rmk-monthly-wrap"></div></div>
+    <div id="rmk-view-sysrmk"  style="display:none"><div id="rmk-sysrmk-wrap"></div></div>
 
   </div>
 
@@ -3424,12 +3426,122 @@ function _obsolete_toggleBtExpand(grp){
 }
 
 function goRmkTab(tab){
-  ['top5','monthly'].forEach(function(t){
+  ['top5','monthly','sysrmk'].forEach(function(t){
     var v=document.getElementById('rmk-view-'+t); if(v) v.style.display=t===tab?'block':'none';
     var b=document.getElementById('rmk-tab-'+t); if(b) b.classList.toggle('on',t===tab);
   });
   if(tab==='top5') renderRmkTop5();
+  else if(tab==='sysrmk') renderSysRemarks();
   else renderRmkMonthly();
+}
+
+var SYS_REMARKS = ['System Triggered - Expiry workflow','QC Triggered - Batch Recalled'];
+
+function renderSysRemarks(){
+  var wrap = document.getElementById('rmk-sysrmk-wrap');
+  if(!wrap) return;
+
+  var now = new Date();
+  var cy = now.getFullYear(), cm = now.getMonth();
+  var rows = (dailyTop5Data||[]).filter(function(r){
+    if((r['Impact Class']||'').trim() !== 'Financial Loss') return false;
+    if(SYS_REMARKS.indexOf((r['Remark']||'').trim()) < 0) return false;
+    var d = parseDate(r['Date']); if(!d||isNaN(d)) return false;
+    return d.getFullYear()===cy && d.getMonth()===cm;
+  });
+
+  if(!rows.length){
+    wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px">No system-triggered remarks for this month</div>';
+    return;
+  }
+
+  var byDate = {};
+  rows.forEach(function(r){ var d=r['Date']||''; if(!byDate[d]) byDate[d]=[]; byDate[d].push(r); });
+  var dates = Object.keys(byDate).sort(function(a,b){ return parseDate(b)-parseDate(a); });
+
+  var html = '';
+  dates.forEach(function(dt){
+    html += '<div style="margin-bottom:18px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--tl);padding:6px 0;border-bottom:1px solid var(--br);margin-bottom:8px">'+dt+'</div>';
+    byDate[dt].forEach(function(r){
+      var ehId = r['EH_ID']||'';
+      var uc   = (r['UserComment']||'').trim();
+      var rmkPill = '<span style="display:inline-block;background:var(--sf);border:1px solid var(--br);'
+        +'border-radius:10px;padding:2px 8px;font-size:9px;color:var(--mu);margin-bottom:6px">'
+        +(r['Remark']||'')+'</span>';
+
+      var commentHtml;
+      if(uc){
+        commentHtml = '<div style="font-size:11px;color:var(--tx);background:var(--sf);'
+          +'border:1px solid var(--br);border-radius:6px;padding:7px 10px;margin-top:4px">'
+          +'<span style="font-size:9px;color:var(--mu);display:block;margin-bottom:2px">User Comment (locked)</span>'
+          +uc+'</div>';
+      } else {
+        commentHtml = '<div style="display:flex;gap:6px;margin-top:4px" id="uc-row-'+ehId+'">'
+          +'<input id="uc-inp-'+ehId+'" type="text" placeholder="Add observation…" '
+          +'style="flex:1;font-size:11px;padding:5px 8px;border:1px solid var(--br);border-radius:6px;'
+          +'background:var(--wh);color:var(--tx);outline:none" />'
+          +'<button onclick="saveSysUserComment(\''+ehId+'\')" '
+          +'style="font-size:10px;font-weight:700;padding:5px 12px;border-radius:6px;border:none;'
+          +'background:var(--tl);color:#fff;cursor:pointer">Save</button>'
+          +'</div>';
+      }
+
+      html += '<div style="background:var(--wh);border:1px solid var(--br);border-radius:8px;'
+        +'padding:10px 14px;margin-bottom:8px">'
+        +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;margin-bottom:4px">'
+        +'<span style="font-size:10px;font-weight:700;color:var(--tx)">'+fv(parseFloat(r['COGSValue'])||0)+'</span>'
+        +'<span style="font-size:10px;color:var(--tx2)">'+(r['Name']||r['SKU']||'')+'</span>'
+        +'<span style="font-size:9px;color:var(--mu)">'+(r['Facility']||'')+'</span>'
+        +'<span style="font-size:9px;color:var(--mu)">'+(r['Brand']||'')+'</span>'
+        +'<span style="font-size:9px;color:var(--mu)">Batch: '+(r['Batch']||'')+'</span>'
+        +'</div>'
+        +rmkPill
+        +commentHtml
+        +'</div>';
+    });
+    html += '</div>';
+  });
+
+  wrap.innerHTML = html;
+}
+
+function saveSysUserComment(ehId){
+  var inp = document.getElementById('uc-inp-'+ehId);
+  if(!inp) return;
+  var comment = inp.value.trim();
+  if(!comment){ inp.style.borderColor='var(--re)'; return; }
+  inp.disabled = true;
+  var btn = inp.parentElement.querySelector('button');
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  fetch(PROXY, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'saveUserComment', ehId:ehId, comment:comment})
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(data.ok){
+      var row = document.getElementById('uc-row-'+ehId);
+      if(row){
+        var locked = document.createElement('div');
+        locked.style.cssText='font-size:11px;color:var(--tx);background:var(--sf);border:1px solid var(--br);border-radius:6px;padding:7px 10px;margin-top:4px';
+        locked.innerHTML='<span style="font-size:9px;color:var(--mu);display:block;margin-bottom:2px">User Comment (locked)</span>'+comment;
+        row.parentElement.replaceChild(locked, row);
+      }
+      (dailyTop5Data||[]).forEach(function(r){ if((r['EH_ID']||'')===ehId) r['UserComment']=comment; });
+    } else if(data.error==='already_saved'){
+      if(btn){ btn.textContent='Already saved'; }
+      inp.disabled=true;
+    } else {
+      if(btn){ btn.textContent='Error — retry'; btn.disabled=false; }
+      inp.disabled=false;
+    }
+  })
+  .catch(function(){
+    if(btn){ btn.textContent='Error — retry'; btn.disabled=false; }
+    inp.disabled=false;
+  });
 }
 
 function renderOpsDaily(){
