@@ -4791,7 +4791,7 @@ function sendChatMessage(){
     } else if(data.error === 'api_key_not_configured'){
       appendBubble('The Claude API key has not been configured in Apps Script. Please add CLAUDE_API_KEY to Script Properties.', 'assistant');
     } else {
-      appendBubble('Couldn\'t get an answer right now — please try again. (' + (data.error||'unknown error') + ')', 'assistant');
+      appendBubble('Couldn\'t get an answer right now — please try again. (' + (data.error||'unknown error') + (data.detail ? ': ' + data.detail : '') + ')', 'assistant');
     }
   })
   .catch(function(){
