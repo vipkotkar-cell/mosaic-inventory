@@ -859,6 +859,50 @@ function getBrandFromSKU(sku){
   return 'Other';
 }
 
+// ── REVISED EVENT MAP ────────────────────────────────────────────
+function getRevisedEvent(dir, sT, origEvent) {
+  if(dir==='g2b'){
+    if(sT==='About_to_expire') return {label:'Active to Near Expiry',source:'System Triggered - Expiry workflow',icon:'&#9203;',col:'var(--am)',auto:true};
+    if(sT==='Recalled')        return {label:'Active to Recalled',   source:'QC Triggered - Batch Recalled',      icon:'&#128680;',col:'var(--re)',auto:true};
+    return {label:'Good to Bad',source:'Warehouse Adjustment',icon:'&#128308;',col:'var(--re)',auto:false};
+  }
+  if(dir==='g2q')  return {label:'Good to QC Rejected',  source:'Warehouse Adjustment',               icon:'&#128993;',col:'var(--am)',auto:false};
+  if(dir==='g2rc') return {label:'Active to Recalled',   source:'QC Triggered - Batch Recalled',       icon:'&#128680;',col:'var(--re)',auto:true};
+  if(dir==='a2ne') return {label:'Active to Near Expiry',source:'System Triggered - Expiry workflow',  icon:'&#9203;',  col:'var(--am)',auto:true};
+  if(dir==='newBad'||dir==='newQC'){
+    if(sT==='About_to_expire'||sT==='Expired') return {label:'Direct Expired GRN',source:'Bad GRN',icon:'&#128442;',col:'var(--am)',auto:false};
+    return {label:'Direct Bad GRN',source:'Bad GRN',icon:'&#128442;',col:'var(--re)',auto:false};
+  }
+  if(dir==='a2e'||dir==='ne2e') return {label:'Near Expiry to Expired',source:'System Triggered',icon:'&#128128;',col:'var(--mu)',auto:false};
+  if(dir==='a2rc') return {label:'Active to Recalled',source:'QC Triggered - Batch Recalled',icon:'&#128680;',col:'var(--re)',auto:true};
+  return {label:origEvent||dir,source:'Warehouse Adjustment',icon:'&#128308;',col:'var(--re)',auto:false};
+}
+
+function getAutoFromEventName(evName) {
+  var e=(evName||'').trim();
+  if(e==='Active to Near Expiry') return {auto:true,source:'System Triggered - Expiry workflow'};
+  if(e==='Active to Recalled')    return {auto:true,source:'QC Triggered - Batch Recalled'};
+  return {auto:false,source:''};
+}
+
+var _autoRemarkedIds={};
+function fireAutoRemarks(rows) {
+  if(!rows||!rows.length) return;
+  rows.forEach(function(r){
+    if((r['Remark']||'').trim()) return;
+    var ar=getAutoFromEventName(r['Event']);
+    if(!ar.auto) return;
+    var ehId=r['EH_ID']||''; if(!ehId||_autoRemarkedIds[ehId]) return;
+    _autoRemarkedIds[ehId]=1;
+    r['Remark']=ar.source; r['Status']='Completed'; r['AssignedTo']='System';
+    var p={action:'saveRemark',ehId:ehId,sku:r['SKU']||'',batch:r['Batch']||'',facility:r['Facility']||'',
+      bizType:r['BizType']||'',event:r['Event']||'',cogsVal:parseFloat(r['COGSValue'])||0,
+      remark:ar.source,assignedTo:'System',assignedEmail:'',updatedBy:'System',
+      date:r['Date']||'',status:'Completed',targetSheet:'NI_DailyTop5'};
+    fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'}).catch(function(){});
+  });
+}
+
 // BUILD R FROM NI_EVENTS
 function buildRFromEvents(evData){
   var neg={g2b:[],g2q:[],g2rc:[],a2ne:[],ne2e:[],a2e:[],a2rc:[],newBad:[],newQC:[]};
@@ -890,7 +934,7 @@ function buildRFromEvents(evData){
       if(!facImp[fac])facImp[fac]={negQty:0,negVal:0,posQty:0,posVal:0,netVal:0,bt:bt,city:city};
       if(!bizImp[bt])bizImp[bt]={negQty:0,negVal:0,posQty:0,posVal:0,netVal:0,facs:{}};
       if(!brandImp[brand])brandImp[brand]={negQty:0,negVal:0,posQty:0,posVal:0,netVal:0};
-      facImp[fac].negQty+=qty;facImp[fac].negVal+=cv;
+      facImp[fac].negQty+=qty;if(ic==='Financial Loss')facImp[fac].negVal+=cv;
       bizImp[bt].negQty+=qty;bizImp[bt].negVal+=cv;bizImp[bt].facs[fac]=1;
       // Only Financial Loss for brand impact
       if(ic==='Financial Loss'){
@@ -1172,33 +1216,20 @@ function renderImpact(r){
       +'</tbody></table>';
   }
 
-  // Build movement summary table (per category) + flat list for collapsible
-  var CAT_META={
-    g2b: {label:'Good to Bad Inventory', dir:'Negative', src:'Warehouse Adjustment', icon:'&#128308;', col:'var(--re)'},
-    g2q: {label:'Good to QC Rejected',   dir:'Negative', src:'QC Triggered',         icon:'&#128993;', col:'var(--am)'},
-    g2rc:{label:'Good to Recalled',       dir:'Negative', src:'QC Triggered',         icon:'&#128680;', col:'var(--re)'},
-    a2ne:{label:'Active to Near Expiry',  dir:'Negative', src:'System Triggered',     icon:'&#9203;',   col:'var(--yw)'},
-    ne2e:{label:'Near Expiry to Expired', dir:'Negative', src:'System Triggered',     icon:'&#128128;', col:'var(--re)'},
-    a2e: {label:'Active to Expired',      dir:'Negative', src:'System Triggered',     icon:'&#10060;',  col:'var(--re)'},
-    a2rc:{label:'Recalled',               dir:'Negative', src:'Compliance',           icon:'&#128680;', col:'var(--re)'},
-    newBad:{label:'Direct Bad GRN',       dir:'Negative', src:'Warehouse Adjustment', icon:'&#128442;', col:'var(--re)'},
-    newQC: {label:'Direct QC GRN',        dir:'Negative', src:'QC Triggered',         icon:'&#9888;',   col:'var(--am)'},
-  };
-  var allNegFlat = [].concat(r.neg.g2b,r.neg.g2q,r.neg.g2rc,r.neg.a2ne,r.neg.ne2e,
-                             r.neg.a2e,r.neg.a2rc,r.neg.newBad,r.neg.newQC)
-                     .sort(function(a,b){return b.cogsVal-a.cogsVal;});
+  // Build movement summary table — split by revised event type
+  var _negBuckets={};
+  Object.keys(r.neg).forEach(function(dir){
+    r.neg[dir].forEach(function(x){
+      var re=getRevisedEvent(dir,x.sT,x.event);
+      var k=re.label.replace(/[^a-zA-Z0-9]/g,'_');
+      if(!_negBuckets[k]) _negBuckets[k]={key:k,label:re.label,src:re.source,icon:re.icon,col:re.col,records:0,qty:0,cogs:0,events:[]};
+      _negBuckets[k].records++; _negBuckets[k].qty+=x.qty; _negBuckets[k].cogs+=x.cogsVal; _negBuckets[k].events.push(x);
+    });
+  });
+  var allNegFlat=[].concat(r.neg.g2b,r.neg.g2q,r.neg.g2rc,r.neg.a2ne,r.neg.ne2e,r.neg.a2e,r.neg.a2rc,r.neg.newBad,r.neg.newQC).sort(function(a,b){return b.cogsVal-a.cogsVal;});
   document.getElementById('neg-badge').textContent=allNegFlat.length+' events';
 
-  // Movement summary table
-  var catSummaryRows = Object.keys(CAT_META).map(function(cat){
-    var rows=r.neg[cat]||[];
-    if(!rows.length) return null;
-    var m=CAT_META[cat];
-    var totCogs=rows.reduce(function(s,x){return s+x.cogsVal;},0);
-    var totQty=rows.reduce(function(s,x){return s+x.qty;},0);
-    return {cat:cat,label:m.label,dir:m.dir,src:m.src,icon:m.icon,col:m.col,
-            records:rows.length,qty:totQty,cogs:totCogs,rows:rows};
-  }).filter(Boolean).sort(function(a,b){return b.cogs-a.cogs;});
+  var catSummaryRows=Object.values(_negBuckets).filter(function(b){return b.records>0;}).sort(function(a,b){return b.cogs-a.cogs;});
 
   // Render summary table above detailed list
   var summaryTable='<div style="overflow-x:auto;margin-bottom:0"><table style="width:100%;border-collapse:collapse;font-size:11px">'
@@ -1211,15 +1242,15 @@ function renderImpact(r){
     +'<th style="padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--br);font-size:8px;font-weight:700;color:var(--mu);text-align:right">COGS Impact</th>'
     +'</tr></thead><tbody>'
     +catSummaryRows.map(function(c){
-      return '<tr data-cat="'+c.cat+'" class="cat-tbl-row">'
+      return '<tr data-cat="'+c.key+'" class="cat-tbl-row">'
         +'<td style="padding:8px 12px;font-weight:600"><span style="margin-right:6px">'+c.icon+'</span>'+c.label+'</td>'
-        +'<td style="padding:8px 12px;text-align:center"><span style="background:var(--re-bg);color:var(--re);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px">'+c.dir+'</span></td>'
+        +'<td style="padding:8px 12px;text-align:center"><span style="background:var(--re-bg);color:var(--re);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px">Negative</span></td>'
         +'<td style="padding:8px 12px;font-size:10px;color:var(--tx2)">'+c.src+'</td>'
         +'<td style="padding:8px 12px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--mu)">'+c.records+'</td>'
         +'<td style="padding:8px 12px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--tx2)">'+fq(c.qty)+'</td>'
         +'<td style="padding:8px 12px;font-family:var(--mono);font-size:11px;font-weight:800;text-align:right;color:var(--re)">'+fv(c.cogs)+'</td>'
         +'</tr>'
-        +'<tr id="cat-detail-'+c.cat+'" style="display:none"><td colspan="6" style="padding:0;background:var(--sf)">'
+        +'<tr id="cat-detail-'+c.key+'" style="display:none"><td colspan="6" style="padding:0;background:var(--sf)">'
         +'<div style="max-height:300px;overflow-y:auto">'
         +'<table style="width:100%;border-collapse:collapse;table-layout:fixed">'
         +'<colgroup><col style="width:auto"><col style="width:80px"><col style="width:70px"><col style="width:100px"><col style="width:90px"></colgroup>'
@@ -1441,7 +1472,7 @@ function renderHistory(){
   var _cy=now.getFullYear(), _cm=now.getMonth();
 
   function calcPeriod(startDate){
-    var a={negV:0,negQ:0,posV:0,posQ:0,netV:0,g2bQ:0,g2bV:0,expQ:0,expV:0,grnQ:0,days:0,btDaily:{}};
+    var a={negV:0,negQ:0,posV:0,posQ:0,netV:0,g2bQ:0,g2bV:0,expQ:0,expV:0,grnQ:0,days:0,btDaily:{},movBuckets:{}};
     var bizMap={}, daily={}, daySet={};
     allEventsData.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
@@ -1473,6 +1504,12 @@ function renderHistory(){
         daily[dk]+=cv;
         if(dir==='g2b'||dir==='g2rc'||dir==='g2q'){ a.g2bQ+=qty; a.g2bV+=cv; }
         if(dir==='newBad'||dir==='newQC'){ a.grnQ+=qty; }
+      }
+      // movBuckets: all non-POS events split by revised event type
+      if(type!=='POS'){
+        var _re=getRevisedEvent(dir,row['StateTo']||'',row['Event']||'');
+        if(!a.movBuckets[_re.label]) a.movBuckets[_re.label]={label:_re.label,source:_re.source,icon:_re.icon,col:_re.col,qty:0,val:0};
+        a.movBuckets[_re.label].qty+=qty; a.movBuckets[_re.label].val+=cv;
       }
     });
     Object.keys(bizMap).forEach(function(bt){ bizMap[bt].netV=bizMap[bt].nV-bizMap[bt].pV; });
@@ -1508,7 +1545,8 @@ function renderHistory(){
       if(type==='POS'){
         facAcc[fac].posVal+=cv; facAcc[fac].posQty+=qty;
       } else {
-        facAcc[fac].negVal+=cv; facAcc[fac].negQty+=qty;
+        facAcc[fac].negQty+=qty;
+        if((row['Impact Class']||'').trim()==='Financial Loss') facAcc[fac].negVal+=cv;
       }
     });
     a.facRanked=Object.values(facAcc).map(function(f){ f.netVal=f.negVal-f.posVal; return f; })
@@ -1645,12 +1683,8 @@ function renderHistory(){
     }
 
     // ── MOVEMENT BREAKDOWN TABLE ──
-    var movRows=[
-      {label:'Good to Bad',     icon:'&#128308;',qty:acc.g2bQ,val:acc.g2bV,src:'Warehouse Adj',col:'var(--re)'},
-      {label:'Expiry Events',   icon:'&#9203;',  qty:acc.expQ,val:acc.expV,src:'System Triggered',col:'var(--am)'},
-      {label:'Bad GRN',         icon:'&#128442;',qty:acc.grnQ,val:0,       src:'Warehouse Adj',col:'var(--re)'},
-      {label:'Recovery (Pos)',  icon:'&#8679;',  qty:acc.posQ,val:acc.posV, src:'Warehouse Adj',col:'var(--gn)'},
-    ].filter(function(r){return r.qty>0;});
+    var movRows=Object.values(acc.movBuckets||{}).filter(function(r){return r.qty>0;}).sort(function(a,b){return b.val-a.val;});
+    if(acc.posQ>0) movRows=movRows.concat([{label:'Recovery',source:'Remediation',icon:'&#8679;',col:'var(--gn)',qty:acc.posQ,val:acc.posV}]);
     var movEl=document.getElementById(pfx+'-mov-table');
     if(movEl){
       movEl.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px">'
@@ -1663,7 +1697,7 @@ function renderHistory(){
           return '<tr>'
             +'<td style="padding:7px 10px"><span style="margin-right:5px">'+r.icon+'</span>'
             +'<span style="font-size:10px;font-weight:600">'+r.label+'</span>'
-            +'<br><span style="font-size:8px;color:var(--mu)">'+r.src+'</span></td>'
+            +'<br><span style="font-size:8px;color:var(--mu)">'+(r.source||r.src||'')+'</span></td>'
             +'<td style="padding:7px 10px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--tx2)">'+fq(r.qty)+'</td>'
             +'<td style="padding:7px 10px;font-family:var(--mono);font-size:10px;font-weight:700;text-align:right;color:'+r.col+'">'+fv(r.val)+'</td>'
             +'</tr>';
@@ -2106,6 +2140,7 @@ function switchRmkView(v){
     if(Array.isArray(top5Rows)){
       dailyTop5Data  = top5Rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
       allEventHistory = dailyTop5Data;
+      fireAutoRemarks(dailyTop5Data);
     }
     // Cache monthly all-events totals (Financial Loss only) for KPI cards
     // Also refresh allEventsData so WTD/MTD facility ranking stays current
@@ -2937,6 +2972,7 @@ function onRmkMonthChange() {
       if(Array.isArray(rows)){
         dailyTop5Data = rows.filter(function(r){ return r['EH_ID']||r['SKU']; });
         allEventHistory = dailyTop5Data;
+        fireAutoRemarks(dailyTop5Data);
       }
       refreshActiveRmkTab();
     }).catch(function(){ refreshActiveRmkTab(); });
@@ -3735,7 +3771,7 @@ function renderRmkMonthly(){
   if(!dailyTop5Data.length){
     wrap.innerHTML='<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">Loading&hellip;</div>';
     fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
-      if(rows&&rows.length){ dailyTop5Data=rows.filter(function(r){return r['EH_ID']||r['SKU'];}); renderRmkMonthly(); }
+      if(rows&&rows.length){ dailyTop5Data=rows.filter(function(r){return r['EH_ID']||r['SKU'];}); fireAutoRemarks(dailyTop5Data); renderRmkMonthly(); }
     }).catch(function(){});
     return;
   }
@@ -4028,6 +4064,7 @@ function boot(){
     if(Array.isArray(top5Rows)&&top5Rows.length){
       dailyTop5Data=top5Rows.filter(function(r){return r['EH_ID']||r['SKU'];});
       allEventHistory=dailyTop5Data;
+      fireAutoRemarks(dailyTop5Data);
       console.log('[Boot] NI_DailyTop5:',dailyTop5Data.length,'rows');
     } else {
       console.warn('[Boot] NI_DailyTop5 empty or failed, rows:',top5Rows&&top5Rows.length);
