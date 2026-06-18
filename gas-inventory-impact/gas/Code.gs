@@ -1394,6 +1394,10 @@ if (data.action==='saveRemark') {
 const id=saveRemark_(data);
 return ContentService.createTextOutput(JSON.stringify({success:true,id:id})).setMimeType(ContentService.MimeType.JSON);
 }
+if (data.action==='saveUserComment') {
+  const result = saveUserComment_(data.ehId, data.comment || '');
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
 if (data.action==='archiveMonth') {
 const results=archiveMonthlyData();
 return ContentService.createTextOutput(JSON.stringify({success:true,results:results})).setMimeType(ContentService.MimeType.JSON);
@@ -1416,21 +1420,41 @@ return ContentService.createTextOutput(JSON.stringify({error:err.message})).setM
 function getDailyTop5Sheet_() {
 const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
 let sh = ss.getSheetByName('NI_DailyTop5');
-const HEADERS18 = ['EH_ID','Date','Brand','SKU','Name','Batch','Facility','City','BizType', 'Event','Impact Class','Qty','COGSValue','Rank','Remark','Status','AssignedTo','RemarkDate'];
+const HEADERS19 = ['EH_ID','Date','Brand','SKU','Name','Batch','Facility','City','BizType','Event','Impact Class','Qty','COGSValue','Rank','Remark','Status','AssignedTo','RemarkDate','UserComment'];
 if (!sh) sh = ss.insertSheet('NI_DailyTop5');
 // Auto-migrate: if schema doesn't have Impact Class at col 11, clear and recreate
 const lastCol = sh.getLastColumn();
-const existingHeader = lastCol >
-0 ? sh.getRange(1,1,1,lastCol).getValues()[0].map(String) : [];
-if (existingHeader.length !== 18 || existingHeader[10] !== 'Impact Class') {
-Logger.log('NI_DailyTop5: schema is ' + existingHeader.length + '-col — clearing and rebuilding to 18-col.');
-sh.clearContents();
-sh.getRange(1,1,1,18).setValues([HEADERS18]);
-sh.getRange(1,1,1,18).setFontWeight('bold');
-sh.setFrozenRows(1);
+const existingHeader = lastCol > 0 ? sh.getRange(1,1,1,lastCol).getValues()[0].map(String) : [];
+if (existingHeader.length !== 19 || existingHeader[10] !== 'Impact Class') {
+  // Only rebuild if truly wrong schema — not just missing col 19
+  if (existingHeader.length < 18 || existingHeader[10] !== 'Impact Class') {
+    Logger.log('NI_DailyTop5: schema is ' + existingHeader.length + '-col — clearing and rebuilding to 19-col.');
+    sh.clearContents();
+    sh.getRange(1,1,1,19).setValues([HEADERS19]);
+    sh.getRange(1,1,1,19).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  // If 18-col valid schema: migration will add col 19 via addUserCommentColumn()
 }
 return sh;
 }
+// One-time migration: adds UserComment header to col 19 of NI_DailyTop5.
+// Safe to run multiple times — skips if col 19 already exists.
+function addUserCommentColumn() {
+  var ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  var sh = ss.getSheetByName('NI_DailyTop5');
+  if (!sh) { Logger.log('addUserCommentColumn: NI_DailyTop5 not found'); return; }
+  var lastCol = sh.getLastColumn();
+  var header = sh.getRange(1, lastCol).getValue();
+  if (String(header).trim() === 'UserComment') {
+    Logger.log('addUserCommentColumn: already exists at col ' + lastCol);
+    return;
+  }
+  var newCol = lastCol + 1;
+  sh.getRange(1, newCol).setValue('UserComment').setFontWeight('bold');
+  Logger.log('addUserCommentColumn: added UserComment at col ' + newCol);
+}
+
 function makeEhId_(dateStr, sku, batch, fac, event) {
 return [dateStr, sku, batch||'', fac, event].join('|');
 }
@@ -1520,7 +1544,7 @@ return false;
 if (sh.getLastRow() <
 2)
 return false;
-const data = sh.getRange(2, 1, sh.getLastRow()-1, 17).getValues();
+const data = sh.getRange(2, 1, sh.getLastRow()-1, sh.getLastColumn()).getValues();
 for (let i = 0;
 i <
 data.length;
@@ -1545,6 +1569,34 @@ return true;
 } Logger.log('saveRemarkToDailyTop5_: EH_ID not found — ' + ehId + ' in ' + sheetName);
 return false;
 }
+
+// Writes user comment to UserComment col for a given EH_ID.
+// Idempotency guard: returns {error:'already_saved'} if UserComment is already non-blank.
+function saveUserComment_(ehId, comment) {
+  if (!ehId || !comment || !comment.trim()) return {error:'missing_fields'};
+  var ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  var sh = ss.getSheetByName('NI_DailyTop5');
+  if (!sh) return {error:'sheet_not_found'};
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return {error:'no_data'};
+  var lastCol = sh.getLastColumn();
+  var data = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h){ return String(h).trim(); });
+  var ucIdx = headers.indexOf('UserComment');
+  if (ucIdx < 0) return {error:'UserComment_column_missing'};
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i][0]).trim() === ehId) {
+      var existing = String(data[i][ucIdx] || '').trim();
+      if (existing) return {error:'already_saved'};
+      sh.getRange(i + 2, ucIdx + 1).setValue(comment.trim());
+      SpreadsheetApp.flush();
+      Logger.log('saveUserComment_: saved for ' + ehId);
+      return {ok:true};
+    }
+  }
+  return {error:'ehid_not_found'};
+}
+
 // ------------------------------------------------------------------------------
 // COGS LOOKUP - load batch/brand data from COGS_Lookup sheet into memory
 // Call once at the top of runDailyNIUpdate()
@@ -3295,4 +3347,141 @@ function patchCOGSInNIEvents() {
     }
   }
   Logger.log('patchCOGSInNIEvents: DONE. Total NI_Events patched: ' + evPatched + ', NI_DailyTop5 patched: ' + t5Patched);
+}
+
+// One-time backfill: re-keys all existing NI_DailyTop5 rows to use revised event names.
+// Run once from Apps Script editor. Safe to re-run — already-correct rows are skipped.
+function reKeyDailyTop5() {
+  var ss     = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  var top5Sh = ss.getSheetByName('NI_DailyTop5');
+  var evSh   = ss.getSheetByName('NI_Events');
+  if (!top5Sh || !evSh) { Logger.log('ERROR: sheet not found'); return; }
+
+  // ── 1. Build StateTo lookup from NI_Events ─────────────────────────────
+  // key = "date|sku|batch|facility|direction"  →  StateTo string
+  var evVals = evSh.getDataRange().getValues();
+  var evH    = {};
+  evVals[0].forEach(function(col, i) { evH[col] = i; });
+
+  function fmtDate_(v) {
+    if (!v) return '';
+    if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return String(v).trim();
+  }
+
+  var evMap = {};
+  for (var i = 1; i < evVals.length; i++) {
+    var r   = evVals[i];
+    var key = [fmtDate_(r[evH['Date']]), String(r[evH['SKU']]||'').trim(),
+               String(r[evH['Batch']]||'').trim(), String(r[evH['Facility']]||'').trim(),
+               String(r[evH['Direction']]||'').trim()].join('|');
+    if (!evMap[key]) evMap[key] = String(r[evH['StateTo']] || '').trim();
+  }
+
+  // ── 2. Load NI_DailyTop5 ────────────────────────────────────────────────
+  var t5Vals = top5Sh.getDataRange().getValues();
+  var t5H    = {};
+  t5Vals[0].forEach(function(col, i) { t5H[col] = i; });
+
+  var C_EHID    = t5H['EH_ID'],    C_DATE  = t5H['Date'],   C_SKU    = t5H['SKU'];
+  var C_BATCH   = t5H['Batch'],    C_FAC   = t5H['Facility'], C_EVENT = t5H['Event'];
+  var C_REMARK  = t5H['Remark'],   C_STAT  = t5H['Status'];
+  var C_ASSIGN  = t5H['AssignedTo'], C_RD  = t5H['RemarkDate'];
+
+  // Collect all current EH_IDs for duplicate detection
+  var allEhIds = {};
+  for (var i = 1; i < t5Vals.length; i++) {
+    var id = String(t5Vals[i][C_EHID] || '').trim();
+    if (id) allEhIds[id] = i; // row index → last seen (overwrite ok)
+  }
+
+  // ── 3. Event name derivation (mirrors appendDailyTop5_ logic) ──────────
+  function deriveEvent_(origEvent, sT) {
+    if (origEvent === 'Good to Bad') {
+      if (sT === 'About_to_expire') return 'Active to Near Expiry';
+      if (sT === 'Recalled')        return 'Active to Recalled';
+      return 'Good to Bad';
+    }
+    if (origEvent === 'Good to QC' || origEvent === 'Good to QC Rejected') return 'Good to QC Rejected';
+    if (origEvent === 'Good to Recalled')  return 'Active to Recalled';
+    if (origEvent === 'Direct QC GRN') {
+      return (sT === 'About_to_expire' || sT === 'Expired') ? 'Direct Expired GRN' : 'Direct Bad GRN';
+    }
+    if (origEvent === 'Direct Bad GRN') {
+      return (sT === 'About_to_expire' || sT === 'Expired') ? 'Direct Expired GRN' : 'Direct Bad GRN';
+    }
+    return origEvent; // already revised or unknown — leave as-is
+  }
+
+  function dirFromEvent_(ev) {
+    if (ev === 'Good to Bad')              return 'g2b';
+    if (ev === 'Good to QC' || ev === 'Good to QC Rejected') return 'g2q';
+    if (ev === 'Good to Recalled')         return 'g2rc';
+    if (ev === 'Active to Near Expiry')    return 'a2ne';
+    if (ev === 'Active to Recalled')       return 'g2rc';
+    if (ev === 'Direct Bad GRN')           return 'newBad';
+    if (ev === 'Direct QC GRN')            return 'newQC';
+    if (ev === 'Direct Expired GRN')       return 'newBad';
+    return '';
+  }
+
+  // ── 4. Build update list ─────────────────────────────────────────────────
+  var updates = [], alreadyOk = 0, dupSkip = 0;
+
+  for (var i = 1; i < t5Vals.length; i++) {
+    var row       = t5Vals[i];
+    var dateStr   = fmtDate_(row[C_DATE]);
+    var sku       = String(row[C_SKU]   || '').trim();
+    var batch     = String(row[C_BATCH] || '').trim();
+    var fac       = String(row[C_FAC]   || '').trim();
+    var origEv    = String(row[C_EVENT] || '').trim();
+    var oldEhId   = String(row[C_EHID]  || '').trim();
+    var existRmk  = String(row[C_REMARK]|| '').trim();
+
+    var dir       = dirFromEvent_(origEv);
+    var sT        = evMap[[dateStr, sku, batch, fac, dir].join('|')] || '';
+    var newEv     = deriveEvent_(origEv, sT);
+    var newEhId   = makeEhId_(dateStr, sku, batch, fac, newEv);
+
+    if (newEhId === oldEhId) { alreadyOk++; continue; }
+
+    // Skip if new EH_ID already belongs to a DIFFERENT row
+    if (allEhIds[newEhId] !== undefined && allEhIds[newEhId] !== i) {
+      Logger.log('SKIP dup row ' + (i+1) + ': ' + newEhId);
+      dupSkip++; continue;
+    }
+
+    var isAuto   = (newEv === 'Active to Near Expiry' || newEv === 'Active to Recalled');
+    var autoTxt  = newEv === 'Active to Near Expiry' ? 'System Triggered - Expiry workflow'
+                 : newEv === 'Active to Recalled'    ? 'QC Triggered - Batch Recalled' : '';
+
+    updates.push({
+      ri:        i + 1,                                        // 1-based sheet row
+      newEhId:   newEhId,
+      newEv:     newEv,
+      newRmk:    existRmk || (isAuto ? autoTxt : ''),
+      newStat:   (isAuto && !existRmk) ? 'Completed' : String(row[C_STAT]  || ''),
+      newAssign: (isAuto && !existRmk) ? 'System'    : String(row[C_ASSIGN]|| ''),
+      newRd:     (isAuto && !existRmk) ? dateStr     : String(row[C_RD]    || ''),
+    });
+
+    // Update in-memory map so later rows don't collision-match this new ID
+    delete allEhIds[oldEhId];
+    allEhIds[newEhId] = i;
+  }
+
+  Logger.log('reKeyDailyTop5: ' + updates.length + ' to update | ' + alreadyOk + ' already correct | ' + dupSkip + ' dup-skipped');
+  if (!updates.length) { Logger.log('Nothing to do.'); return; }
+
+  // ── 5. Write back (full-row batch where possible) ───────────────────────
+  updates.forEach(function(u) {
+    top5Sh.getRange(u.ri, C_EHID   + 1).setValue(u.newEhId);
+    top5Sh.getRange(u.ri, C_EVENT  + 1).setValue(u.newEv);
+    if (u.newRmk)    top5Sh.getRange(u.ri, C_REMARK + 1).setValue(u.newRmk);
+    if (u.newStat)   top5Sh.getRange(u.ri, C_STAT   + 1).setValue(u.newStat);
+    if (u.newAssign) top5Sh.getRange(u.ri, C_ASSIGN + 1).setValue(u.newAssign);
+    if (u.newRd)     top5Sh.getRange(u.ri, C_RD     + 1).setValue(u.newRd);
+  });
+  SpreadsheetApp.flush();
+  Logger.log('reKeyDailyTop5: DONE — updated ' + updates.length + ' rows.');
 }
