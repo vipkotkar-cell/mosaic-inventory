@@ -3555,7 +3555,7 @@ function fetchQueryData_(spec) {
   var iType  = headers.indexOf('Type');
 
   var now = new Date();
-  var cy = now.getFullYear(), cm = now.getMonth();
+  var cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   function parseDate_(val) {
     if (!val) return null;
@@ -3575,7 +3575,7 @@ function fetchQueryData_(spec) {
   for (var i = 1; i < data.length; i++) {
     var r = data[i];
     var d = parseDate_(r[iDate]);
-    if (!d || d.getFullYear() !== cy || d.getMonth() !== cm) continue;
+    if (!d || d < cutoff) continue;
 
     if (spec.brandFilter && String(r[iBrand]||'').trim() !== spec.brandFilter) continue;
     if (spec.btFilter    && String(r[iBT]||'').trim()    !== spec.btFilter)    continue;
@@ -3677,6 +3677,9 @@ function handleChatQuery_(question) {
   var spec = routeQuery_(question);
   var data = fetchQueryData_(spec);
   if (data && data.error) return {error: data.error};
+  if (!data || (Array.isArray(data) && data.length === 0)) {
+    return {answer: 'No inventory events found in the last 30 days' + (spec.brandFilter ? ' for ' + spec.brandFilter : '') + '. The daily data pipeline may not have run yet today, or the sheet may not have recent data. Please check that the GAS trigger is active.'};
+  }
   var dataJson = JSON.stringify(data);
   return callClaude_(dataJson, question);
 }
