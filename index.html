@@ -1528,9 +1528,9 @@ function renderTrend(){
   if(logoWrap){
     var allOn=Object.keys(_trendBrands).every(function(k){return _trendBrands[k];});
     function chip(key,label,active){
-      return '<div onclick="trendToggleBrand(\''+key.replace(/'/g,"\\'")+'\');" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px">'
-        +'<div style="padding:4px 12px;border-radius:20px;border:1.5px solid '+(active?'var(--ac)':'var(--br)')+';background:'+(active?'var(--ac)':'var(--wh)')+';font-size:11px;font-weight:600;color:'+(active?'#fff':'var(--mu)')+';white-space:nowrap;user-select:none">'+label+'</div>'
-        +'<span style="font-size:11px;color:'+(active?'var(--ac)':'transparent')+'">✓</span>'
+      return '<div onclick="trendToggleBrand(\''+key.replace(/'/g,"\\'")+'\');" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">'
+        +'<div style="padding:5px 14px;border-radius:20px;border:2px solid '+(active?'#1d4ed8':'#64748b')+';background:'+(active?'#1d4ed8':'#fff')+';font-size:12px;font-weight:700;color:'+(active?'#fff':'#1e293b')+';white-space:nowrap;user-select:none;letter-spacing:-.1px">'+label+'</div>'
+        +'<span style="font-size:12px;font-weight:700;color:'+(active?'#1d4ed8':'transparent')+'">✓</span>'
         +'</div>';
     }
     var html=chip('__all__','All',allOn);
@@ -1550,7 +1550,7 @@ function renderTrend(){
     var isFL=ic==='Financial Loss', isRec=ic==='Recovery';
     if(!isFL&&!isRec) return;
     var b=(row['Brand']||'').trim();
-    if(anyUnchecked && !selBrands[b]) return;
+    if(anyUnchecked && !_trendBrands[b]) return;
     var dk=row['Date'];
     if(!daily[dk]){daily[dk]={negV:0,posV:0}; dateObjs[dk]=d;}
     var cv=n(row['COGSValue']);
