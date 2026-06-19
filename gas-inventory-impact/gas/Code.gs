@@ -135,7 +135,7 @@ appendDailyPNL_(result);
 // Load WTD/MTD + pending remarks
 const wtdMtd = getWtdMtd_();
 const pendingRemarks = getPendingRemarks_();
-// Send daily email sendEmail_(result, wtdMtd, pendingRemarks);
+sendEmail_(result, wtdMtd, pendingRemarks);
 // Send month-end summary if today is the last day of the month
 if (isLastDayOfMonth_()) {
 sendMonthEndEmail_();
