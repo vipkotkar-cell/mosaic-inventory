@@ -463,14 +463,10 @@ tbody tr:hover td{background:var(--sf)}
           <thead>
             <tr style="background:var(--sf);color:var(--mu);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
               <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--br)">Date</th>
-              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">Neg COGS</th>
-              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">Neg Qty</th>
-              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">Pos COGS</th>
-              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">Pos Qty</th>
-              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">Net COGS</th>
-              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br);border-left:2px solid var(--br)">MTD Neg</th>
-              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">MTD Pos</th>
-              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">MTD Net</th>
+              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">Financial Loss</th>
+              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">Recovery</th>
+              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br)">Daily Net</th>
+              <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br);border-left:2px solid var(--br)">MTD Net</th>
             </tr>
           </thead>
           <tbody id="trend-tbody"></tbody>
@@ -1453,22 +1449,26 @@ var _trendChart = null;
 function renderTrend(){
   var src = allEventsData;
   if(!src || !src.length){
-    document.getElementById('trend-tbody').innerHTML='<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--mu)">No data — load a month first</td></tr>';
+    document.getElementById('trend-tbody').innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--mu)">No data — load a month first</td></tr>';
     return;
   }
   function n(v){return parseFloat(v)||0;}
   var now=new Date(), cy=now.getFullYear(), cm=now.getMonth();
 
-  // Aggregate per day
+  // Only Financial Loss (neg) and Recovery (pos) — exclude Expiry Risk
   var daily={};
   src.forEach(function(row){
     var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
     if(d.getFullYear()!==cy||d.getMonth()!==cm) return;
+    var ic=(row['Impact Class']||'').trim();
+    var isFL = ic==='Financial Loss';
+    var isRec = ic==='Recovery';
+    if(!isFL && !isRec) return;
     var dk=row['Date'];
-    if(!daily[dk]) daily[dk]={negV:0,negQ:0,posV:0,posQ:0};
-    var cv=n(row['COGSValue']), qty=n(row['Qty']), type=(row['Type']||'');
-    if(type==='POS'){ daily[dk].posV+=cv; daily[dk].posQ+=qty; }
-    else            { daily[dk].negV+=cv; daily[dk].negQ+=qty; }
+    if(!daily[dk]) daily[dk]={negV:0,posV:0};
+    var cv=n(row['COGSValue']);
+    if(isRec) daily[dk].posV+=cv;
+    else      daily[dk].negV+=cv;
   });
 
   var days=Object.keys(daily).sort();
@@ -1477,28 +1477,25 @@ function renderTrend(){
   var tbody=document.getElementById('trend-tbody');
   tbody.innerHTML='';
 
+  function ind(v){ return v>=0?'▲':'▼'; }
+  function indCol(v){ return v>=0?'color:var(--gn)':'color:var(--re)'; }
+
   days.forEach(function(dk,i){
     var d=daily[dk];
     mtdNeg+=d.negV; mtdPos+=d.posV;
     var net=d.posV-d.negV, mtdNet=mtdPos-mtdNeg;
-    var netCol=net>=0?'color:var(--gn)':'color:var(--re)';
-    var mtdNetCol=mtdNet>=0?'color:var(--gn)':'color:var(--re)';
     var stripe=i%2===0?'background:var(--wh)':'background:var(--sf)';
     tbody.innerHTML+='<tr style="'+stripe+'">'
       +'<td style="padding:6px 12px;font-weight:600;white-space:nowrap">'+dk+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;color:var(--re)">'+fL(d.negV)+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;color:var(--mu)">'+Math.round(d.negQ).toLocaleString()+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;color:var(--gn)">'+fL(d.posV)+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;color:var(--mu)">'+Math.round(d.posQ).toLocaleString()+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-weight:700;'+netCol+'">'+fL(net)+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;color:var(--re);border-left:2px solid var(--br)">'+fL(mtdNeg)+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;color:var(--gn)">'+fL(mtdPos)+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-weight:700;'+mtdNetCol+'">'+fL(mtdNet)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;color:var(--re)">'+fLabs(d.negV)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;color:var(--gn)">'+fLabs(d.posV)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-weight:700;'+indCol(net)+'">'+ind(net)+' '+fLabs(net)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-weight:700;'+indCol(mtdNet)+';border-left:2px solid var(--br)">'+ind(mtdNet)+' '+fLabs(mtdNet)+'</td>'
       +'</tr>';
     labels.push(dk.replace(/\s\d{4}$/,''));
     negArr.push(Math.round(d.negV));
     posArr.push(Math.round(d.posV));
-    netArr.push(Math.round(d.posV-d.negV));
+    netArr.push(Math.round(net));
   });
 
   // KPI summary cards
@@ -1506,10 +1503,10 @@ function renderTrend(){
   var avgDaily=days.length?Math.round(mtdNeg/days.length):0;
   var kpiEl=document.getElementById('trend-kpis');
   kpiEl.innerHTML=''
-    +'<div class="hero-kpi"><div class="hero-kpi-lbl">MTD Negative</div><div class="hero-kpi-val re">'+fL(totalNeg)+'</div><div class="hero-kpi-sub">'+days.length+' days</div></div>'
-    +'<div class="hero-kpi"><div class="hero-kpi-lbl">MTD Recovery</div><div class="hero-kpi-val gn">'+fL(totalPos)+'</div><div class="hero-kpi-sub">Positive movements</div></div>'
-    +'<div class="hero-kpi"><div class="hero-kpi-lbl">MTD Net</div><div class="hero-kpi-val '+(totalNet>=0?'gn':'re')+'">'+fL(totalNet)+'</div><div class="hero-kpi-sub">'+(totalNet>=0?'Net recovered':'Net loss')+'</div></div>'
-    +'<div class="hero-kpi"><div class="hero-kpi-lbl">Avg Daily Neg</div><div class="hero-kpi-val re">'+fL(avgDaily)+'</div><div class="hero-kpi-sub">Per day this month</div></div>';
+    +'<div class="hero-kpi"><div class="hero-kpi-lbl">MTD Financial Loss</div><div class="hero-kpi-val re">'+fLabs(totalNeg)+'</div><div class="hero-kpi-sub">'+days.length+' days</div></div>'
+    +'<div class="hero-kpi"><div class="hero-kpi-lbl">MTD Recovery</div><div class="hero-kpi-val gn">'+fLabs(totalPos)+'</div><div class="hero-kpi-sub">Recoveries only</div></div>'
+    +'<div class="hero-kpi"><div class="hero-kpi-lbl">MTD Net</div><div class="hero-kpi-val '+(totalNet>=0?'gn':'re')+'">'+fLabs(totalNet)+'</div><div class="hero-kpi-sub">'+(totalNet>=0?'▲ Net recovered':'▼ Net loss')+'</div></div>'
+    +'<div class="hero-kpi"><div class="hero-kpi-lbl">Avg Daily Loss</div><div class="hero-kpi-val re">'+fLabs(avgDaily)+'</div><div class="hero-kpi-sub">Per day this month</div></div>';
 
   // Chart
   if(_trendChart){ try{_trendChart.destroy();}catch(e){} _trendChart=null; }
@@ -1542,6 +1539,10 @@ function fL(v){
   var abs=Math.abs(Math.round(v));
   var s=abs>=100000?'Rs '+(abs/100000).toFixed(1)+'L':abs>=1000?'Rs '+(abs/1000).toFixed(0)+'K':'Rs '+abs.toLocaleString();
   return (v<0?'-':'')+s;
+}
+function fLabs(v){
+  var abs=Math.abs(Math.round(v));
+  return abs>=100000?'Rs '+(abs/100000).toFixed(1)+'L':abs>=1000?'Rs '+(abs/1000).toFixed(0)+'K':'Rs '+abs.toLocaleString();
 }
 
 // ── RENDER WTD & MTD — CEO View ──
