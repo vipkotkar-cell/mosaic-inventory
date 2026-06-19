@@ -1043,215 +1043,247 @@ return t>=NI_CONFIG.INTRO_START&&t<=NI_CONFIG.INTRO_END;
 // EMAIL
 // ============================================================
 function sendEmail_(r, wtdMtd, pendingRemarks) {
-const subj = 'Inventory Health Monitor — ' + r.todayStr + ' | Net: ' + fmtV_(r.netVal) + ' | Recovery: ' + (r.totVal >
-0 ? (r.posVal / r.totVal * 100).toFixed(1) : '0') + '%';
-const recoveryRate = r.totVal >
-0 ? (r.posVal / r.totVal * 100) : 0;
-const rateColor = recoveryRate >= 30 ? '#166534' : recoveryRate >= 10 ? '#b7410e' : '#c0392b';
-const rateBg = recoveryRate >= 30 ? '#f0fdf4' : recoveryRate >= 10 ? '#fff7ed' : '#fff5f5';
-const rateLabel = recoveryRate >= 30 ? 'STRONG' : recoveryRate >= 10 ? 'MODERATE' : 'LOW';
-const g2bV = r.neg.g2b.reduce((s,x)=>s+x.cogsVal,0);
-const expV = [...r.neg.a2ne,...r.neg.ne2e,...r.neg.a2e].reduce((s,x)=>s+x.cogsVal,0);
-const g2bQ = r.neg.g2b.reduce((s,x)=>s+x.qty,0);
-const totNeg = [...r.neg.g2b,...r.neg.g2q,...r.neg.g2rc,...r.neg.a2ne,...r.neg.ne2e, ...r.neg.a2e,...r.neg.a2rc,...r.neg.newBad,...r.neg.newQC];
-const posFlat = [...(r.pos.b2g||[]),...(r.pos.q2g||[]),...(r.pos.rc2a||[])];
-// Top 5 negative events
-const top5neg = totNeg.sort((a,b)=>b.cogsVal-a.cogsVal).slice(0,5);
-const top5pos = posFlat.sort((a,b)=>b.cogsVal-a.cogsVal).slice(0,5);
-function row(label, val, color='#0c1220') {
-return `<tr>
-<td style="padding:8px 0;font-size:12px;color:#3a4257;border-bottom:1px solid #f1f5f9">${label}</td>
-<td style="padding:8px 0;font-size:12px;font-weight:700;color:${color};font-family:monospace;text-align:right;border-bottom:1px solid #f1f5f9">${val}</td>
-</tr>`;
-}
-function evRow(x, dir) {
-const col = dir === 'neg' ? '#c0392b' : '#166534';
-const sign = dir === 'neg' ? '−' : '+';
-return `<tr>
-<td style="padding:8px 12px;border-bottom:1px solid #f1f5f9">
-<div style="font-family:monospace;font-size:10px;font-weight:700;color:#0c1220">${x.sku}</div>
-${x.name ? `<div style="font-size:10px;color:#1a6b5a;margin-top:1px">${x.name}</div>` : ''} <div style="font-size:10px;color:#7c85a0;margin-top:2px">${x.fac||''}${x.city ? ' — ' + x.city : ''} &nbsp;
-${x.event||''}</div>
-</td>
-<td style="padding:8px 12px;text-align:right;border-bottom:1px solid #f1f5f9">
-<div style="font-size:12px;font-weight:800;color:${col};font-family:monospace">${sign}${fmtV_(x.cogsVal)}</div>
-<div style="font-size:10px;color:#7c85a0">${fmtQ_(x.qty)} units</div>
-</td>
-</tr>`;
-}
-const methodologyHtml = `<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:11px;color:#1e3a5f;line-height:1.7">
-<div style="font-weight:700;margin-bottom:6px;font-size:12px">
-📊 How This Report Is Calculated</div>
-<ol style="margin:0;padding-left:18px">
-<li><strong>Negative Events:</strong>
-Compares today's vs yesterday's Shelfwise snapshot — SKUs that moved from Good→Bad, Active→Near Expiry, Near Expiry→Expired, or arrived as Bad GRN.</li>
-<li><strong>Positive Events:</strong>
-SKUs that moved from Bad/QC→Good (recoveries) between the two snapshots.</li>
-<li><strong>COGS Impact:</strong>
-Each movement is valued at the SKU's MRP × qty moved. No COGS master file needed.</li>
-<li><strong>Net Impact:</strong>
-Negative COGS minus Positive COGS. Recovery Rate = Positive ÷ Negative × 100.</li>
-<li><strong>Facility &
-Business split:</strong>
-Each SKU's facility is mapped to a Business Unit (Self Warehouse / Dark Store / 3PL B2C / 3PL B2B) using the facility master.</li>
-</ol>
-</div>`;
-const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:20px;background:#f1f3f8;font-family:'Segoe UI',Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-<table width="680" cellpadding="0" cellspacing="0" style="max-width:680px">
-<!-- HEADER -->
-<tr><td style="background:#1a6b5a;border-radius:10px 10px 0 0;padding:20px 24px">
-<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">
-📦 Inventory Health Monitor</div>
-<div style="font-size:11px;color:rgba(255,255,255,.85)"><strong>${r.yesterdayStr}</strong>
-→ <strong>${r.todayStr}</strong>
-&nbsp;·&nbsp;
-Mosaic Wellness Ops</div>
-<div style="margin-top:12px"><a href="${NI_CONFIG.DASHBOARD_URL}" style="display:inline-block;padding:7px 16px;background:#fff;border-radius:6px;color:#1a6b5a;font-size:11px;font-weight:800;text-decoration:none">Open Live Dashboard →</a></div>
-</td></tr>
-<tr><td style="background:#fff;border:1px solid #e3e6ee;border-top:none;border-radius:0 0 10px 10px;padding:24px">
-${methodologyHtml} <!-- IMPACT HERO TILES (matches dashboard layout) -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-<!-- Net Impact -->
-<div style="background:#fff5f5;border:2px solid rgba(192,57,43,.25);border-radius:10px;padding:16px 18px;border-left:5px solid #c0392b">
-<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#7c85a0;margin-bottom:8px">NET COGS IMPACT</div>
-<div style="font-size:28px;font-weight:800;font-family:monospace;color:#b7410e;line-height:1;margin-bottom:6px">${fmtV_(r.netVal)}</div>
-<div style="font-size:11px;color:#3a4257">Effective loss · ${fmtQ_(r.totNeg - posFlat.reduce((s,x)=>s+x.qty,0))} units net</div>
-</div>
-<!-- Recovery Rate -->
-<div style="background:${rateBg};border:1px solid ${rateColor}30;border-radius:10px;padding:16px 18px;border-left:5px solid ${rateColor}">
-<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#7c85a0;margin-bottom:8px">RECOVERY RATE</div>
-<div style="font-size:28px;font-weight:800;font-family:monospace;color:${rateColor};line-height:1;margin-bottom:6px">${recoveryRate.toFixed(1)}%</div>
-<div style="display:inline-block;padding:3px 10px;border-radius:20px;background:${rateColor}20;color:${rateColor};font-size:10px;font-weight:800">${rateLabel}</div>
-</div>
-</div>
-<!-- Secondary KPIs -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-<div style="border:1px solid #e4e8f0;border-radius:10px;padding:14px 18px;border-left:5px solid #c0392b">
-<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#7c85a0;margin-bottom:6px">NEGATIVE IMPACT</div>
-<div style="font-size:22px;font-weight:800;font-family:monospace;color:#c0392b">−${fmtV_(r.totVal)}</div>
-<div style="font-size:10px;color:#7c85a0;margin-top:4px">${fmtQ_(r.totNeg)} units · ${r.totEv} events</div>
-</div>
-<div style="border:1px solid #e4e8f0;border-radius:10px;padding:14px 18px;border-left:5px solid #166534">
-<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#7c85a0;margin-bottom:6px">POSITIVE IMPACT</div>
-<div style="font-size:22px;font-weight:800;font-family:monospace;color:#166534">+${fmtV_(r.posVal)}</div>
-<div style="font-size:10px;color:#7c85a0;margin-top:4px">+${fmtQ_(posFlat.reduce((s,x)=>s+x.qty,0))} units recovered</div>
-</div>
-</div>
-<!-- PERFORMANCE BREAKDOWN -->
-<div style="font-size:14px;font-weight:800;color:#0c1220;margin-bottom:10px">Performance Breakdown</div>
-<div style="border:1px solid #e4e8f0;border-radius:10px;padding:16px 18px;margin-bottom:20px">
-<table width="100%" cellpadding="0" cellspacing="0">
-${row('Good → Bad COGS', '−' + fmtV_(g2bV), '#c0392b')} ${row('Good → Bad Units', fmtQ_(g2bQ) + ' units', '#c0392b')} ${row('Expiry Risk COGS', '−' + fmtV_(expV), '#b7410e')} ${row('Recovery (Positive)', '+' + fmtV_(r.posVal), '#166534')} </table>
-<!-- Visual bars -->
-<div style="margin-top:14px">
-${barRow('G→Bad', g2bV, r.totVal, '#c0392b')} ${barRow('Expiry', expV, r.totVal, '#b7410e')} ${barRow('Recovery', r.posVal, r.totVal, '#166534')} </div>
-</div>
-<!-- NEGATIVE MOVEMENTS -->
-${top5neg.length ?` <div style="font-size:14px;font-weight:800;color:#0c1220;margin-bottom:10px">↓ Negative Movements <span style="font-size:11px;font-weight:400;color:#7c85a0">(top 5 by COGS)</span></div>
-<div style="border:1px solid #fecaca;border-radius:10px;overflow:hidden;margin-bottom:20px">
-<table width="100%" cellpadding="0" cellspacing="0">
-${top5neg.map(x =>
-evRow(x,'neg')).join('')} </table>
-</div>` : ''} <!-- POSITIVE MOVEMENTS -->
-${top5pos.length ?` <div style="font-size:14px;font-weight:800;color:#0c1220;margin-bottom:10px">↑ Positive Movements <span style="font-size:11px;font-weight:400;color:#7c85a0">(recoveries)</span></div>
-<div style="border:1px solid #bbf7d0;border-radius:10px;overflow:hidden;margin-bottom:20px">
-<table width="100%" cellpadding="0" cellspacing="0">
-${top5pos.map(x =>
-evRow(x,'pos')).join('')} </table>
-</div>` : ''} <!-- PENDING REMARKS -->
-${(() =>
-{
-// Read NI_DailyTop5 for today's remarks pendency by BT
-try {
-const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
-const sh = ss.getSheetByName('NI_DailyTop5');
-if (!sh || sh.getLastRow() <
-2)
-return '';
-const data = sh.getDataRange().getValues();
-const h = data[0].map(x =>
-String(x).trim());
-const todayStr = r.todayStr;
-const rows = data.slice(1).filter(row =>
-{
-const d = String(row[h.indexOf('Date')]||'').trim();
-const ehId = String(row[h.indexOf('EH_ID')]||'').trim();
-return d === todayStr || ehId.startsWith(todayStr);
-});
-if (!rows.length)
-return '';
-const BT_ORDER = ['Self Warehouse','Dark Store','3PL B2C','3PL B2B'];
-const btMap = {};
-rows.forEach(row =>
-{
-const bt = String(row[h.indexOf('BizType')]||row[h.indexOf('Business Type')]||'Other').trim();
-const rmk = String(row[h.indexOf('Remark')]||'').trim();
-const status = String(row[h.indexOf('Status')]||'Pending').trim();
-if (!btMap[bt]) btMap[bt] = {total:0,pending:0,done:0};
-btMap[bt].total++;
-if (rmk &&
-status === 'Completed') btMap[bt].done++;
-else btMap[bt].pending++;
-});
-const total = rows.length;
-const totalPending = rows.filter(row =>
-!String(row[h.indexOf('Remark')]||'').trim()).length;
-const totalDone = total - totalPending;
-const pct = total >
-0 ? Math.round(totalDone/total*100) : 0;
-const statusCol = pct >= 80 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626';
-const btRows = BT_ORDER.filter(bt =>
-btMap[bt]).map(bt =>
-{
-const s = btMap[bt];
-const bpct = s.total >
-0 ? Math.round(s.done/s.total*100) : 0;
-const bc = bpct >= 80 ? '#16a34a' : bpct >= 40 ? '#d97706' : '#dc2626';
-return `<tr style="border-bottom:1px solid #f1f5f9">
-<td style="padding:8px 12px;font-size:11px;font-weight:600;color:#1e3a5f">${bt}</td>
-<td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:12px;font-weight:700">${s.total}</td>
-<td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:12px;font-weight:700;color:#dc2626">${s.pending}</td>
-<td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:12px;font-weight:700;color:#16a34a">${s.done}</td>
-<td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:12px;font-weight:700;color:${bc}">${bpct}%</td>
-</tr>`;
-}).join('');
-return` <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 18px;margin-bottom:20px">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-<div style="font-size:13px;font-weight:700;color:#0c4a6e">
-📋 Remarks Pendency — Today (${r.todayStr})</div>
-<div style="font-size:12px;font-weight:800;color:${statusCol}">${totalDone}/${total} resolved &nbsp;·&nbsp;
-${pct}%</div>
-</div>
-<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
-<thead><tr style="background:#e0f2fe">
-<th style="padding:7px 12px;text-align:left;font-size:9px;font-weight:700;color:#0c4a6e">Business Unit</th>
-<th style="padding:7px 12px;text-align:center;font-size:9px;font-weight:700;color:#0c4a6e">Events</th>
-<th style="padding:7px 12px;text-align:center;font-size:9px;font-weight:700;color:#dc2626">Pending</th>
-<th style="padding:7px 12px;text-align:center;font-size:9px;font-weight:700;color:#16a34a">Done</th>
-<th style="padding:7px 12px;text-align:center;font-size:9px;font-weight:700;color:#0c4a6e">% Done</th>
-</tr></thead>
-<tbody>${btRows}</tbody>
-</table>
-${totalPending >
-0 ? `<div style="margin-top:10px;font-size:10px;color:#0369a1">
-⚠️ <strong>${totalPending} remark${totalPending>1?'s':''} pending</strong>
-— <a href="${NI_CONFIG.DASHBOARD_URL}" style="color:#1a6b5a;font-weight:700">Update on Dashboard →</a></div>` : `<div style="margin-top:10px;font-size:10px;color:#16a34a">
-✅ All remarks updated for today</div>`} </div>`;
-} catch(e) {
-return '';
-}
-})()} <!-- FOOTER -->
-<div style="text-align:center;font-size:10px;color:#7c85a0;padding-top:16px;border-top:1px solid #f1f5f9">
-Mosaic Wellness · Inventory Health Monitor · Auto-generated report <br><a href="${NI_CONFIG.DASHBOARD_URL}" style="color:#1a6b5a;font-weight:700;text-decoration:none">View Full Dashboard →</a>
-</div>
-</td></tr>
-</table>
-</td></tr></table>
-</body></html>`;
-if (NI_CONFIG.DRY_RUN) { Logger.log('[DRY_RUN] Would send daily report email: ' + subj + ' | Recipients: ' + NI_CONFIG.REPORT_TO.length); } else { MailApp.sendEmail({to: 'vipul.kotkar@mosaicwellness.in', bcc: NI_CONFIG.REPORT_TO.join(','), subject: subj, htmlBody: html, name: 'Inventory Health Monitor'}); }
-Logger.log('Email sent — CC: vipul.kotkar@mosaicwellness.in | BCC: ' + NI_CONFIG.REPORT_TO.length + ' recipients');
+  const subj = 'Inventory Health Monitor — ' + r.todayStr + ' | Loss: ' + fmtV_(r.totVal) + ' | Recovery: ' + fmtV_(r.posVal) + ' | Net: ' + fmtV_(r.netVal);
+  const recoveryRate = r.totVal > 0 ? (r.posVal / r.totVal * 100) : 0;
+  const rateColor = recoveryRate >= 30 ? '#166534' : recoveryRate >= 10 ? '#b7410e' : '#c0392b';
+  const rateLabel = recoveryRate >= 30 ? 'STRONG' : recoveryRate >= 10 ? 'MODERATE' : 'LOW';
+  const totNeg = [...r.neg.g2b,...r.neg.g2q,...r.neg.g2rc,...r.neg.a2ne,...r.neg.ne2e,...r.neg.a2e,...r.neg.a2rc,...r.neg.newBad,...r.neg.newQC];
+  const posFlat = [...(r.pos.b2g||[]),...(r.pos.q2g||[]),...(r.pos.rc2a||[])];
+  const topNeg = totNeg.slice().sort((a,b)=>b.cogsVal-a.cogsVal).slice(0,10);
+  const topPos = posFlat.slice().sort((a,b)=>b.cogsVal-a.cogsVal).slice(0,10);
+
+  // ── SECTION 1: 5-point key insights ──────────────────────────────────
+  function buildSummaryHtml() {
+    const pts = [];
+    pts.push('Total financial loss today: <strong>' + fmtV_(r.totVal) + '</strong> across ' + r.totEv + ' negative events.');
+    pts.push('Recovery (positive movements) offset <strong>' + fmtV_(r.posVal) + '</strong> — recovery rate is <strong>' + recoveryRate.toFixed(1) + '% (' + rateLabel + ')</strong>.');
+    pts.push('Net COGS impact: <strong>' + fmtV_(r.netVal) + '</strong> effective loss after recoveries.');
+    const topNegItem = topNeg[0];
+    if (topNegItem) pts.push('Highest single loss: <strong>' + (topNegItem.name||topNegItem.sku) + '</strong> at <strong>' + fmtV_(topNegItem.cogsVal) + '</strong> (' + (topNegItem.fac||'') + ').');
+    const mtdLoss = wtdMtd && wtdMtd.mtd ? (wtdMtd.mtd.totVal||0) : 0;
+    const mtdRec  = wtdMtd && wtdMtd.mtd ? (wtdMtd.mtd.posVal||0) : 0;
+    if (mtdLoss > 0) pts.push('MTD total loss: <strong>' + fmtV_(mtdLoss) + '</strong>, MTD recovery: <strong>' + fmtV_(mtdRec) + '</strong>, MTD net: <strong>' + fmtV_(mtdLoss - mtdRec) + '</strong>.');
+    return '<div style="background:#fffbeb;border:1px solid #fcd34d;border-left:5px solid #f59e0b;border-radius:8px;padding:16px 20px;margin-bottom:20px">'
+      + '<div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:10px">📋 Key Insights — ' + r.todayStr + '</div>'
+      + '<ol style="margin:0;padding-left:18px;font-size:12px;color:#1e293b;line-height:2">'
+      + pts.map(p => '<li>' + p + '</li>').join('')
+      + '</ol></div>';
+  }
+
+  // ── SECTION 2: PNL Movement Dashboard (MTD daily table) ──────────────
+  function buildPnlDashboardHtml() {
+    try {
+      const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+      const sh = ss.getSheetByName('NI_Events');
+      if (!sh || sh.getLastRow() < 2) return '';
+      const data = sh.getDataRange().getValues();
+      const h = data[0].map(x => String(x).trim());
+      const iDate=h.indexOf('Date'), iIC=h.indexOf('Impact Class'), iCOGS=h.indexOf('COGSValue');
+      const now = new Date();
+      const cy = now.getFullYear(), cm = now.getMonth();
+      const daily = {};
+      data.slice(1).forEach(row => {
+        const dv = row[iDate];
+        const d = dv instanceof Date ? dv : new Date(String(dv));
+        if (!d || isNaN(d) || d.getFullYear()!==cy || d.getMonth()!==cm) return;
+        const ic = String(row[iIC]||'').trim();
+        const cv = parseFloat(row[iCOGS]||0)||0;
+        if (ic!=='Financial Loss' && ic!=='Recovery') return;
+        const dk = Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd MMM yyyy');
+        if (!daily[dk]) daily[dk] = {neg:0, pos:0, d:d};
+        if (ic==='Recovery') daily[dk].pos += cv; else daily[dk].neg += cv;
+      });
+      const days = Object.keys(daily).sort((a,b) => daily[a].d - daily[b].d);
+      if (!days.length) return '';
+      let mtdNeg=0, mtdPos=0;
+      const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const monthLabel = MON[cm] + ' ' + cy;
+      // KPI row
+      days.forEach(dk => { mtdNeg+=daily[dk].neg; mtdPos+=daily[dk].pos; });
+      const mtdNet = mtdPos - mtdNeg;
+      const mtdRate = mtdNeg>0 ? (mtdPos/mtdNeg*100).toFixed(1) : '0';
+      function kpi(label, val, col) {
+        return '<td style="padding:12px 14px;text-align:center;border-right:1px solid #e4e8f0">'
+          + '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7c85a0;margin-bottom:6px">'+label+'</div>'
+          + '<div style="font-size:18px;font-weight:800;font-family:monospace;color:'+col+'">'+fmtV_(Math.abs(val))+'</div>'
+          + '</td>';
+      }
+      // Daily rows (latest first)
+      let runNeg=0, runPos=0;
+      const dayRows = days.map(dk => { runNeg+=daily[dk].neg; runPos+=daily[dk].pos; return {dk, neg:daily[dk].neg, pos:daily[dk].pos, net:daily[dk].pos-daily[dk].neg, mtdNet:runPos-runNeg}; });
+      const tableRows = dayRows.slice().reverse().map((row,i) => {
+        const netCol = row.net >= 0 ? '#166534' : '#c0392b';
+        const mCol   = row.mtdNet >= 0 ? '#166534' : '#c0392b';
+        const bg = i%2===0 ? '#fff' : '#f8fafc';
+        return '<tr style="background:'+bg+'">'
+          + '<td style="padding:7px 12px;font-size:11px;font-weight:600;color:#1e293b;white-space:nowrap;border-bottom:1px solid #f1f5f9">'+row.dk+'</td>'
+          + '<td style="padding:7px 12px;font-size:11px;font-weight:700;color:#c0392b;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">'+fmtV_(row.neg)+'</td>'
+          + '<td style="padding:7px 12px;font-size:11px;font-weight:700;color:#166534;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">'+fmtV_(row.pos)+'</td>'
+          + '<td style="padding:7px 12px;font-size:11px;font-weight:800;color:'+netCol+';text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">'+(row.net>=0?'▲':'▼')+' '+fmtV_(Math.abs(row.net))+'</td>'
+          + '<td style="padding:7px 12px;font-size:11px;font-weight:800;color:'+mCol+';text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9;border-left:2px solid #e4e8f0">'+(row.mtdNet>=0?'▲':'▼')+' '+fmtV_(Math.abs(row.mtdNet))+'</td>'
+          + '</tr>';
+      }).join('');
+      return '<div style="margin-bottom:20px">'
+        + '<div style="font-size:14px;font-weight:800;color:#0c1220;margin-bottom:10px">📊 PNL Movement Dashboard — ' + monthLabel + ' (MTD)</div>'
+        + '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e4e8f0;border-radius:10px;overflow:hidden;margin-bottom:12px"><tr style="background:#f8fafc">'
+        + kpi('MTD Financial Loss', mtdNeg, '#c0392b')
+        + kpi('MTD Recovery', mtdPos, '#166534')
+        + kpi('MTD Net', Math.abs(mtdNet), mtdNet>=0?'#166534':'#c0392b')
+        + '<td style="padding:12px 14px;text-align:center"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7c85a0;margin-bottom:6px">MTD Recovery Rate</div><div style="font-size:18px;font-weight:800;font-family:monospace;color:'+rateColor+'">'+mtdRate+'%</div></td>'
+        + '</tr></table>'
+        + '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e4e8f0;border-radius:10px;overflow:hidden">'
+        + '<thead><tr style="background:#1e293b">'
+        + '<th style="padding:8px 12px;text-align:left;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase">Date</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-size:9px;font-weight:700;color:#fca5a5;text-transform:uppercase">Financial Loss</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-size:9px;font-weight:700;color:#86efac;text-transform:uppercase">Recovery</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-size:9px;font-weight:700;color:#e2e8f0;text-transform:uppercase">Daily Net</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-size:9px;font-weight:700;color:#e2e8f0;text-transform:uppercase;border-left:2px solid #334155">MTD Net</th>'
+        + '</tr></thead><tbody>' + tableRows + '</tbody></table>'
+        + '</div>';
+    } catch(e) { return ''; }
+  }
+
+  // ── SECTION 3: Impact tables helper ──────────────────────────────────
+  function evRow(x, dir) {
+    const col = dir==='neg' ? '#c0392b' : '#166534';
+    const sign = dir==='neg' ? '−' : '+';
+    return '<tr>'
+      + '<td style="padding:8px 12px;border-bottom:1px solid #f1f5f9">'
+      + '<div style="font-size:11px;font-weight:700;color:#0c1220">' + (x.name||x.sku) + '</div>'
+      + '<div style="font-size:10px;color:#7c85a0;margin-top:2px">' + (x.sku||'') + ' &nbsp;·&nbsp; ' + (x.fac||'') + (x.city?' — '+x.city:'') + ' &nbsp;·&nbsp; ' + (x.event||'') + '</div>'
+      + '</td>'
+      + '<td style="padding:8px 12px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap">'
+      + '<div style="font-size:13px;font-weight:800;color:' + col + ';font-family:monospace">' + sign + fmtV_(x.cogsVal) + '</div>'
+      + '<div style="font-size:10px;color:#7c85a0">' + fmtQ_(x.qty) + ' units</div>'
+      + '</td></tr>';
+  }
+  function impactTable(title, borderCol, bgCol, items, dir) {
+    if (!items.length) return '';
+    return '<div style="font-size:14px;font-weight:800;color:#0c1220;margin-bottom:8px">' + title + '</div>'
+      + '<div style="border:1px solid ' + borderCol + ';border-radius:10px;overflow:hidden;margin-bottom:20px">'
+      + '<table width="100%" cellpadding="0" cellspacing="0">'
+      + '<thead><tr style="background:' + bgCol + '">'
+      + '<th style="padding:8px 12px;text-align:left;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase">Product / SKU / Location / Event</th>'
+      + '<th style="padding:8px 12px;text-align:right;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase">COGS Impact</th>'
+      + '</tr></thead><tbody>'
+      + items.map(x => evRow(x, dir)).join('')
+      + '</tbody></table></div>';
+  }
+
+  // ── SECTION 4: Monthly Summary by Business Type ───────────────────────
+  function buildMonthlyBizHtml() {
+    const BT_OWNER = {
+      'Self Warehouse': 'Bhavesh Patel',
+      'Self Aware':     'Bhavesh Patel',
+      '3PL':            'Bhavesh Patel',
+      '3PL B2C':        'Shraddha Raut',
+      '3PL B2B':        'Shraddha Raut',
+      'B2C':            'Shraddha Raut',
+      'B2B':            'Shraddha Raut',
+      'Dark Store':     'Akshay Ahuja',
+      'FBA':            'Rupesh Shelar',
+    };
+    try {
+      const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+      const sh = ss.getSheetByName('NI_DailyTop5');
+      if (!sh || sh.getLastRow() < 2) return '';
+      const data = sh.getDataRange().getValues();
+      const h = data[0].map(x => String(x).trim());
+      const now = new Date();
+      const cy = now.getFullYear(), cm = now.getMonth();
+      const rows = data.slice(1).filter(row => {
+        const dv = row[h.indexOf('Date')];
+        const d = dv instanceof Date ? dv : new Date(String(dv));
+        return d && !isNaN(d) && d.getFullYear()===cy && d.getMonth()===cm;
+      });
+      if (!rows.length) return '';
+      const btMap = {};
+      rows.forEach(row => {
+        const bt = String(row[h.indexOf('BizType')]||row[h.indexOf('Business Type')]||'Other').trim();
+        const rmk = String(row[h.indexOf('Remark')]||'').trim();
+        const cv = parseFloat(row[h.indexOf('COGSValue')]||0)||0;
+        if (!btMap[bt]) btMap[bt] = {total:0, pending:0, done:0, cogs:0};
+        btMap[bt].total++;
+        btMap[bt].cogs += cv;
+        if (rmk) btMap[bt].done++; else btMap[bt].pending++;
+      });
+      const BT_ORDER = ['Self Warehouse','3PL B2C','3PL B2B','Dark Store','FBA','3PL','Self Aware'];
+      const sorted = [...BT_ORDER.filter(b=>btMap[b]), ...Object.keys(btMap).filter(b=>!BT_ORDER.includes(b))];
+      const totalEvents = rows.length;
+      const totalPending = rows.filter(row => !String(row[h.indexOf('Remark')]||'').trim()).length;
+      const pct = Math.round((totalEvents-totalPending)/totalEvents*100);
+      const pcol = pct>=80?'#16a34a':pct>=40?'#d97706':'#dc2626';
+      const btRows = sorted.map((bt,i) => {
+        const s = btMap[bt];
+        const bp = s.total>0 ? Math.round(s.done/s.total*100) : 0;
+        const bc = bp>=80?'#16a34a':bp>=40?'#d97706':'#dc2626';
+        const bg = i%2===0?'#fff':'#f8fafc';
+        return '<tr style="background:'+bg+'">'
+          + '<td style="padding:8px 12px;font-size:11px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9">'+bt+'</td>'
+          + '<td style="padding:8px 12px;font-size:11px;color:#475569;border-bottom:1px solid #f1f5f9">'+(BT_OWNER[bt]||'—')+'</td>'
+          + '<td style="padding:8px 12px;font-size:11px;font-weight:700;color:#c0392b;text-align:right;font-family:monospace;border-bottom:1px solid #f1f5f9">'+fmtV_(s.cogs)+'</td>'
+          + '<td style="padding:8px 12px;font-size:11px;text-align:center;border-bottom:1px solid #f1f5f9">'+s.total+'</td>'
+          + '<td style="padding:8px 12px;font-size:11px;text-align:center;color:#dc2626;font-weight:700;border-bottom:1px solid #f1f5f9">'+s.pending+'</td>'
+          + '<td style="padding:8px 12px;font-size:11px;text-align:center;color:#16a34a;font-weight:700;border-bottom:1px solid #f1f5f9">'+s.done+'</td>'
+          + '<td style="padding:8px 12px;font-size:11px;text-align:center;font-weight:800;color:'+bc+';border-bottom:1px solid #f1f5f9">'+bp+'%</td>'
+          + '</tr>';
+      }).join('');
+      return '<div style="margin-bottom:20px">'
+        + '<div style="display:table;width:100%;margin-bottom:10px">'
+        + '<div style="display:table-cell;font-size:14px;font-weight:800;color:#0c1220">📋 Monthly Summary — Business Type Remark Status</div>'
+        + '<div style="display:table-cell;text-align:right;font-size:12px;font-weight:800;color:'+pcol+'">'+(totalEvents-totalPending)+'/'+totalEvents+' done &nbsp;·&nbsp; '+pct+'%</div>'
+        + '</div>'
+        + '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e4e8f0;border-radius:10px;overflow:hidden">'
+        + '<thead><tr style="background:#1e293b">'
+        + '<th style="padding:8px 12px;text-align:left;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase">Business Type</th>'
+        + '<th style="padding:8px 12px;text-align:left;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase">Owner</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-size:9px;font-weight:700;color:#fca5a5;text-transform:uppercase">MTD COGS</th>'
+        + '<th style="padding:8px 12px;text-align:center;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase">Events</th>'
+        + '<th style="padding:8px 12px;text-align:center;font-size:9px;font-weight:700;color:#fca5a5;text-transform:uppercase">Pending</th>'
+        + '<th style="padding:8px 12px;text-align:center;font-size:9px;font-weight:700;color:#86efac;text-transform:uppercase">Done</th>'
+        + '<th style="padding:8px 12px;text-align:center;font-size:9px;font-weight:700;color:#e2e8f0;text-transform:uppercase">% Done</th>'
+        + '</tr></thead><tbody>' + btRows + '</tbody>'
+        + '</table>'
+        + (totalPending>0 ? '<div style="margin-top:10px;font-size:10px;color:#0369a1">⚠️ <strong>'+totalPending+' remarks pending</strong> — <a href="'+NI_CONFIG.DASHBOARD_URL+'" style="color:#1a6b5a;font-weight:700">Update on Dashboard →</a></div>' : '<div style="margin-top:10px;font-size:10px;color:#16a34a">✅ All remarks updated for the month</div>')
+        + '</div>';
+    } catch(e) { return ''; }
+  }
+
+  // ── ASSEMBLE EMAIL ───────────────────────────────────────────────────
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
+    + '<body style="margin:0;padding:20px;background:#f1f3f8;font-family:\'Segoe UI\',Arial,sans-serif">'
+    + '<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">'
+    + '<table width="660" cellpadding="0" cellspacing="0" style="max-width:660px">'
+    // HEADER
+    + '<tr><td style="background:#1a6b5a;border-radius:10px 10px 0 0;padding:20px 24px">'
+    + '<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">📦 Inventory Health Monitor</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.85)"><strong>' + r.yesterdayStr + '</strong> → <strong>' + r.todayStr + '</strong> &nbsp;·&nbsp; Mosaic Wellness Ops</div>'
+    + '<div style="margin-top:12px"><a href="' + NI_CONFIG.DASHBOARD_URL + '" style="display:inline-block;padding:7px 16px;background:#fff;border-radius:6px;color:#1a6b5a;font-size:11px;font-weight:800;text-decoration:none">Open Live Dashboard →</a></div>'
+    + '</td></tr>'
+    // BODY
+    + '<tr><td style="background:#fff;border:1px solid #e3e6ee;border-top:none;border-radius:0 0 10px 10px;padding:24px">'
+    // 1. Key insights
+    + buildSummaryHtml()
+    // 2. PNL Movement Dashboard
+    + buildPnlDashboardHtml()
+    // 3a. Today's Negative Moments
+    + impactTable('↓ Today\'s Negative Moments <span style="font-size:11px;font-weight:400;color:#7c85a0">(top 10 by COGS)</span>', '#fecaca', '#fef2f2', topNeg, 'neg')
+    // 3b. Today's Positive Moments
+    + impactTable('↑ Today\'s Positive Moments <span style="font-size:11px;font-weight:400;color:#7c85a0">(recoveries)</span>', '#bbf7d0', '#f0fdf4', topPos, 'pos')
+    // 4. Monthly Summary by BizType
+    + buildMonthlyBizHtml()
+    // FOOTER
+    + '<div style="text-align:center;font-size:10px;color:#7c85a0;padding-top:16px;border-top:1px solid #f1f5f9">'
+    + 'Mosaic Wellness · Inventory Health Monitor · Auto-generated report<br>'
+    + '<a href="' + NI_CONFIG.DASHBOARD_URL + '" style="color:#1a6b5a;font-weight:700;text-decoration:none">View Full Dashboard →</a>'
+    + '</div></td></tr></table></td></tr></table></body></html>';
+
+  if (NI_CONFIG.DRY_RUN) {
+    Logger.log('[DRY_RUN] Would send email: ' + subj);
+  } else {
+    MailApp.sendEmail({to: 'vipul.kotkar@mosaicwellness.in', bcc: NI_CONFIG.REPORT_TO.join(','), subject: subj, htmlBody: html, name: 'Inventory Health Monitor'});
+  }
+  Logger.log('Email sent — ' + NI_CONFIG.REPORT_TO.length + ' recipients');
 }
 function barRow(label, val, total, color) {
 const pct = total >
