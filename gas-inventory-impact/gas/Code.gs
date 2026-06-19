@@ -1349,6 +1349,13 @@ if (e.parameter.action === 'diag') {
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
+// -- Chatbot status --
+if (e.parameter.action === 'getChatbotStatus') {
+  var enabled = PropertiesService.getScriptProperties().getProperty('CHATBOT_ENABLED');
+  var status = enabled === 'false' ? false : true;
+  return ContentService.createTextOutput(JSON.stringify({enabled: status})).setMimeType(ContentService.MimeType.JSON);
+}
+
 // -- Special action: list available archive months --
 if (e.parameter.action === 'listArchives') {
 const allSheets = ss.getSheets().map(s =>
@@ -1474,6 +1481,11 @@ return ContentService.createTextOutput(JSON.stringify({success:true,id:id})).set
 if (data.action==='chatQuery') {
   const result = handleChatQuery_(data.question || '');
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+if (data.action==='setChatbotStatus') {
+  const val = data.enabled === true || data.enabled === 'true' ? 'true' : 'false';
+  PropertiesService.getScriptProperties().setProperty('CHATBOT_ENABLED', val);
+  return ContentService.createTextOutput(JSON.stringify({success:true, enabled: val==='true'})).setMimeType(ContentService.MimeType.JSON);
 }
 if (data.action==='saveUserComment') {
   const result = saveUserComment_(data.ehId, data.comment || '');
@@ -3700,6 +3712,8 @@ function callClaude_(dataJson, question) {
 
 function handleChatQuery_(question) {
   if (!question || !question.trim()) return {error:'empty_question'};
+  var enabled = PropertiesService.getScriptProperties().getProperty('CHATBOT_ENABLED');
+  if (enabled === 'false') return {answer: '🔴 Chatbot is currently disabled. An admin can re-enable it from the dashboard.', disabled: true};
   var ctx = buildChatContext_();
   if (ctx.error) return {answer: 'Could not load inventory data: ' + ctx.error};
   return callClaude_(JSON.stringify(ctx), question);

@@ -4451,6 +4451,7 @@ function updateMonthBarVisibility(page) {
 
 function boot(){
   step('Connecting to Apps Script...',10);
+  loadChatbotStatus(); // load AI on/off state from GAS Script Properties
   // Fetch events + today's full stock in parallel
   Promise.all([
     fetchJ(EVENTS_URL+'&curmonth=1'),
@@ -4980,6 +4981,48 @@ function toggleChat(){
   if(_chatOpen) document.getElementById('chat-input').focus();
 }
 
+// ── Chatbot enable/disable toggle ──────────────────────────────────────
+var _chatbotEnabled = true;
+
+function applyChatbotStatus(enabled){
+  _chatbotEnabled = enabled;
+  var dot   = document.getElementById('chat-status-dot');
+  var label = document.getElementById('chat-status-label');
+  var fab   = document.getElementById('chat-fab');
+  if(dot)   dot.style.background   = enabled ? '#22c55e' : '#ef4444';
+  if(label) label.textContent      = enabled ? 'AI On' : 'AI Off';
+  if(fab)   fab.style.background   = enabled ? 'var(--tl)' : '#94a3b8';
+  if(fab)   fab.title              = enabled ? 'Ask Inventory Data' : 'Chatbot is disabled';
+}
+
+function loadChatbotStatus(){
+  if(!PROXY) return;
+  fetch(PROXY + '?action=getChatbotStatus')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ applyChatbotStatus(d.enabled !== false); })
+    .catch(function(){ /* silently ignore — assume enabled */ });
+}
+
+function toggleChatbot(){
+  var newState = !_chatbotEnabled;
+  var btn = document.getElementById('chat-toggle-btn');
+  if(btn){ btn.textContent='Saving…'; btn.disabled=true; }
+  fetch(PROXY, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'setChatbotStatus', enabled: newState})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    applyChatbotStatus(d.enabled);
+    if(btn){ btn.textContent='Toggle'; btn.disabled=false; }
+  })
+  .catch(function(){
+    if(btn){ btn.textContent='Toggle'; btn.disabled=false; }
+    alert('Could not reach GAS — check deployment URL.');
+  });
+}
+
 function renderChatStarters(){
   var el = document.getElementById('chat-starters');
   if(!el) return;
@@ -5065,6 +5108,14 @@ function sendChatMessage(){
 </script>
 
 <!-- ═══ CHAT FAB ═══ -->
+<!-- Chatbot on/off toggle pill -->
+<div id="chat-toggle-wrap" style="position:fixed;bottom:84px;right:24px;z-index:9999;display:flex;align-items:center;gap:6px;background:var(--wh);border:1px solid var(--br);border-radius:20px;padding:4px 10px 4px 8px;box-shadow:0 2px 8px rgba(0,0,0,.12)">
+  <span id="chat-status-dot" style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
+  <span id="chat-status-label" style="font-size:10px;font-weight:700;color:var(--tx);white-space:nowrap">AI On</span>
+  <button onclick="toggleChatbot()" id="chat-toggle-btn" title="Enable / Disable chatbot"
+    style="margin-left:4px;padding:2px 8px;border-radius:10px;border:1px solid var(--br);background:var(--sf);font-size:10px;font-weight:700;color:var(--mu);cursor:pointer">Toggle</button>
+</div>
+
 <button id="chat-fab" onclick="toggleChat()" title="Ask Inventory Data"
   style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;
     background:var(--tl);color:#fff;border:none;font-size:22px;cursor:pointer;
