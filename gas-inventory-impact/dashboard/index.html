@@ -462,13 +462,20 @@ tbody tr:hover td{background:var(--sf)}
     <!-- Chart + Table side by side -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
       <div class="card" style="padding:16px">
-        <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:4px">Daily P&amp;L Trend (MTD)</div>
-        <div style="display:flex;gap:16px;font-size:10px;color:var(--mu);margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:700;color:var(--tx)">Daily P&amp;L Trend (MTD)</div>
+          <select id="trend-brand-filter" onchange="renderTrend()" style="font-size:11px;padding:4px 8px;border:1px solid var(--br);border-radius:6px;background:var(--wh);color:var(--tx);cursor:pointer">
+            <option value="">All Brands</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:16px;font-size:10px;color:var(--mu);margin-bottom:10px">
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(220,53,69,0.7);margin-right:4px"></span>Financial Loss</span>
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(25,135,84,0.7);margin-right:4px"></span>Recovery</span>
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0d6efd;margin-right:4px"></span>Net Loss</span>
         </div>
-        <canvas id="trend-chart" height="260" role="img"></canvas>
+        <div style="position:relative;height:260px">
+          <canvas id="trend-chart" role="img" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas>
+        </div>
         <div id="trend-highlights" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px"></div>
       </div>
       <div class="card" style="padding:0">
@@ -1474,6 +1481,18 @@ function renderTrend(){
     return ('0'+d.getDate()).slice(-2)+' '+MON[d.getMonth()]+' '+d.getFullYear();
   }
 
+  // Populate brand dropdown (once — keep selection)
+  var brandSel=document.getElementById('trend-brand-filter');
+  var selBrand=brandSel?brandSel.value:'';
+  if(brandSel && brandSel.options.length<=1){
+    var brands={};
+    src.forEach(function(row){ var b=(row['Brand']||'').trim(); if(b) brands[b]=1; });
+    Object.keys(brands).sort().forEach(function(b){
+      var o=document.createElement('option'); o.value=b; o.textContent=b; brandSel.appendChild(o);
+    });
+    brandSel.value=selBrand;
+  }
+
   // Only Financial Loss (neg) and Recovery (pos) — exclude Expiry Risk
   var daily={}, dateObjs={};
   src.forEach(function(row){
@@ -1482,6 +1501,7 @@ function renderTrend(){
     var ic=(row['Impact Class']||'').trim();
     var isFL=ic==='Financial Loss', isRec=ic==='Recovery';
     if(!isFL&&!isRec) return;
+    if(selBrand && (row['Brand']||'').trim()!==selBrand) return;
     var dk=row['Date'];
     if(!daily[dk]){daily[dk]={negV:0,posV:0}; dateObjs[dk]=d;}
     var cv=n(row['COGSValue']);
