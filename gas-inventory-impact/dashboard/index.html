@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Inventory Health Monitor — Mosaic Wellness</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --bg:#f0f2f7;--wh:#fff;--sf:#f7f8fb;--br:#e4e8f0;--br2:#cdd2e0;
@@ -461,21 +462,8 @@ tbody tr:hover td{background:var(--sf)}
         <div style="font-size:18px;font-weight:700;color:var(--tx);margin-bottom:3px">MTD Daily P&amp;L Overview</div>
         <div id="trend-daterange" style="font-size:12px;color:var(--mu)"></div>
       </div>
-      <!-- Multi-select brand filter -->
-      <div style="position:relative" id="trend-brand-wrap">
-        <button onclick="toggleBrandDrop()" id="trend-brand-btn" style="font-size:12px;padding:6px 12px;border:1px solid var(--br);border-radius:8px;background:var(--wh);color:var(--tx);cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap">
-          <span id="trend-brand-label">All Brands</span> <span style="font-size:9px;opacity:.6">▼</span>
-        </button>
-        <div id="trend-brand-drop" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--wh);border:1px solid var(--br);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px 0">
-          <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--br)">
-            <input type="checkbox" id="trend-brand-all" checked onchange="trendBrandAll(this)"> <span>All Brands</span>
-          </label>
-          <div id="trend-brand-list" style="max-height:220px;overflow-y:auto"></div>
-          <div style="padding:8px 14px 4px;border-top:1px solid var(--br)">
-            <button onclick="toggleBrandDrop();renderTrend()" style="width:100%;padding:5px;font-size:11px;font-weight:700;background:var(--ac);color:#fff;border:none;border-radius:6px;cursor:pointer">Apply</button>
-          </div>
-        </div>
-      </div>
+      <!-- Brand filter pills -->
+      <div id="trend-brand-pills" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"></div>
     </div>
     <!-- KPI cards -->
     <div id="trend-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px"></div>
@@ -1482,23 +1470,18 @@ function togCat(el){var b=el.parentElement.querySelector('.cat-body'),a=el.query
 
 // ── RENDER DAILY TREND ──
 var _trendChart = null;
-var _trendBrands = {};  // brand → checked
+var _trendBrands = {};  // brand → selected (true/false)
+var _trendBrandsInit = false;
 
-function toggleBrandDrop(){
-  var d=document.getElementById('trend-brand-drop');
-  if(d) d.style.display=d.style.display==='none'?'block':'none';
-}
-function trendBrandAll(cb){
-  Object.keys(_trendBrands).forEach(function(b){ _trendBrands[b]=cb.checked; });
-  document.querySelectorAll('#trend-brand-list input[type=checkbox]').forEach(function(el){ el.checked=cb.checked; });
-}
-document.addEventListener('click',function(e){
-  var wrap=document.getElementById('trend-brand-wrap');
-  if(wrap&&!wrap.contains(e.target)){
-    var d=document.getElementById('trend-brand-drop');
-    if(d) d.style.display='none';
+function trendToggleBrand(b){
+  if(b==='__all__'){
+    var allOn=Object.keys(_trendBrands).every(function(k){return _trendBrands[k];});
+    Object.keys(_trendBrands).forEach(function(k){ _trendBrands[k]=!allOn; });
+  } else {
+    _trendBrands[b]=!_trendBrands[b];
   }
-});
+  renderTrend();
+}
 
 function renderTrend(){
   var src = allEventsData;
@@ -1514,33 +1497,29 @@ function renderTrend(){
     return ('0'+d.getDate()).slice(-2)+' '+MON[d.getMonth()]+' '+d.getFullYear();
   }
 
-  // Build brand list once
-  var brandList=document.getElementById('trend-brand-list');
-  if(brandList && brandList.children.length===0){
+  // Build brand map once from data
+  if(!_trendBrandsInit){
     var brands={};
     src.forEach(function(row){ var b=(row['Brand']||'').trim(); if(b) brands[b]=1; });
-    Object.keys(brands).sort().forEach(function(b){
-      _trendBrands[b]=true;
-      var lbl=document.createElement('label');
-      lbl.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:12px';
-      var cb=document.createElement('input'); cb.type='checkbox'; cb.value=b; cb.checked=true;
-      cb.onchange=function(){
-        _trendBrands[b]=this.checked;
-        var allCk=Object.keys(_trendBrands).every(function(k){return _trendBrands[k];});
-        var allBox=document.getElementById('trend-brand-all'); if(allBox) allBox.checked=allCk;
-      };
-      lbl.appendChild(cb); lbl.appendChild(document.createTextNode(b));
-      brandList.appendChild(lbl);
-    });
+    Object.keys(brands).sort().forEach(function(b){ _trendBrands[b]=true; });
+    _trendBrandsInit=true;
   }
 
-  // Which brands are selected
-  var selBrands={};
-  var anyUnchecked=false;
-  Object.keys(_trendBrands).forEach(function(b){ selBrands[b]=_trendBrands[b]; if(!_trendBrands[b]) anyUnchecked=true; });
-  var selectedNames=Object.keys(selBrands).filter(function(b){return selBrands[b];});
-  var btnLabel=document.getElementById('trend-brand-label');
-  if(btnLabel) btnLabel.textContent=!anyUnchecked?'All Brands':selectedNames.length===0?'No Brands':selectedNames.length===1?selectedNames[0]:selectedNames.length+' Brands';
+  // Render pill buttons
+  var pillWrap=document.getElementById('trend-brand-pills');
+  if(pillWrap){
+    var allOn=Object.keys(_trendBrands).every(function(k){return _trendBrands[k];});
+    var anyUnchecked2=!allOn;
+    var html='<button onclick="trendToggleBrand(\'__all__\')" style="padding:5px 14px;border-radius:20px;border:2px solid '+(allOn?'var(--ac)':'var(--br)')+';background:'+(allOn?'var(--ac)':'var(--wh)')+';color:'+(allOn?'#fff':'var(--mu)')+';font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">All</button>';
+    Object.keys(_trendBrands).sort().forEach(function(b){
+      var on=_trendBrands[b];
+      html+='<button onclick="trendToggleBrand(\''+b.replace(/'/g,"\\'")+'\')" style="padding:5px 14px;border-radius:20px;border:2px solid '+(on?'var(--ac)':'var(--br)')+';background:'+(on?'var(--ac)':'var(--wh)')+';color:'+(on?'#fff':'var(--mu)')+';font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">'+(on?'✓ ':'')+b+'</button>';
+    });
+    pillWrap.innerHTML=html;
+  }
+
+  // Which brands active
+  var anyUnchecked=Object.keys(_trendBrands).some(function(k){return !_trendBrands[k];});
 
   // Only Financial Loss (neg) and Recovery (pos) — exclude Expiry Risk
   var daily={}, dateObjs={};
