@@ -118,6 +118,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--font);font-size:13px
 
 /* CARDS */
 .card{background:var(--wh);border:1px solid var(--br);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:14px}
+.card-scroll{overflow:visible}
 .card-h{padding:11px 16px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;min-height:42px}
 .card-t{font-size:12px;font-weight:700;color:var(--tx);letter-spacing:-.1px}
 .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;font-family:var(--mono);white-space:nowrap}
@@ -456,50 +457,61 @@ tbody tr:hover td{background:var(--sf)}
 
   <!-- ═══ DAILY TREND ═══ -->
   <div class="pg content" id="pg-trend">
-    <!-- Page header row -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:18px;font-weight:700;color:var(--tx);margin-bottom:3px">MTD Daily P&amp;L Overview</div>
-        <div id="trend-daterange" style="font-size:12px;color:var(--mu)"></div>
-      </div>
-      <!-- Brand filter pills -->
-      <div id="trend-brand-pills" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"></div>
+
+    <!-- Page title + date range -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:18px;font-weight:700;color:var(--tx)">MTD Daily P&amp;L Overview</div>
+      <div id="trend-daterange" style="font-size:12px;color:var(--mu);margin-top:2px"></div>
     </div>
+
+    <!-- Brand logo filter row -->
+    <div class="card" style="padding:12px 16px;margin-bottom:14px;overflow:visible">
+      <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Filter by Brand</div>
+      <div id="trend-brand-logos" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"></div>
+    </div>
+
     <!-- KPI cards -->
-    <div id="trend-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px"></div>
-    <!-- Table LEFT · Chart RIGHT -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
-      <!-- Table -->
-      <div class="card" style="padding:0">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">
-          Daily P&amp;L Movement &nbsp;<span style="font-weight:400;color:var(--mu)">— Latest date first · MTD is cumulative</span>
+    <div id="trend-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px"></div>
+
+    <!-- Table + Chart side by side -->
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px">
+
+      <!-- LEFT: Table with sticky header -->
+      <div style="background:var(--wh);border:1px solid var(--br);border-radius:var(--r);box-shadow:var(--sh);display:flex;flex-direction:column;max-height:480px">
+        <div style="padding:11px 16px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx);flex-shrink:0">
+          Daily P&amp;L Movement
+          <span style="font-weight:400;color:var(--mu);font-size:11px"> — latest first, MTD cumulative</span>
         </div>
-        <div style="max-height:420px;overflow-y:auto">
+        <div style="overflow-y:auto;flex:1">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead style="position:sticky;top:0;z-index:10">
-              <tr style="background:var(--sf);color:var(--mu);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">
-                <th style="padding:9px 14px;text-align:left;border-bottom:1px solid var(--br)">Date</th>
-                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid var(--br)">Financial Loss</th>
-                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid var(--br)">Recovery</th>
-                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid var(--br)">Daily Net</th>
-                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid var(--br)">MTD Net</th>
+            <thead>
+              <tr style="background:var(--sf);position:sticky;top:0;z-index:5">
+                <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;white-space:nowrap">Date</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--re);text-transform:uppercase;white-space:nowrap">Loss</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--gn);text-transform:uppercase;white-space:nowrap">Recovery</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;white-space:nowrap">Daily Net</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--br);font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;white-space:nowrap;border-left:2px solid var(--br)">MTD Net</th>
               </tr>
             </thead>
             <tbody id="trend-tbody"></tbody>
           </table>
         </div>
       </div>
-      <!-- Chart -->
-      <div class="card" style="padding:16px">
-        <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:8px">Daily P&amp;L Trend (MTD)</div>
-        <div style="display:flex;gap:16px;font-size:10px;color:var(--mu);margin-bottom:10px">
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(220,53,69,0.7);margin-right:4px"></span>Financial Loss</span>
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(25,135,84,0.7);margin-right:4px"></span>Recovery</span>
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0d6efd;margin-right:4px"></span>Net</span>
+
+      <!-- RIGHT: Chart -->
+      <div class="card" style="padding:16px;overflow:visible">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px">Daily P&amp;L Trend</div>
+        <div style="display:flex;gap:14px;font-size:10px;color:var(--mu);margin-bottom:10px">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(220,53,69,0.7);margin-right:3px;vertical-align:middle"></span>Loss</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(25,135,84,0.7);margin-right:3px;vertical-align:middle"></span>Recovery</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0d6efd;margin-right:3px;vertical-align:middle"></span>Net</span>
         </div>
-        <canvas id="trend-chart" width="600" height="260" role="img"></canvas>
-        <div id="trend-highlights" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px"></div>
+        <div style="height:280px;position:relative">
+          <canvas id="trend-chart" style="display:block"></canvas>
+        </div>
+        <div id="trend-highlights" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px"></div>
       </div>
+
     </div>
   </div>
 
@@ -1470,8 +1482,16 @@ function togCat(el){var b=el.parentElement.querySelector('.cat-body'),a=el.query
 
 // ── RENDER DAILY TREND ──
 var _trendChart = null;
-var _trendBrands = {};  // brand → selected (true/false)
+var _trendBrands = {};
 var _trendBrandsInit = false;
+
+var BRAND_LOGOS = {
+  'Be Bodywise':  'gas-inventory-impact/dashboard/assets/be-bodywise.png',
+  'Man Matters':  'gas-inventory-impact/dashboard/assets/man-matters.png',
+  'Little Joys':  'gas-inventory-impact/dashboard/assets/little-joys.png',
+  'Root Labs':    'gas-inventory-impact/dashboard/assets/root-labs.png',
+  'OWN':          'gas-inventory-impact/dashboard/assets/own.png'
+};
 
 function trendToggleBrand(b){
   if(b==='__all__'){
@@ -1505,17 +1525,24 @@ function renderTrend(){
     _trendBrandsInit=true;
   }
 
-  // Render pill buttons
-  var pillWrap=document.getElementById('trend-brand-pills');
-  if(pillWrap){
+  // Render brand logo tiles
+  var logoWrap=document.getElementById('trend-brand-logos');
+  if(logoWrap){
     var allOn=Object.keys(_trendBrands).every(function(k){return _trendBrands[k];});
-    var anyUnchecked2=!allOn;
-    var html='<button onclick="trendToggleBrand(\'__all__\')" style="padding:5px 14px;border-radius:20px;border:2px solid '+(allOn?'var(--ac)':'var(--br)')+';background:'+(allOn?'var(--ac)':'var(--wh)')+';color:'+(allOn?'#fff':'var(--mu)')+';font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">All</button>';
+    var html='<div onclick="trendToggleBrand(\'__all__\')" title="All Brands" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px">'
+      +'<div style="width:52px;height:52px;border-radius:12px;border:2px solid '+(allOn?'var(--ac)':'var(--br)')+';background:'+(allOn?'rgba(99,102,241,.08)':'var(--sf)')+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:'+(allOn?'var(--ac)':'var(--mu)')+'">All</div>'
+      +'<span style="font-size:9px;font-weight:600;color:'+(allOn?'var(--ac)':'var(--mu)')+'">All</span></div>';
     Object.keys(_trendBrands).sort().forEach(function(b){
       var on=_trendBrands[b];
-      html+='<button onclick="trendToggleBrand(\''+b.replace(/'/g,"\\'")+'\')" style="padding:5px 14px;border-radius:20px;border:2px solid '+(on?'var(--ac)':'var(--br)')+';background:'+(on?'var(--ac)':'var(--wh)')+';color:'+(on?'#fff':'var(--mu)')+';font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">'+(on?'✓ ':'')+b+'</button>';
+      var logo=BRAND_LOGOS[b]||'';
+      var inner=logo
+        ?'<img src="'+logo+'" alt="'+b+'" style="width:40px;height:40px;object-fit:contain;border-radius:8px;opacity:'+(on?'1':'0.3')+'">'
+        :'<span style="font-size:9px;font-weight:700;color:'+(on?'var(--ac)':'var(--mu)')+'">'+b+'</span>';
+      html+='<div onclick="trendToggleBrand(\''+b.replace(/'/g,"\\'")+'\')" title="'+b+'" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px">'
+        +'<div style="width:52px;height:52px;border-radius:12px;border:2px solid '+(on?'var(--ac)':'var(--br)')+';background:'+(on?'rgba(99,102,241,.06)':'var(--sf)')+';display:flex;align-items:center;justify-content:center;transition:all .15s">'+inner+'</div>'
+        +'<span style="font-size:9px;font-weight:600;color:'+(on?'var(--ac)':'var(--mu)')+';max-width:58px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+b+'</span></div>';
     });
-    pillWrap.innerHTML=html;
+    logoWrap.innerHTML=html;
   }
 
   // Which brands active
@@ -1614,14 +1641,16 @@ function renderTrend(){
     +'<div style="background:var(--sf);border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:var(--mu);margin-bottom:4px">↗ Best Net Day</div><div style="font-size:15px;font-weight:800;color:var(--gn)">₹'+fLabs(bestNetVal)+'</div><div style="font-size:10px;color:var(--mu)">'+fmtDk(bestNetDk)+'</div></div>'
     +'<div style="background:var(--sf);border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:var(--mu);margin-bottom:4px">↙ Worst Net Day</div><div style="font-size:15px;font-weight:800;color:var(--re)">₹'+fLabs(worstNetVal)+'</div><div style="font-size:10px;color:var(--mu)">'+fmtDk(worstNetDk)+'</div></div>';
 
-  // Chart — destroy old, recreate on same canvas element
+  // Chart
   if(_trendChart){ try{_trendChart.destroy();}catch(e){} _trendChart=null; }
   var canvas=document.getElementById('trend-chart');
   if(!canvas||typeof Chart==='undefined') return;
-  // Reset canvas dimensions to force Chart.js to redraw cleanly
-  canvas.width=canvas.offsetWidth||600;
-  canvas.height=260;
-  _trendChart=new Chart(canvas.getContext('2d'),{
+  var wrap=canvas.parentElement;
+  canvas.style.width='100%';
+  canvas.style.height='100%';
+  canvas.width=wrap.clientWidth||500;
+  canvas.height=wrap.clientHeight||280;
+  _trendChart=new Chart(canvas,{
     type:'bar',
     data:{
       labels:labels,
@@ -1632,16 +1661,14 @@ function renderTrend(){
       ]
     },
     options:{
-      responsive:true,
-      maintainAspectRatio:false,
+      responsive:false,
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label:function(c){return c.dataset.label+': ₹'+fLabs(Math.abs(c.raw));}}}
       },
       scales:{
         x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:15}},
-        y:{ticks:{callback:function(v){var a=Math.abs(v);return a>=100000?'₹'+(a/100000).toFixed(1)+'L':'₹'+(a/1000).toFixed(0)+'K';}},
-           grid:{color:'rgba(0,0,0,.05)'}}
+        y:{ticks:{callback:function(v){var a=Math.abs(v);return a>=100000?'₹'+(a/100000).toFixed(1)+'L':'₹'+(a/1000).toFixed(0)+'K';}},grid:{color:'rgba(0,0,0,.05)'}}
       }
     }
   });
