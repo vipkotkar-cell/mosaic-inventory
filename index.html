@@ -455,36 +455,40 @@ tbody tr:hover td{background:var(--sf)}
 
   <!-- ═══ DAILY TREND ═══ -->
   <div class="pg content" id="pg-trend">
-    <div style="font-size:18px;font-weight:700;color:var(--tx);margin-bottom:4px">MTD Daily P&amp;L Overview</div>
-    <div id="trend-daterange" style="font-size:12px;color:var(--mu);margin-bottom:16px"></div>
+    <!-- Page header row -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--tx);margin-bottom:3px">MTD Daily P&amp;L Overview</div>
+        <div id="trend-daterange" style="font-size:12px;color:var(--mu)"></div>
+      </div>
+      <!-- Multi-select brand filter -->
+      <div style="position:relative" id="trend-brand-wrap">
+        <button onclick="toggleBrandDrop()" id="trend-brand-btn" style="font-size:12px;padding:6px 12px;border:1px solid var(--br);border-radius:8px;background:var(--wh);color:var(--tx);cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap">
+          <span id="trend-brand-label">All Brands</span> <span style="font-size:9px;opacity:.6">▼</span>
+        </button>
+        <div id="trend-brand-drop" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--wh);border:1px solid var(--br);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px 0">
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--br)">
+            <input type="checkbox" id="trend-brand-all" checked onchange="trendBrandAll(this)"> <span>All Brands</span>
+          </label>
+          <div id="trend-brand-list" style="max-height:220px;overflow-y:auto"></div>
+          <div style="padding:8px 14px 4px;border-top:1px solid var(--br)">
+            <button onclick="toggleBrandDrop();renderTrend()" style="width:100%;padding:5px;font-size:11px;font-weight:700;background:var(--ac);color:#fff;border:none;border-radius:6px;cursor:pointer">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- KPI cards -->
     <div id="trend-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px"></div>
-    <!-- Chart + Table side by side -->
+    <!-- Table LEFT · Chart RIGHT -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
-      <div class="card" style="padding:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-size:13px;font-weight:700;color:var(--tx)">Daily P&amp;L Trend (MTD)</div>
-          <select id="trend-brand-filter" onchange="renderTrend()" style="font-size:11px;padding:4px 8px;border:1px solid var(--br);border-radius:6px;background:var(--wh);color:var(--tx);cursor:pointer">
-            <option value="">All Brands</option>
-          </select>
-        </div>
-        <div style="display:flex;gap:16px;font-size:10px;color:var(--mu);margin-bottom:10px">
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(220,53,69,0.7);margin-right:4px"></span>Financial Loss</span>
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(25,135,84,0.7);margin-right:4px"></span>Recovery</span>
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0d6efd;margin-right:4px"></span>Net Loss</span>
-        </div>
-        <div style="position:relative;height:260px">
-          <canvas id="trend-chart" role="img" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas>
-        </div>
-        <div id="trend-highlights" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px"></div>
-      </div>
+      <!-- Table -->
       <div class="card" style="padding:0">
         <div style="padding:12px 16px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">
-          Daily P&amp;L Movement &nbsp;<span style="font-weight:400;color:var(--mu)">— Negative / Positive — Net is MTD Cumulative</span>
+          Daily P&amp;L Movement &nbsp;<span style="font-weight:400;color:var(--mu)">— Latest date first · MTD is cumulative</span>
         </div>
-        <div style="overflow-x:auto">
+        <div style="max-height:420px;overflow-y:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead>
+            <thead style="position:sticky;top:0;z-index:10">
               <tr style="background:var(--sf);color:var(--mu);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">
                 <th style="padding:9px 14px;text-align:left;border-bottom:1px solid var(--br)">Date</th>
                 <th style="padding:9px 12px;text-align:right;border-bottom:1px solid var(--br)">Financial Loss</th>
@@ -496,6 +500,17 @@ tbody tr:hover td{background:var(--sf)}
             <tbody id="trend-tbody"></tbody>
           </table>
         </div>
+      </div>
+      <!-- Chart -->
+      <div class="card" style="padding:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:8px">Daily P&amp;L Trend (MTD)</div>
+        <div style="display:flex;gap:16px;font-size:10px;color:var(--mu);margin-bottom:10px">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(220,53,69,0.7);margin-right:4px"></span>Financial Loss</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(25,135,84,0.7);margin-right:4px"></span>Recovery</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0d6efd;margin-right:4px"></span>Net</span>
+        </div>
+        <canvas id="trend-chart" width="600" height="260" role="img"></canvas>
+        <div id="trend-highlights" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px"></div>
       </div>
     </div>
   </div>
@@ -1467,6 +1482,24 @@ function togCat(el){var b=el.parentElement.querySelector('.cat-body'),a=el.query
 
 // ── RENDER DAILY TREND ──
 var _trendChart = null;
+var _trendBrands = {};  // brand → checked
+
+function toggleBrandDrop(){
+  var d=document.getElementById('trend-brand-drop');
+  if(d) d.style.display=d.style.display==='none'?'block':'none';
+}
+function trendBrandAll(cb){
+  Object.keys(_trendBrands).forEach(function(b){ _trendBrands[b]=cb.checked; });
+  document.querySelectorAll('#trend-brand-list input[type=checkbox]').forEach(function(el){ el.checked=cb.checked; });
+}
+document.addEventListener('click',function(e){
+  var wrap=document.getElementById('trend-brand-wrap');
+  if(wrap&&!wrap.contains(e.target)){
+    var d=document.getElementById('trend-brand-drop');
+    if(d) d.style.display='none';
+  }
+});
+
 function renderTrend(){
   var src = allEventsData;
   if(!src || !src.length){
@@ -1481,17 +1514,33 @@ function renderTrend(){
     return ('0'+d.getDate()).slice(-2)+' '+MON[d.getMonth()]+' '+d.getFullYear();
   }
 
-  // Populate brand dropdown (once — keep selection)
-  var brandSel=document.getElementById('trend-brand-filter');
-  var selBrand=brandSel?brandSel.value:'';
-  if(brandSel && brandSel.options.length<=1){
+  // Build brand list once
+  var brandList=document.getElementById('trend-brand-list');
+  if(brandList && brandList.children.length===0){
     var brands={};
     src.forEach(function(row){ var b=(row['Brand']||'').trim(); if(b) brands[b]=1; });
     Object.keys(brands).sort().forEach(function(b){
-      var o=document.createElement('option'); o.value=b; o.textContent=b; brandSel.appendChild(o);
+      _trendBrands[b]=true;
+      var lbl=document.createElement('label');
+      lbl.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:12px';
+      var cb=document.createElement('input'); cb.type='checkbox'; cb.value=b; cb.checked=true;
+      cb.onchange=function(){
+        _trendBrands[b]=this.checked;
+        var allCk=Object.keys(_trendBrands).every(function(k){return _trendBrands[k];});
+        var allBox=document.getElementById('trend-brand-all'); if(allBox) allBox.checked=allCk;
+      };
+      lbl.appendChild(cb); lbl.appendChild(document.createTextNode(b));
+      brandList.appendChild(lbl);
     });
-    brandSel.value=selBrand;
   }
+
+  // Which brands are selected
+  var selBrands={};
+  var anyUnchecked=false;
+  Object.keys(_trendBrands).forEach(function(b){ selBrands[b]=_trendBrands[b]; if(!_trendBrands[b]) anyUnchecked=true; });
+  var selectedNames=Object.keys(selBrands).filter(function(b){return selBrands[b];});
+  var btnLabel=document.getElementById('trend-brand-label');
+  if(btnLabel) btnLabel.textContent=!anyUnchecked?'All Brands':selectedNames.length===0?'No Brands':selectedNames.length===1?selectedNames[0]:selectedNames.length+' Brands';
 
   // Only Financial Loss (neg) and Recovery (pos) — exclude Expiry Risk
   var daily={}, dateObjs={};
@@ -1501,32 +1550,44 @@ function renderTrend(){
     var ic=(row['Impact Class']||'').trim();
     var isFL=ic==='Financial Loss', isRec=ic==='Recovery';
     if(!isFL&&!isRec) return;
-    if(selBrand && (row['Brand']||'').trim()!==selBrand) return;
+    var b=(row['Brand']||'').trim();
+    if(anyUnchecked && !selBrands[b]) return;
     var dk=row['Date'];
     if(!daily[dk]){daily[dk]={negV:0,posV:0}; dateObjs[dk]=d;}
     var cv=n(row['COGSValue']);
     if(isRec) daily[dk].posV+=cv; else daily[dk].negV+=cv;
   });
 
+  // Ascending for chart labels/MTD calc
   var days=Object.keys(daily).sort(function(a,b){return dateObjs[a]-dateObjs[b];});
-  var mtdNeg=0, mtdPos=0;
+  var mtdByDay={}, runNeg=0, runPos=0;
   var labels=[], negArr=[], posArr=[], netArr=[];
-  var tbody=document.getElementById('trend-tbody');
-  tbody.innerHTML='';
+  var maxLossVal=0,maxLossDk='',maxRecVal=0,maxRecDk='',bestNetVal=null,bestNetDk='',worstNetVal=null,worstNetDk='';
 
-  function ind(v){return v>=0?'▲':'▼';}
-  function indCol(v){return v>=0?'color:var(--gn)':'color:var(--re)';}
-
-  var maxLossVal=0, maxLossDk='', maxRecVal=0, maxRecDk='', bestNetVal=null, bestNetDk='', worstNetVal=null, worstNetDk='';
-
-  days.forEach(function(dk,i){
+  days.forEach(function(dk){
     var d=daily[dk];
-    mtdNeg+=d.negV; mtdPos+=d.posV;
-    var net=d.posV-d.negV, mtdNet=mtdPos-mtdNeg;
+    runNeg+=d.negV; runPos+=d.posV;
+    mtdByDay[dk]={mtdNeg:runNeg,mtdPos:runPos};
+    var net=d.posV-d.negV;
     if(d.negV>maxLossVal){maxLossVal=d.negV;maxLossDk=dk;}
     if(d.posV>maxRecVal){maxRecVal=d.posV;maxRecDk=dk;}
     if(bestNetVal===null||net>bestNetVal){bestNetVal=net;bestNetDk=dk;}
     if(worstNetVal===null||net<worstNetVal){worstNetVal=net;worstNetDk=dk;}
+    labels.push(('0'+(dateObjs[dk].getDate())).slice(-2)+' '+MON[dateObjs[dk].getMonth()]);
+    negArr.push(Math.round(d.negV));
+    posArr.push(Math.round(d.posV));
+    netArr.push(Math.round(net));
+  });
+
+  // Table — latest date first
+  function ind(v){return v>=0?'▲':'▼';}
+  function indCol(v){return v>=0?'color:var(--gn)':'color:var(--re)';}
+  var tbody=document.getElementById('trend-tbody');
+  tbody.innerHTML='';
+  var daysDesc=days.slice().reverse();
+  daysDesc.forEach(function(dk,i){
+    var d=daily[dk], m=mtdByDay[dk];
+    var net=d.posV-d.negV, mtdNet=m.mtdPos-m.mtdNeg;
     var stripe=i%2===0?'background:var(--wh)':'background:var(--sf)';
     tbody.innerHTML+='<tr style="'+stripe+'">'
       +'<td style="padding:8px 14px;font-weight:500;white-space:nowrap;color:var(--tx)">'+fmtDk(dk)+'</td>'
@@ -1535,10 +1596,6 @@ function renderTrend(){
       +'<td style="padding:8px 12px;text-align:right;font-weight:700;'+indCol(net)+'">'+ind(net)+' ₹'+fLabs(net)+'</td>'
       +'<td style="padding:8px 12px;text-align:right;font-weight:700;'+indCol(mtdNet)+'">'+ind(mtdNet)+' ₹'+fLabs(mtdNet)+'</td>'
       +'</tr>';
-    labels.push(('0'+(dateObjs[dk].getDate())).slice(-2)+' '+MON[dateObjs[dk].getMonth()]);
-    negArr.push(Math.round(d.negV));
-    posArr.push(Math.round(d.posV));
-    netArr.push(Math.round(net));
   });
 
   // Date range label
@@ -1547,69 +1604,65 @@ function renderTrend(){
     if(dr) dr.textContent='Date Range: '+fmtDk(days[0])+' – '+fmtDk(days[days.length-1]);
   }
 
-  // KPI cards
-  var totalNeg=mtdNeg, totalPos=mtdPos, totalNet=mtdPos-mtdNeg;
-  var avgDaily=days.length?Math.round(mtdNeg/days.length):0;
+  // KPI cards — use final MTD values from runNeg/runPos
+  var totalNeg=runNeg, totalPos=runPos, totalNet=runPos-runNeg;
+  var avgDaily=days.length?Math.round(runNeg/days.length):0;
   var recRate=totalNeg>0?Math.round(totalPos/totalNeg*100):0;
   function kpiCard(icon,iconBg,iconCol,label,val,valCol,sub){
     return '<div style="background:var(--wh);border:1px solid var(--br);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">'
       +'<div style="width:38px;height:38px;border-radius:50%;background:'+iconBg+';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;color:'+iconCol+'">'+icon+'</div>'
-      +'<div>'
-      +'<div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:4px">'+label+'</div>'
+      +'<div><div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:4px">'+label+'</div>'
       +'<div style="font-size:20px;font-weight:800;color:'+valCol+';line-height:1.1">₹'+val+'</div>'
-      +'<div style="font-size:11px;color:var(--mu);margin-top:3px">'+sub+'</div>'
-      +'</div></div>';
+      +'<div style="font-size:11px;color:var(--mu);margin-top:3px">'+sub+'</div></div></div>';
   }
   var kpiEl=document.getElementById('trend-kpis');
   kpiEl.innerHTML=''
     +kpiCard('↓','rgba(220,53,69,.12)','var(--re)','MTD Financial Loss',fLabs(totalNeg),'var(--re)',days.length+' days recorded')
     +kpiCard('↑','rgba(25,135,84,.12)','var(--gn)','MTD Recovery',fLabs(totalPos),'var(--gn)','Recoveries only')
-    +'<div style="background:var(--wh);border:1px solid var(--br);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">'
-      +'<div style="width:38px;height:38px;border-radius:50%;background:rgba(220,53,69,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;color:var(--re)">↗</div>'
-      +'<div>'
-      +'<div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:4px">MTD Net Loss</div>'
-      +'<div style="font-size:20px;font-weight:800;color:'+(totalNet>=0?'var(--gn)':'var(--re)')+';line-height:1.1">₹'+fLabs(totalNet)+'</div>'
-      +'<div style="font-size:11px;color:var(--mu);margin-top:3px">'+(totalNet>=0?'▲ Net recovered':'▼ Net loss')+'</div>'
-      +'</div></div>'
+    +kpiCard('↗','rgba(220,53,69,.12)',(totalNet>=0?'var(--gn)':'var(--re)'),'MTD Net Loss',fLabs(totalNet),(totalNet>=0?'var(--gn)':'var(--re)'),(totalNet>=0?'▲ Net recovered':'▼ Net loss'))
     +kpiCard('📅','rgba(100,116,139,.1)','#64748b','Avg Daily Loss',fLabs(avgDaily),'#334155','Per day this month')
     +'<div style="background:var(--wh);border:1px solid var(--br);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">'
       +'<div style="width:38px;height:38px;border-radius:50%;background:rgba(13,110,253,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:800;color:#0d6efd">%</div>'
-      +'<div>'
-      +'<div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:4px">Recovery Rate</div>'
+      +'<div><div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:4px">Recovery Rate</div>'
       +'<div style="font-size:20px;font-weight:800;color:#0d6efd;line-height:1.1">'+recRate+'%</div>'
-      +'<div style="font-size:11px;color:var(--mu);margin-top:3px">Recovery / Loss</div>'
-      +'</div></div>';
+      +'<div style="font-size:11px;color:var(--mu);margin-top:3px">Recovery ÷ Loss</div></div></div>';
 
   // Highlight mini-cards below chart
   var hl=document.getElementById('trend-highlights');
-  if(hl) hl.innerHTML=''
+  if(hl&&days.length) hl.innerHTML=''
     +'<div style="background:var(--sf);border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:var(--mu);margin-bottom:4px">↓ Max Loss Day</div><div style="font-size:15px;font-weight:800;color:var(--re)">₹'+fLabs(maxLossVal)+'</div><div style="font-size:10px;color:var(--mu)">'+fmtDk(maxLossDk)+'</div></div>'
     +'<div style="background:var(--sf);border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:var(--mu);margin-bottom:4px">↑ Max Recovery Day</div><div style="font-size:15px;font-weight:800;color:var(--gn)">₹'+fLabs(maxRecVal)+'</div><div style="font-size:10px;color:var(--mu)">'+fmtDk(maxRecDk)+'</div></div>'
     +'<div style="background:var(--sf);border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:var(--mu);margin-bottom:4px">↗ Best Net Day</div><div style="font-size:15px;font-weight:800;color:var(--gn)">₹'+fLabs(bestNetVal)+'</div><div style="font-size:10px;color:var(--mu)">'+fmtDk(bestNetDk)+'</div></div>'
     +'<div style="background:var(--sf);border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:var(--mu);margin-bottom:4px">↙ Worst Net Day</div><div style="font-size:15px;font-weight:800;color:var(--re)">₹'+fLabs(worstNetVal)+'</div><div style="font-size:10px;color:var(--mu)">'+fmtDk(worstNetDk)+'</div></div>';
 
-  // Chart
+  // Chart — destroy old, recreate on same canvas element
   if(_trendChart){ try{_trendChart.destroy();}catch(e){} _trendChart=null; }
-  var ctx=document.getElementById('trend-chart');
-  if(!ctx||typeof Chart==='undefined') return;
-  ctx.height=Math.max(180, days.length*14+60);
-  _trendChart=new Chart(ctx,{
+  var canvas=document.getElementById('trend-chart');
+  if(!canvas||typeof Chart==='undefined') return;
+  // Reset canvas dimensions to force Chart.js to redraw cleanly
+  canvas.width=canvas.offsetWidth||600;
+  canvas.height=260;
+  _trendChart=new Chart(canvas.getContext('2d'),{
     type:'bar',
     data:{
       labels:labels,
       datasets:[
-        {label:'Negative COGS',data:negArr,backgroundColor:'rgba(220,53,69,0.7)',borderWidth:0},
-        {label:'Recovery COGS',data:posArr,backgroundColor:'rgba(25,135,84,0.7)',borderWidth:0},
-        {type:'line',label:'Net (Pos−Neg)',data:netArr,borderColor:'#0d6efd',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3,yAxisID:'y'}
+        {label:'Financial Loss',data:negArr,backgroundColor:'rgba(220,53,69,0.7)',borderWidth:0,order:2},
+        {label:'Recovery',data:posArr,backgroundColor:'rgba(25,135,84,0.7)',borderWidth:0,order:2},
+        {type:'line',label:'Net',data:netArr,borderColor:'#0d6efd',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#0d6efd',tension:0.3,order:1}
       ]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:true,position:'top',labels:{boxWidth:12,font:{size:11}}},
-        tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': Rs '+Math.abs(ctx.raw).toLocaleString();}}}},
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:function(c){return c.dataset.label+': ₹'+fLabs(Math.abs(c.raw));}}}
+      },
       scales:{
-        x:{ticks:{font:{size:10},maxRotation:45,autoSkip:false}},
-        y:{ticks:{callback:function(v){return 'Rs '+(Math.abs(v)/1000).toFixed(0)+'K';}},title:{display:true,text:'COGS (Rs)',font:{size:10}}},
+        x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:15}},
+        y:{ticks:{callback:function(v){var a=Math.abs(v);return a>=100000?'₹'+(a/100000).toFixed(1)+'L':'₹'+(a/1000).toFixed(0)+'K';}},
+           grid:{color:'rgba(0,0,0,.05)'}}
       }
     }
   });
