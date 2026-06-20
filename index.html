@@ -426,6 +426,8 @@ tbody tr:hover td{background:var(--sf)}
     <div class="tb-left">Mosaic Wellness &rsaquo; <strong id="pg-name">Inventory Overview</strong></div>
     <div class="tb-right">
       <span class="tb-upd" id="tb-upd"></span>
+      <span id="dl-sync-label" style="font-size:10px;color:var(--mu);margin-right:8px;vertical-align:middle"></span>
+      <button id="dl-sync-btn" class="dl-btn" onclick="dlSyncData(false)" style="margin-right:4px">⟳ Sync Now</button>
       <button class="dl-btn" onclick="dlReport()">&#8675; Download Report</button>
     </div>
   </div>
@@ -889,6 +891,7 @@ function ssoInit(){
 // GLOBAL STATE
 var R=null,histData=[],allRemarks=[],allEventsData=[],facHistData=[],allEventHistory=[];
 var dailyTop5Data=[]; // dedicated NI_DailyTop5 store — source of truth for remarks tracker
+var _dlSyncInterval=null, _dlLastSync=null, _dlNiEvents=[], _dlTop5=[];
 var invFacRows=[],invBizRows=[],brandRows=[];
 var expZone1=[],expZone2=[],expZone3=[],expNearRows=[];
 var invKPIs={};
@@ -4200,97 +4203,64 @@ function renderRmkMonthly(){
 }
 
 // DOWNLOAD
+// ── Download Report: hourly sync of NI_Events + NI_DailyTop5 ──
+function dlSyncData(silent){
+  var btn=document.getElementById('dl-sync-btn');
+  if(!silent && btn){ btn.textContent='⟳ Syncing...'; btn.disabled=true; }
+  return Promise.all([
+    fetchJ(EVENTS_URL+'&curmonth=1&t='+Date.now()).catch(function(){return[];}),
+    fetchJ(EH_URL+'&t='+Date.now()).catch(function(){return[];})
+  ]).then(function(res){
+    if(Array.isArray(res[0]) && res[0].length) _dlNiEvents = res[0];
+    if(Array.isArray(res[1]) && res[1].length) _dlTop5 = res[1];
+    _dlLastSync = new Date();
+    _updateDlSyncLabel();
+    if(!silent && btn){ btn.textContent='⟳ Sync Now'; btn.disabled=false; }
+  }).catch(function(){
+    if(!silent && btn){ btn.textContent='⟳ Sync Now'; btn.disabled=false; }
+  });
+}
+function _updateDlSyncLabel(){
+  var el=document.getElementById('dl-sync-label');
+  if(!el) return;
+  if(!_dlLastSync){ el.textContent='Not synced yet'; return; }
+  var t=_dlLastSync.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  el.textContent='Last synced: '+t+' · NI_Events: '+_dlNiEvents.length+' rows · NI_DailyTop5: '+_dlTop5.length+' rows';
+}
+function dlStartHourlySync(){
+  dlSyncData(true);
+  if(_dlSyncInterval) clearInterval(_dlSyncInterval);
+  _dlSyncInterval = setInterval(function(){ dlSyncData(true); }, 60*60*1000);
+}
+
 function dlReport(){
-  if(!R) return;
   if(typeof XLSX === 'undefined'){
     var s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
     s.onload=function(){ dlReport(); };
     document.head.appendChild(s); return;
   }
-  var wb=XLSX.utils.book_new(), today=new Date().toISOString().slice(0,10);
+  if(!_dlNiEvents.length && !_dlTop5.length){
+    showToast('Data not loaded yet — click Sync Now first.', true); return;
+  }
+  var wb=XLSX.utils.book_new();
+  var today=new Date().toISOString().slice(0,10);
 
-  // ── Sheet 1: Today's Impact ──
-  var s1=[['Direction','SKU','Item Type Name','Batch','Facility','City','Business Type','Brand','Qty','COGS/Unit','COGS Value (₹)','Event','Severity']];
-  (R.flat||[]).forEach(function(x){ s1.push(['NEGATIVE',x.sku,x.name||'',x.batch||'',x.fac||'',x.city||'',x.bt,getBrand(x.sku),x.qty,parseFloat(x.cp||0),parseFloat(x.cogsVal||0),x.event,x.sev||'']); });
-  (R.pos||[]).forEach(function(x){ s1.push(['POSITIVE',x.sku,x.name||'',x.batch||'',x.fac||'',x.city||'',x.bt,getBrand(x.sku),x.qty,parseFloat(x.cp||0),parseFloat(x.cogsVal||0),x.event,'Positive']); });
-  s1.push([]);
-  s1.push(['Negative Total','','','','','','','',R.totNeg,'',parseFloat(R.totVal||0),'','']);
-  s1.push(['Positive Total','','','','','','','',R.posQty,'',parseFloat(R.posVal||0),'','']);
-  s1.push(['Net Impact','','','','','','','',(R.totNeg-R.posQty),'',parseFloat(R.netVal||0),'','']);
-  var rate=R.totVal>0?(R.posVal/R.totVal*100).toFixed(2):0;
-  s1.push(['Recovery Rate %','','','','','','','','','',parseFloat(rate),'','']);
+  // ── Sheet 1: NI_Events ──
+  var evCols=['Date','Type','Direction','SKU','Name','Brand','Batch','Facility','City','BizType','InvFrom','InvTo','StateFrom','StateTo','Qty','COGSPerUnit','COGSValue','Event','Severity','Category','Impact Class'];
+  var s1=[evCols];
+  _dlNiEvents.forEach(function(r){ s1.push(evCols.map(function(c){ return r[c]||''; })); });
   var ws1=XLSX.utils.aoa_to_sheet(s1);
-  ws1['!cols']=[{wch:10},{wch:22},{wch:28},{wch:14},{wch:22},{wch:14},{wch:16},{wch:16},{wch:8},{wch:10},{wch:14},{wch:24},{wch:10}];
-  XLSX.utils.book_append_sheet(wb,ws1,"Today's Impact");
+  ws1['!cols']=[{wch:12},{wch:8},{wch:10},{wch:22},{wch:30},{wch:14},{wch:14},{wch:22},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:8},{wch:12},{wch:14},{wch:24},{wch:10},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws1,'NI_Events');
 
-  // ── Sheet 2: Operational Exception Metrics ──
-  var goodInvL=invKPIs.totGood||0,badInvL=invKPIs.totBad||0,qcRejL=invKPIs.totQC||0;
-  var expiredL=invKPIs.totExp||0,recalledL=invKPIs.totRecalled||0;
-  var notFoundL=invKPIs.totNotFound||0,blockedL=invKPIs.totBlocked||0,nearExpL=invKPIs.totNE||0;
-  var totalCogsL=invFacRows.reduce(function(s,f){return s+f.cogsVal;},0);
-  var goodCogs=totalCogsL*(goodInvL/(goodInvL+badInvL+qcRejL||1));
-  var badCogs=totalCogsL*(badInvL/(goodInvL+badInvL+qcRejL||1));
-  var qcCogs=totalCogsL*(qcRejL/(goodInvL+badInvL+qcRejL||1));
-  var avgUnit=goodInvL>0?goodCogs/goodInvL:0;
-  var neCogs=window._neCogsActual||0;
-  var s2=[['Dashboard Status','Total Qty','COGS Value (₹)','Not Found','Blocked','Avg COGS/Unit (₹)','Key Management Action'],
-    ['Good Inventory', goodInvL,goodCogs,  notFoundL,blockedL,avgUnit,'Audit blocked stock to increase salable inventory.'],
-    ['About to Expire',nearExpL,neCogs,    0,0,avgUnit,'Prioritise sales/movement to prevent reaching Expired.'],
-    ['Expired',        expiredL,avgUnit*expiredL, 0,0,avgUnit,'Write-off & disposal. Clear physical space.'],
-    ['Recalled',       recalledL,avgUnit*recalledL,0,0,avgUnit,'Compliance tracking. Ensure isolation from good stock.'],
-    ['QC Reject',      qcRejL,qcCogs,     0,0,avgUnit,'Quality inspection. Remediate if possible.'],
-    ['Bad Inventory',  badInvL,badCogs,   0,0,avgUnit,'Investigate root cause and reclassify.']];
+  // ── Sheet 2: NI_DailyTop5 ──
+  var t5Cols=['EH_ID','Date','SKU','Brand','Name','Batch','Facility','City','BizType','Event','Impact Class','Qty','COGSValue','Rank','Remark','Status','AssignedTo','RemarkDate'];
+  var s2=[t5Cols];
+  _dlTop5.forEach(function(r){ s2.push(t5Cols.map(function(c){ return r[c]||''; })); });
   var ws2=XLSX.utils.aoa_to_sheet(s2);
-  ws2['!cols']=[{wch:18},{wch:12},{wch:16},{wch:10},{wch:10},{wch:16},{wch:52}];
-  XLSX.utils.book_append_sheet(wb,ws2,'Ops Exception Metrics');
-
-  // ── Sheet 3: About to Expire – Detail ──
-  var allNE=(expZone1||[]).concat(expZone2||[]).concat(expZone3||[]).sort(function(a,b){return a.daysLeft-b.daysLeft;});
-  var s3=[['SKU','Item Type Name','Batch','Facility','City','Business Type','Brand','Qty','COGS/Unit (₹)','COGS Value (₹)','Days Left','Mfg Date','Expiry Date','Shelf Life (Months)','Cutoff Days','NE Cutoff Date','Ageing (Days)','Window']];
-  allNE.forEach(function(x){
-    var win=x.daysLeft<=60?'Window 1 (30-60d)':x.daysLeft<=90?'Window 2 (60-90d)':'Window 3 (90-120d)';
-    var mfgD=x.mfgDate instanceof Date?x.mfgDate:null;
-    var expD=x.expDate instanceof Date?x.expDate:null;
-    var ageing=mfgD?Math.floor((new Date()-mfgD)/864e5):'';
-    var cutoDate=(expD&&x.cutoffDays)?new Date(expD.getTime()-x.cutoffDays*864e5).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'';
-    s3.push([x.sku,x.name||'',x.batch||'',x.fac||'',x.city||'',x.bt||'',getBrand(x.sku),
-      x.qty,parseFloat(x.cogsPerUnit||x.cp||0),parseFloat(x.cogsVal||0),
-      x.daysLeft,x.mfgStr||'',x.expStr||'',x.shelfLifeMonths||'',x.cutoffDays||'',cutoDate,ageing,win]);
-  });
-  var ws3=XLSX.utils.aoa_to_sheet(s3);
-  ws3['!cols']=[{wch:22},{wch:30},{wch:14},{wch:22},{wch:12},{wch:14},{wch:14},{wch:8},{wch:12},{wch:14},{wch:10},{wch:12},{wch:12},{wch:14},{wch:12},{wch:16},{wch:10},{wch:18}];
-  XLSX.utils.book_append_sheet(wb,ws3,'About to Expire - Detail');
-
-  // ── Sheet 4: MTD Summary ──
-  var M=null;
-  try{
-    var moS=new Date(); moS.setDate(1); moS.setHours(0,0,0,0);
-    // Aggregate histData for MTD
-    var mtdBT={}, mtdDays=new Set();
-    histData.forEach(function(row){
-      var bt=row['Business Type']||''; if(!bt||bt==='TOTAL') return;
-      var d=parseDate(row['Date']); if(!d||d<moS) return;
-      mtdDays.add(row['Date']);
-      if(!mtdBT[bt]) mtdBT[bt]={negQ:0,negV:0,posQ:0,posV:0,netV:0};
-      mtdBT[bt].negQ+=parseFloat(row['Total Neg Qty'])||0;
-      mtdBT[bt].negV+=parseFloat(row['Total Neg Value'])||0;
-      mtdBT[bt].posQ+=parseFloat(row['Pos Qty'])||0;
-      mtdBT[bt].posV+=parseFloat(row['Pos Value'])||0;
-      mtdBT[bt].netV+=parseFloat(row['Net Value'])||0;
-    });
-    var s4=[['Month','Days','Business Unit','Neg Qty','Neg COGS (₹)','Pos Qty (Recovery)','Pos COGS (₹)','Net COGS (₹)','Recovery Rate %']];
-    var mn=new Date().toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-    var days=mtdDays.size;
-    Object.keys(mtdBT).forEach(function(bt){
-      var b=mtdBT[bt];
-      var rate=b.negV>0?(b.posV/b.negV*100).toFixed(1):0;
-      s4.push([mn,days,bt,b.negQ,b.negV,b.posQ,b.posV,b.netV,parseFloat(rate)]);
-    });
-    var ws4=XLSX.utils.aoa_to_sheet(s4);
-    ws4['!cols']=[{wch:14},{wch:6},{wch:16},{wch:10},{wch:14},{wch:16},{wch:14},{wch:14},{wch:14}];
-    XLSX.utils.book_append_sheet(wb,ws4,'MTD Summary');
-  }catch(e){}
+  ws2['!cols']=[{wch:36},{wch:12},{wch:22},{wch:14},{wch:30},{wch:14},{wch:22},{wch:12},{wch:14},{wch:24},{wch:14},{wch:8},{wch:14},{wch:6},{wch:40},{wch:12},{wch:18},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws2,'NI_DailyTop5');
 
   XLSX.writeFile(wb,'Inventory_Report_'+today+'.xlsx');
 }
@@ -4452,6 +4422,7 @@ function updateMonthBarVisibility(page) {
 function boot(){
   step('Connecting to Apps Script...',10);
   loadChatbotStatus(); // load AI on/off state from GAS Script Properties
+  dlStartHourlySync(); // pre-load NI_Events + NI_DailyTop5 for download report
   // Fetch events + today's full stock in parallel
   Promise.all([
     fetchJ(EVENTS_URL+'&curmonth=1'),
