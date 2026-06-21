@@ -291,6 +291,18 @@ const evDataRows = evRows.slice(1);
 shEv.getRange(shEv.getLastRow()+1, 1, evDataRows.length, evHeaders.length).setValues(evDataRows);
 SpreadsheetApp.flush();
 Logger.log('NI_Events: appended ' + evDataRows.length + ' events for ' + evTodayStr);
+// Also append to NI_Events_Year (running year log: May 2026 onwards)
+var shYear = ss.getSheetByName('NI_Events_Year');
+if (shYear) {
+  var yearTodayExists = shYear.getLastRow() > 1 &&
+    shYear.getRange(2,1,shYear.getLastRow()-1,1).getValues().some(function(r){ return String(r[0]).trim() === evTodayStr; });
+  if (!yearTodayExists) {
+    shYear.getRange(shYear.getLastRow()+1, 1, evDataRows.length, evHeaders.length).setValues(evDataRows);
+    Logger.log('NI_Events_Year: appended ' + evDataRows.length + ' events for ' + evTodayStr);
+  } else {
+    Logger.log('NI_Events_Year: ' + evTodayStr + ' already logged - skipping.');
+  }
+}
 }
 // -- 2. NI_Inventory: per-facility totals from today snapshot --
 const invMap = {};
@@ -1356,23 +1368,40 @@ if (e.parameter.action === 'getChatbotStatus') {
   return ContentService.createTextOutput(JSON.stringify({enabled: status})).setMimeType(ContentService.MimeType.JSON);
 }
 
-// -- Fetch NI_Events from May 2026 sheet (separate sheet ID) --
+// -- Fetch NI_Events from May 2026 sheet — mapped to canonical 21-col schema --
 if (e.parameter.action === 'mayNIEvents') {
   try {
-    var MAY_ID = '1yOU97Zo_tNSA9MXC2doT4p9PNhH4KvmLdtlWj_UpSy8';
-    var maySS = SpreadsheetApp.openById(MAY_ID);
-    var maySh = maySS.getSheetByName('NI_Events');
-    if (!maySh || maySh.getLastRow() < 2) {
-      return ContentService.createTextOutput(JSON.stringify({headers:[], rows:[]})).setMimeType(ContentService.MimeType.JSON);
+    var MAY_SID = '1yOU97Zo_tNSA9MXC2doT4p9PNhH4KvmLdtlWj_UpSy8';
+    var maySS2 = SpreadsheetApp.openById(MAY_SID);
+    var maySh2 = maySS2.getSheetByName('NI_Events');
+    if (!maySh2 || maySh2.getLastRow() < 2) {
+      return ContentService.createTextOutput(JSON.stringify({headers:[], rows:[], total:0})).setMimeType(ContentService.MimeType.JSON);
     }
-    var mayData = maySh.getDataRange().getValues();
-    var mayH = mayData[0].map(function(h){ return String(h).trim(); });
-    var mayRows = mayData.slice(1).map(function(row){
+    // Canonical 21-column schema (same as June NI_Events)
+    var CANON = ['Date','Type','Direction','SKU','Name','Brand','Batch','Facility','City',
+                 'BizType','InvFrom','InvTo','StateFrom','StateTo','Qty','COGSPerUnit',
+                 'COGSValue','Event','Severity','Category','Impact Class'];
+    var mayData2 = maySh2.getDataRange().getValues();
+    var mayH2 = mayData2[0].map(function(h){ return String(h).trim(); });
+    // Log actual headers for debugging
+    Logger.log('May NI_Events headers: ' + mayH2.join(' | '));
+    Logger.log('May NI_Events total rows: ' + (mayData2.length - 1));
+    var mayRows2 = mayData2.slice(1).map(function(row){
       var obj = {};
-      mayH.forEach(function(h, i){ obj[h] = row[i] instanceof Date ? Utilities.formatDate(row[i], 'Asia/Kolkata', 'dd MMM yyyy') : String(row[i] === null || row[i] === undefined ? '' : row[i]); });
-      return obj;
+      // Map actual headers first
+      mayH2.forEach(function(h, i){
+        var v = row[i];
+        obj[h] = v instanceof Date ? Utilities.formatDate(v, 'Asia/Kolkata', 'dd MMM yyyy') : String(v === null || v === undefined ? '' : v);
+      });
+      // Ensure all 21 canonical columns exist (fill blank if missing)
+      var out = {};
+      CANON.forEach(function(col){ out[col] = obj[col] || obj[col.toLowerCase()] || ''; });
+      return out;
     });
-    return ContentService.createTextOutput(JSON.stringify({headers: mayH, rows: mayRows})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({
+      headers: CANON, rows: mayRows2, total: mayRows2.length,
+      actual_headers: mayH2
+    })).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
     return ContentService.createTextOutput(JSON.stringify({error: err.message})).setMimeType(ContentService.MimeType.JSON);
   }
@@ -1406,7 +1435,8 @@ return ContentService.createTextOutput(JSON.stringify({months})) .setMimeType(Co
 // Allow NI_* sheets and archived NI_*_MMMyyyy sheets
 const sheetName = e.parameter.sheet || 'NI_Events';
 const ALLOWED_PATTERN = /^NI_[A-Za-z0-9]+(_[A-Za-z]+\d{4})?$/;
-if (!ALLOWED_PATTERN.test(sheetName)) {
+const EXTRA_ALLOWED = ['SKU_Names', 'COGS_Lookup'];
+if (!ALLOWED_PATTERN.test(sheetName) && EXTRA_ALLOWED.indexOf(sheetName) === -1) {
 return ContentService.createTextOutput(JSON.stringify({error:'Sheet not permitted: '+sheetName})) .setMimeType(ContentService.MimeType.JSON);
 }
 const tab = ss.getSheetByName(sheetName);
