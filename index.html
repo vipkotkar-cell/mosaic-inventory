@@ -4606,13 +4606,19 @@ function updateMonthBarVisibility(page) {
 
 function setCtrFil(c) {
   _ctrFil = c;
-  document.querySelectorAll('#country-chips .sub-tab').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('[id^="ctrbtn-"]').forEach(function(b){b.classList.remove('on');});
   var btn = document.getElementById('ctrbtn-'+c);
   if (btn) btn.classList.add('on');
-  // Re-render current visible page
+  // Re-render current visible page with country filter applied
   var activePg = null;
   document.querySelectorAll('.pg.on').forEach(function(el){ activePg = el.id.replace('pg-',''); });
-  if (activePg) goPage(activePg);
+  if (!activePg) return;
+  if (activePg === 'today') { if(R) { renderImpact(R); renderTop20Today(); } }
+  else if (activePg === 'wtd') { renderHistory(); }
+  else if (activePg === 'trend') { renderTrend(); }
+  else if (activePg === 'biz') { renderOpsDaily(); renderOpsMonthly(); }
+  else if (activePg === 'remarks') { goRmkTab(document.querySelector('[id^="rmktab-"].on') ? document.querySelector('[id^="rmktab-"].on').id.replace('rmktab-','') : 'top5'); }
+  else if (activePg === 'ytd') { _ytdLoaded = false; renderYTD(); }
 }
 
 

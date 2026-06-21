@@ -1435,7 +1435,7 @@ return ContentService.createTextOutput(JSON.stringify({months})) .setMimeType(Co
 // Allow NI_* sheets and archived NI_*_MMMyyyy sheets
 const sheetName = e.parameter.sheet || 'NI_Events';
 const ALLOWED_PATTERN = /^NI_[A-Za-z0-9]+(_[A-Za-z]+\d{4})?$/;
-const EXTRA_ALLOWED = ['SKU_Names', 'COGS_Lookup'];
+const EXTRA_ALLOWED = ['SKU_Names', 'COGS_Lookup', 'NI_Events_Year'];
 if (!ALLOWED_PATTERN.test(sheetName) && EXTRA_ALLOWED.indexOf(sheetName) === -1) {
 return ContentService.createTextOutput(JSON.stringify({error:'Sheet not permitted: '+sheetName})) .setMimeType(ContentService.MimeType.JSON);
 }
