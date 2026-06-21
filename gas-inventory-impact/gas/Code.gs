@@ -1356,6 +1356,28 @@ if (e.parameter.action === 'getChatbotStatus') {
   return ContentService.createTextOutput(JSON.stringify({enabled: status})).setMimeType(ContentService.MimeType.JSON);
 }
 
+// -- Fetch NI_Events from May 2026 sheet (separate sheet ID) --
+if (e.parameter.action === 'mayNIEvents') {
+  try {
+    var MAY_ID = '1yOU97Zo_tNSA9MXC2doT4p9PNhH4KvmLdtlWj_UpSy8';
+    var maySS = SpreadsheetApp.openById(MAY_ID);
+    var maySh = maySS.getSheetByName('NI_Events');
+    if (!maySh || maySh.getLastRow() < 2) {
+      return ContentService.createTextOutput(JSON.stringify({headers:[], rows:[]})).setMimeType(ContentService.MimeType.JSON);
+    }
+    var mayData = maySh.getDataRange().getValues();
+    var mayH = mayData[0].map(function(h){ return String(h).trim(); });
+    var mayRows = mayData.slice(1).map(function(row){
+      var obj = {};
+      mayH.forEach(function(h, i){ obj[h] = row[i] instanceof Date ? Utilities.formatDate(row[i], 'Asia/Kolkata', 'dd MMM yyyy') : String(row[i] === null || row[i] === undefined ? '' : row[i]); });
+      return obj;
+    });
+    return ContentService.createTextOutput(JSON.stringify({headers: mayH, rows: mayRows})).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({error: err.message})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // -- Special action: list available archive months --
 if (e.parameter.action === 'listArchives') {
 const allSheets = ss.getSheets().map(s =>
