@@ -3650,6 +3650,14 @@ function goWtdTab(t){
   if(t==='ytd') renderYTD();
 }
 
+// Called by setCtrFil when YTD sub-tab is active — re-renders with new country filter
+function doRenderYTDWithFilter(){
+  if(_ytdLoaded && ytdEventsData.length){
+    // Re-render in place using cached data (avoids re-fetch)
+    _ytdLoaded=false; renderYTD();
+  }
+}
+
 // ── YTD Render ──────────────────────────────────────────────
 function renderYTD(){
   var kpiEl=document.getElementById('ytd-kpis');
@@ -4667,11 +4675,14 @@ function setCtrFil(c) {
     }
     if(R){renderImpact(R); renderTop20Today();}
   }
-  else if (activePg === 'wtd') { renderHistory(); }
+  else if (activePg === 'wtd') {
+    var ytdTab=document.getElementById('wtdtab-ytd');
+    if(ytdTab&&ytdTab.classList.contains('on')){ doRenderYTDWithFilter(); }
+    else { renderHistory(); }
+  }
   else if (activePg === 'trend') { renderTrend(); }
   else if (activePg === 'biz') { renderOpsDaily(); renderOpsMonthly(); }
   else if (activePg === 'remarks') { goRmkTab(document.querySelector('[id^="rmktab-"].on') ? document.querySelector('[id^="rmktab-"].on').id.replace('rmktab-','') : 'top5'); }
-  else if (activePg === 'ytd') { _ytdLoaded = false; renderYTD(); }
 }
 
 
