@@ -457,8 +457,8 @@ tbody tr:hover td{background:var(--sf)}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-bottom:8px;margin-top:6px">
       <span style="font-size:10px;font-weight:700;color:var(--mu);white-space:nowrap">COUNTRY:</span>
       <div id="country-chips" style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="sub-tab on" id="ctrbtn-All" onclick="setCtrFil('All')" style="padding:3px 12px;font-size:10px;min-width:auto">All</button>
-        <button class="sub-tab" id="ctrbtn-India" onclick="setCtrFil('India')" style="padding:3px 12px;font-size:10px;min-width:auto">India</button>
+        <button class="sub-tab" id="ctrbtn-All" onclick="setCtrFil('All')" style="padding:3px 12px;font-size:10px;min-width:auto">All</button>
+        <button class="sub-tab on" id="ctrbtn-India" onclick="setCtrFil('India')" style="padding:3px 12px;font-size:10px;min-width:auto">India</button>
         <button class="sub-tab" id="ctrbtn-USA" onclick="setCtrFil('USA')" style="padding:3px 12px;font-size:10px;min-width:auto">USA</button>
         <button class="sub-tab" id="ctrbtn-UAE" onclick="setCtrFil('UAE')" style="padding:3px 12px;font-size:10px;min-width:auto">UAE</button>
       </div>
@@ -919,7 +919,8 @@ function ssoInit(){
 
 // GLOBAL STATE
 var R=null,histData=[],allRemarks=[],allEventsData=[],facHistData=[],allEventHistory=[];
-var _ctrFil='All';
+var _ctrFil='India';
+var _todayEvRaw=[];
 var ytdEventsData=[], _ytdLoaded=false;
 var dailyTop5Data=[]; // dedicated NI_DailyTop5 store — source of truth for remarks tracker
 var _dlSyncInterval=null, _dlLastSync=null, _dlNiEvents=[], _dlTop5=[];
@@ -1585,6 +1586,7 @@ function renderTrend(){
     if(!isFL&&!isRec) return;
     var b=(row['Brand']||'').trim();
     if(anyUnchecked && !_trendBrands[b]) return;
+    if(_ctrFil!=='All'&&getCountry(row['SKU']||'',row['Name']||'')!==_ctrFil) return;
     var dk=row['Date'];
     if(!daily[dk]){daily[dk]={negV:0,posV:0}; dateObjs[dk]=d;}
     var cv=n(row['COGSValue']);
@@ -3782,15 +3784,21 @@ function renderYTD(){
     return;
   }
   // Lazy load
-  kpiEl.innerHTML='<div style="padding:24px;color:var(--mu);font-size:12px">Loading YTD data&hellip;</div>';
+  kpiEl.innerHTML='<div style="padding:24px;color:var(--mu);font-size:12px">Loading YTD data (May + June)&hellip;</div>';
   barEl.innerHTML=''; brandEl.innerHTML=''; facEl.innerHTML='';
-  fetchJ(YTD_URL).then(function(rows){
-    ytdEventsData=Array.isArray(rows)?rows:[];
+  // Fetch May 2026 events via dedicated endpoint, then merge with June (allEventsData)
+  fetchJ(PROXY+'?action=mayNIEvents').then(function(mayRows){
+    var may=Array.isArray(mayRows)?mayRows:[];
+    var jun=Array.isArray(allEventsData)?allEventsData:[];
+    ytdEventsData=may.concat(jun);
     _ytdLoaded=true;
     doRenderYTD(ytdEventsData);
   }).catch(function(e){
-    kpiEl.innerHTML='<div style="padding:24px;color:var(--re);font-size:12px">Failed to load YTD data. Make sure NI_Events_Year sheet is published.</div>';
-    console.error('YTD fetch error',e);
+    // Fallback: just use June data if May fetch fails
+    console.warn('YTD May fetch failed, using June only',e);
+    ytdEventsData=Array.isArray(allEventsData)?allEventsData.slice():[];
+    _ytdLoaded=true;
+    doRenderYTD(ytdEventsData);
   });
 }
 // ── END YTD ──────────────────────────────────────────────────
@@ -4621,7 +4629,17 @@ function setCtrFil(c) {
   var activePg = null;
   document.querySelectorAll('.pg.on').forEach(function(el){ activePg = el.id.replace('pg-',''); });
   if (!activePg) return;
-  if (activePg === 'today') { if(R) { renderImpact(R); renderTop20Today(); } }
+  if (activePg === 'today') {
+    if(_todayEvRaw.length){
+      var _filt=_todayEvRaw.filter(function(row){
+        if((row['Impact Class']||'').trim()==='Expiry Risk') return false;
+        if(_ctrFil!=='All'&&getCountry(row['SKU']||'',row['Name']||'')!==_ctrFil) return false;
+        return true;
+      });
+      R=buildRFromEvents(_filt);
+    }
+    if(R){renderImpact(R); renderTop20Today();}
+  }
   else if (activePg === 'wtd') { renderHistory(); }
   else if (activePg === 'trend') { renderTrend(); }
   else if (activePg === 'biz') { renderOpsDaily(); renderOpsMonthly(); }
@@ -4656,10 +4674,14 @@ function boot(){
     setTimeout(function(){
       allEventsData=evData;
       var _now=new Date(); var _tY=_now.getFullYear(),_tM=_now.getMonth(),_tD=_now.getDate();
-      var todayEvData=evData.filter(function(row){
-        if((row['Impact Class']||'').trim()==='Expiry Risk') return false;
+      _todayEvRaw=evData.filter(function(row){
         var d=parseDate(row['Date']); if(!d) return false;
         return d.getFullYear()===_tY && d.getMonth()===_tM && d.getDate()===_tD;
+      });
+      var todayEvData=_todayEvRaw.filter(function(row){
+        if((row['Impact Class']||'').trim()==='Expiry Risk') return false;
+        if(_ctrFil!=='All'&&getCountry(row['SKU']||'',row['Name']||'')!==_ctrFil) return false;
+        return true;
       });
       R=buildRFromEvents(todayEvData);
       step('Processing inventory...',65);
