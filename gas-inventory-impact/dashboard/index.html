@@ -3779,6 +3779,16 @@ function renderYTD(){
       grandTotal+=rowTotal;
       tbl+='<td style="'+TD+';font-weight:700;color:var(--re)">'+fv(rowTotal)+'</td></tr>';
     });
+    // Other brands row
+    var otherTotal=0;
+    var otherByPeriod={};
+    periods.forEach(function(p){otherByPeriod[p.key]=(perBrand[p.key+'|Other']||0);otherTotal+=otherByPeriod[p.key];grandTotals[p.key]=(grandTotals[p.key]||0)+otherByPeriod[p.key];});
+    grandTotal+=otherTotal;
+    if(otherTotal>0){
+      tbl+='<tr><td style="'+TD+';font-weight:600;color:var(--tx);text-align:left;font-style:italic">Other</td>';
+      periods.forEach(function(p){var v=otherByPeriod[p.key]||0;tbl+='<td style="'+TD+';color:'+(v>0?'var(--re)':'var(--mu)')+'">'+( v>0?fv(v):'—')+'</td>';});
+      tbl+='<td style="'+TD+';font-weight:700;color:var(--re)">'+fv(otherTotal)+'</td></tr>';
+    }
     tbl+='<tr style="background:var(--sf)"><td style="'+TD+';font-weight:700;text-align:left">Total</td>';
     periods.forEach(function(p){tbl+='<td style="'+TD+';font-weight:700">'+fv(grandTotals[p.key]||0)+'</td>';});
     tbl+='<td style="'+TD+';font-weight:800;color:var(--re)">'+fv(grandTotal)+'</td></tr>';
