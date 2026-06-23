@@ -3784,21 +3784,15 @@ function renderYTD(){
     return;
   }
   // Lazy load
-  kpiEl.innerHTML='<div style="padding:24px;color:var(--mu);font-size:12px">Loading YTD data (May + June)&hellip;</div>';
+  kpiEl.innerHTML='<div style="padding:24px;color:var(--mu);font-size:12px">Loading YTD data&hellip;</div>';
   barEl.innerHTML=''; brandEl.innerHTML=''; facEl.innerHTML='';
-  // Fetch May 2026 events via dedicated endpoint, then merge with June (allEventsData)
-  fetchJ(PROXY+'?action=mayNIEvents').then(function(mayRows){
-    var may=Array.isArray(mayRows)?mayRows:[];
-    var jun=Array.isArray(allEventsData)?allEventsData:[];
-    ytdEventsData=may.concat(jun);
+  fetchJ(YTD_URL).then(function(rows){
+    ytdEventsData=Array.isArray(rows)?rows:[];
     _ytdLoaded=true;
     doRenderYTD(ytdEventsData);
   }).catch(function(e){
-    // Fallback: just use June data if May fetch fails
-    console.warn('YTD May fetch failed, using June only',e);
-    ytdEventsData=Array.isArray(allEventsData)?allEventsData.slice():[];
-    _ytdLoaded=true;
-    doRenderYTD(ytdEventsData);
+    kpiEl.innerHTML='<div style="padding:24px;color:var(--re);font-size:12px">Failed to load YTD data.<br>Action needed: paste updated Code.gs into Apps Script and redeploy.</div>';
+    console.error('YTD fetch error',e);
   });
 }
 // ── END YTD ──────────────────────────────────────────────────
