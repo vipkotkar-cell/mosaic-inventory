@@ -3659,10 +3659,33 @@ function renderYTD(){
   if(!kpiEl) return;
 
   function doRenderYTD(rows){
-    var YTD_START=new Date(2026,4,1); // May 1 2026
+    var YTD_START=new Date(2026,4,1);
     var n=function(v){return parseFloat(v)||0;};
     var MO_LABELS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     var BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs'];
+    var now=new Date(); var curY=now.getFullYear(), curM=now.getMonth();
+
+    // Build periods: past full months + current month split into 7-day weeks
+    var periods=[];
+    var pd=new Date(2026,4,1);
+    // Past complete months
+    while(pd.getFullYear()<curY||(pd.getFullYear()===curY&&pd.getMonth()<curM)){
+      var ms=new Date(pd.getFullYear(),pd.getMonth(),1);
+      var me=new Date(pd.getFullYear(),pd.getMonth()+1,0);
+      var ml=MO_LABELS[pd.getMonth()]+'\''+String(pd.getFullYear()).slice(2);
+      periods.push({key:ml,barLabel:ml,colLabel:ml+'<br><span style="font-size:8px;font-weight:400">('+pd.getDate()+' '+MO_LABELS[pd.getMonth()]+' – '+me.getDate()+' '+MO_LABELS[pd.getMonth()]+')</span>',startD:ms,endD:me,isWeek:false});
+      pd.setMonth(pd.getMonth()+1);
+    }
+    // Current month: 7-day calendar weeks (1-7, 8-14, 15-21, 22-28, 29+)
+    var wn=1;
+    for(var day=1;day<=now.getDate();day+=7){
+      var ws=new Date(curY,curM,day);
+      var we=new Date(curY,curM,Math.min(day+6,now.getDate()));
+      var wl='W'+wn+' ('+day+'-'+Math.min(day+6,new Date(curY,curM+1,0).getDate())+' '+MO_LABELS[curM]+')';
+      var wbl='W'+wn+'<br><span style="font-size:8px;font-weight:400">'+day+'–'+Math.min(day+6,new Date(curY,curM+1,0).getDate())+' '+MO_LABELS[curM]+'</span>';
+      periods.push({key:MO_LABELS[curM]+'W'+wn,barLabel:'W'+wn+'\n'+day+'-'+Math.min(day+6,new Date(curY,curM+1,0).getDate())+' '+MO_LABELS[curM],colLabel:wbl,startD:ws,endD:we,isWeek:true});
+      wn++;
+    }
 
     // Filter rows
     var data=rows.filter(function(r){
@@ -3671,30 +3694,38 @@ function renderYTD(){
       if(_ctrFil!=='All'&&getCountry(r['SKU']||r['sku']||'',r['Name']||r['name']||'')!==_ctrFil) return false;
       return true;
     });
+    console.log('[YTD] total rows after filter:',data.length,'country:',_ctrFil);
 
     // Accumulators
     var flTotal=0, recTotal=0, expTotal=0;
-    var moFL={}, moBrand={}, facAcc={};
+    var perFL={}, perBrand={}, facAcc={};
+    periods.forEach(function(p){perFL[p.key]=0;});
 
     data.forEach(function(r){
       var d=parseDate(r['Date']);
       var cv=n(r['COGSValue']);
       var ic=(r['Impact Class']||'').trim();
       var type=(r['Type']||'').trim();
-      var moKey=MO_LABELS[d.getMonth()]+' '+d.getFullYear();
       var brand=r['Brand']||getBrandFromSKU(r['SKU']||'');
-      var fac=r['Facility']||'';
-      var bt=r['BizType']||'';
+      var fac=r['Facility']||''; var bt=r['BizType']||'';
 
       if(type==='POS'){ recTotal+=cv; return; }
       if(ic==='Expiry Risk'){ expTotal+=cv; return; }
-      // Financial Loss
       flTotal+=cv;
-      if(!moFL[moKey]) moFL[moKey]=0;
-      moFL[moKey]+=cv;
-      var bk=moKey+'|'+(BRANDS.indexOf(brand)>=0?brand:'Other');
-      if(!moBrand[bk]) moBrand[bk]=0;
-      moBrand[bk]+=cv;
+
+      // Find period
+      var dn=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+      for(var pi=0;pi<periods.length;pi++){
+        var p=periods[pi];
+        var ps=new Date(p.startD.getFullYear(),p.startD.getMonth(),p.startD.getDate());
+        var pe=new Date(p.endD.getFullYear(),p.endD.getMonth(),p.endD.getDate());
+        if(dn>=ps&&dn<=pe){
+          perFL[p.key]=(perFL[p.key]||0)+cv;
+          var bk=p.key+'|'+(BRANDS.indexOf(brand)>=0?brand:'Other');
+          perBrand[bk]=(perBrand[bk]||0)+cv;
+          break;
+        }
+      }
       if(fac){
         if(!facAcc[fac]) facAcc[fac]={name:fac,bt:bt,fl:0};
         facAcc[fac].fl+=cv;
@@ -3713,53 +3744,45 @@ function renderYTD(){
       +kpiCard('Expiry Risk',expTotal,'var(--yw,#e6a817)')
       +kpiCard('Net Impact',netImpact,netImpact>0?'var(--re)':'var(--gn)');
 
-    // Ordered months
-    var moOrder=[];
-    var d=new Date(2026,4,1);
-    var now=new Date();
-    while(d<=now){
-      moOrder.push(MO_LABELS[d.getMonth()]+' '+d.getFullYear());
-      d.setMonth(d.getMonth()+1);
-    }
-
     // Bar chart
-    var maxFL=moOrder.reduce(function(m,mo){return Math.max(m,moFL[mo]||0);},1);
-    var barHtml='<div style="display:flex;align-items:flex-end;gap:10px;height:140px;padding-bottom:24px;position:relative">';
-    moOrder.forEach(function(mo){
-      var v=moFL[mo]||0;
-      var pct=Math.round(v/maxFL*100);
-      barHtml+='<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:40px">'
-        +'<div style="font-size:9px;font-weight:700;color:var(--re);margin-bottom:3px">'+fv(v)+'</div>'
-        +'<div style="width:100%;background:var(--re);border-radius:3px 3px 0 0;height:'+pct+'%;min-height:'+(v>0?'4':'0')+'px;opacity:0.85"></div>'
-        +'<div style="font-size:9px;color:var(--mu);margin-top:4px;white-space:nowrap">'+mo.replace(' 20',' \'')+'</div>'
+    var maxFL=periods.reduce(function(m,p){return Math.max(m,perFL[p.key]||0);},1);
+    var barHtml='<div style="display:flex;align-items:flex-end;gap:6px;height:160px;padding-bottom:36px;position:relative;overflow-x:auto">';
+    periods.forEach(function(p){
+      var v=perFL[p.key]||0;
+      var pct=Math.max(Math.round(v/maxFL*100),0);
+      var col=p.isWeek?'#1558a8':'var(--re)';
+      barHtml+='<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:52px">'
+        +'<div style="font-size:9px;font-weight:700;color:'+col+';margin-bottom:3px">'+fv(v)+'</div>'
+        +'<div style="width:100%;background:'+col+';border-radius:3px 3px 0 0;height:'+pct+'%;min-height:'+(v>0?'4':'0')+'px;opacity:0.85"></div>'
+        +'<div style="font-size:8px;color:var(--mu);margin-top:4px;text-align:center;white-space:pre-line">'+p.barLabel+'</div>'
         +'</div>';
     });
-    barHtml+='</div>';
+    barHtml+='</div><div style="font-size:9px;color:var(--mu);margin-top:4px">&#9632; <span style="color:var(--re)">Past months</span> &nbsp; &#9632; <span style="color:#1558a8">Current month weeks</span></div>';
     barEl.innerHTML=barHtml;
 
-    // Brand × Month table
-    var TH='padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
-    var TD='padding:7px 10px;border-bottom:1px solid var(--br);font-size:11px;font-family:var(--mono)';
-    var tbl='<table style="width:100%;border-collapse:collapse"><thead><tr>'
-      +'<th style="'+TH+';text-align:left">Brand</th>';
-    moOrder.forEach(function(mo){ tbl+='<th style="'+TH+';text-align:right">'+mo.replace(' 20',' \'')+'</th>'; });
-    tbl+='<th style="'+TH+';text-align:right">Total</th></tr></thead><tbody>';
-    var grandTotals={}; moOrder.forEach(function(mo){grandTotals[mo]=0;});
+    // Brand × Period table
+    var TH='padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);text-align:right;white-space:nowrap';
+    var TD='padding:6px 8px;border-bottom:1px solid var(--br);font-size:10px;font-family:var(--mono);text-align:right';
+    var tbl='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:500px"><thead><tr>'
+      +'<th style="'+TH+';text-align:left;min-width:110px">Brand</th>';
+    periods.forEach(function(p){tbl+='<th style="'+TH+'">'+p.colLabel+'</th>';});
+    tbl+='<th style="'+TH+'">Total</th></tr></thead><tbody>';
+    var grandTotals={}; periods.forEach(function(p){grandTotals[p.key]=0;});
     var grandTotal=0;
     BRANDS.forEach(function(br){
       var rowTotal=0;
-      tbl+='<tr><td style="'+TD+';font-weight:600;color:var(--tx)">'+br+'</td>';
-      moOrder.forEach(function(mo){
-        var v=moBrand[mo+'|'+br]||0; rowTotal+=v; grandTotals[mo]=(grandTotals[mo]||0)+v;
-        tbl+='<td style="'+TD+';text-align:right;color:'+(v>0?'var(--re)':'var(--mu)')+'">'+( v>0?fv(v):'—')+'</td>';
+      tbl+='<tr><td style="'+TD+';font-weight:600;color:var(--tx);text-align:left">'+br+'</td>';
+      periods.forEach(function(p){
+        var v=perBrand[p.key+'|'+br]||0; rowTotal+=v; grandTotals[p.key]=(grandTotals[p.key]||0)+v;
+        tbl+='<td style="'+TD+';color:'+(v>0?'var(--re)':'var(--mu)')+'">'+( v>0?fv(v):'—')+'</td>';
       });
       grandTotal+=rowTotal;
-      tbl+='<td style="'+TD+';text-align:right;font-weight:700;color:var(--re)">'+fv(rowTotal)+'</td></tr>';
+      tbl+='<td style="'+TD+';font-weight:700;color:var(--re)">'+fv(rowTotal)+'</td></tr>';
     });
-    tbl+='<tr style="background:var(--sf)"><td style="'+TD+';font-weight:700">Total</td>';
-    moOrder.forEach(function(mo){ tbl+='<td style="'+TD+';text-align:right;font-weight:700">'+fv(grandTotals[mo]||0)+'</td>'; });
-    tbl+='<td style="'+TD+';text-align:right;font-weight:800;color:var(--re)">'+fv(grandTotal)+'</td></tr>';
-    tbl+='</tbody></table>';
+    tbl+='<tr style="background:var(--sf)"><td style="'+TD+';font-weight:700;text-align:left">Total</td>';
+    periods.forEach(function(p){tbl+='<td style="'+TD+';font-weight:700">'+fv(grandTotals[p.key]||0)+'</td>';});
+    tbl+='<td style="'+TD+';font-weight:800;color:var(--re)">'+fv(grandTotal)+'</td></tr>';
+    tbl+='</tbody></table></div>';
     brandEl.innerHTML=tbl;
 
     // Top 5 facilities
