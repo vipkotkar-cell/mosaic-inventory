@@ -1721,6 +1721,71 @@ function fLabs(v){
   return abs>=100000?'Rs '+(abs/100000).toFixed(1)+'L':abs>=1000?'Rs '+(abs/1000).toFixed(0)+'K':'Rs '+abs.toLocaleString();
 }
 
+// ── REMARKS SUMMARY MATRIX — Remark × Brand × COGSValue ──
+// rows: pre-filtered array of NI_DailyTop5 records; elId: target element id
+function renderRemarksMatrix_(rows, elId){
+  var el=document.getElementById(elId||'rmk-monthly-matrix');
+  if(!el) return;
+  if(!rows||!rows.length){ el.innerHTML='<div style="padding:14px;font-size:11px;color:var(--mu)">No data</div>'; return; }
+
+  // Collect unique brands (sorted) and remarks (sorted by total COGS desc)
+  var BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs'];
+  var extraBrands=[];
+  rows.forEach(function(r){ var b=r['Brand']||''; if(b&&BRANDS.indexOf(b)<0&&extraBrands.indexOf(b)<0) extraBrands.push(b); });
+  var brands=BRANDS.concat(extraBrands.sort());
+
+  // Build pivot: {remark: {brand: cogsSum}}
+  var pivot={}, rmkTotals={};
+  rows.forEach(function(r){
+    var rmk=(r['Remark']||'').trim()||'(No Remark)';
+    var brand=r['Brand']||'Other';
+    var cogs=parseFloat(r['COGSValue'])||0;
+    if(!pivot[rmk]) pivot[rmk]={};
+    pivot[rmk][brand]=(pivot[rmk][brand]||0)+cogs;
+    rmkTotals[rmk]=(rmkTotals[rmk]||0)+cogs;
+  });
+
+  // Sort remarks by total COGS descending
+  var rmkList=Object.keys(pivot).sort(function(a,b){ return rmkTotals[b]-rmkTotals[a]; });
+
+  function fv(v){ var a=Math.abs(Math.round(v)); return a>=100000?'₹'+(a/100000).toFixed(1)+'L':a>=1000?'₹'+(a/1000).toFixed(0)+'K':a?'₹'+a:'—'; }
+
+  // Build table
+  var th='<thead><tr><th style="text-align:left;padding:7px 10px;background:var(--sf);font-size:10px;font-weight:700;color:var(--tx);border-bottom:2px solid var(--br);min-width:160px;position:sticky;left:0;z-index:1">Remark</th>';
+  brands.forEach(function(b){
+    th+='<th style="text-align:right;padding:7px 8px;background:var(--sf);font-size:10px;font-weight:700;color:var(--tx);border-bottom:2px solid var(--br);min-width:100px">'+b+'</th>';
+  });
+  th+='<th style="text-align:right;padding:7px 8px;background:var(--sf);font-size:10px;font-weight:700;color:var(--tl);border-bottom:2px solid var(--br);min-width:100px">Grand Total</th></tr></thead>';
+
+  var grandCols={}, grandTotal=0;
+  var tb='<tbody>';
+  rmkList.forEach(function(rmk, ri){
+    var bg=ri%2===0?'var(--wh)':'var(--sf)';
+    var rowTotal=0;
+    var cells='';
+    brands.forEach(function(b){
+      var v=pivot[rmk][b]||0;
+      rowTotal+=v;
+      grandCols[b]=(grandCols[b]||0)+v;
+      cells+='<td style="text-align:right;padding:6px 8px;font-size:10px;font-family:var(--mono);color:'+(v?'var(--tx)':'var(--mu)')+'">'+fv(v)+'</td>';
+    });
+    grandTotal+=rowTotal;
+    tb+='<tr style="background:'+bg+'">'
+      +'<td style="padding:6px 10px;font-size:10px;color:var(--tx);border-right:1px solid var(--br);position:sticky;left:0;background:'+bg+';max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+rmk+'">'+rmk+'</td>'
+      +cells
+      +'<td style="text-align:right;padding:6px 8px;font-size:10px;font-family:var(--mono);font-weight:700;color:var(--tl)">'+fv(rowTotal)+'</td>'
+      +'</tr>';
+  });
+
+  // Grand Total row
+  var gCells='';
+  brands.forEach(function(b){ gCells+='<td style="text-align:right;padding:7px 8px;font-size:10px;font-family:var(--mono);font-weight:700;color:var(--tx);border-top:2px solid var(--br)">'+fv(grandCols[b]||0)+'</td>'; });
+  tb+='<tr><td style="padding:7px 10px;font-size:10px;font-weight:700;color:var(--tx);border-top:2px solid var(--br);border-right:1px solid var(--br);position:sticky;left:0;background:var(--sf)">Grand Total</td>'+gCells+'<td style="text-align:right;padding:7px 8px;font-size:10px;font-family:var(--mono);font-weight:700;color:var(--tl);border-top:2px solid var(--br)">'+fv(grandTotal)+'</td></tr>';
+  tb+='</tbody>';
+
+  el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px">'+th+tb+'</table>';
+}
+
 // ── RENDER WTD & MTD — CEO View ──
 function renderHistory(){
   try { _renderHistoryInner(); } catch(e) {
@@ -4518,7 +4583,9 @@ function renderRmkMonthly(){
   }
   html+=_rmkBizTable(mtd,'rmk-monthly-biz-panel');
   html+='<div id="rmk-monthly-biz-panel"></div>';
+  html+='<div class="card" style="margin-top:14px"><div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Remarks Summary &mdash; COGS by Remark &times; Brand (MTD)</div><div id="rmk-monthly-matrix" style="overflow-x:auto;padding:4px 0"></div></div>';
   wrap.innerHTML=html;
+  renderRemarksMatrix_(mtd,'rmk-monthly-matrix');
 }
 
 // DOWNLOAD
