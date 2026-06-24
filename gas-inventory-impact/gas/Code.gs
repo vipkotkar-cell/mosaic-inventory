@@ -1755,32 +1755,28 @@ if (!sh) {
 Logger.log('saveRemarkToDailyTop5_: sheet not found — ' + sheetName);
 return false;
 }
-if (sh.getLastRow() <
-2)
-return false;
+if (sh.getLastRow() < 2) return false;
+// Use header-based column lookup to be safe against schema changes
+const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+const col = (name) => headers.indexOf(name) + 1;
+const cRemark = col('Remark'), cStatus = col('Status'), cAssigned = col('AssignedTo'), cDate = col('RemarkDate');
+if (cRemark < 1) { Logger.log('saveRemarkToDailyTop5_: Remark column not found'); return false; }
 const data = sh.getRange(2, 1, sh.getLastRow()-1, sh.getLastColumn()).getValues();
-for (let i = 0;
-i <
-data.length;
-i++) {
+for (let i = 0; i < data.length; i++) {
 if (String(data[i][0]).trim() === ehId) {
 const row = i + 2;
-// Schema: EH_ID(1) Date(2) Brand(3) SKU(4) Name(5) Batch(6) Facility(7) City(8) BizType(9) Event(10) Qty(11) COGSValue(12) Rank(13) Remark(14) Status(15) AssignedTo(16) RemarkDate(17)
-// Auto-capture the logged-in GAS user if assignedTo not explicitly passed
 let remarkBy = assignedTo || '';
-if (!remarkBy) {
-try {
-remarkBy = Session.getActiveUser().getEmail() || '';
-} catch(e) {}
-} sh.getRange(row, 14).setValue(remark);
-sh.getRange(row, 15).setValue('Completed');
-sh.getRange(row, 16).setValue(remarkBy);
-sh.getRange(row, 17).setValue(new Date());
-// stored as Date for proper filtering SpreadsheetApp.flush();
+if (!remarkBy) { try { remarkBy = Session.getActiveUser().getEmail() || ''; } catch(e) {} }
+sh.getRange(row, cRemark).setValue(remark);
+if (cStatus  > 0) sh.getRange(row, cStatus).setValue('Completed');
+if (cAssigned > 0) sh.getRange(row, cAssigned).setValue(remarkBy);
+if (cDate    > 0) sh.getRange(row, cDate).setValue(new Date());
+SpreadsheetApp.flush();
 Logger.log('saveRemarkToDailyTop5_: saved remark for ' + ehId + ' in ' + sheetName);
 return true;
 }
-} Logger.log('saveRemarkToDailyTop5_: EH_ID not found — ' + ehId + ' in ' + sheetName);
+}
+Logger.log('saveRemarkToDailyTop5_: EH_ID not found — ' + ehId + ' in ' + sheetName);
 return false;
 }
 
