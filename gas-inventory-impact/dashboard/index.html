@@ -642,18 +642,26 @@ tbody tr:hover td{background:var(--sf)}
 
     <!-- YTD Panel -->
     <div id="panel-ytd" style="display:none">
-      <div id="ytd-kpis" class="impact-hero" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"></div>
+      <div id="ytd-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
       <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Financial Loss COGS — Monthly Bar Chart</div>
-        <div id="ytd-bar-chart" style="padding:16px"></div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:700;color:var(--tx)">Financial Loss Trend (YTD)</span>
+        </div>
+        <div id="ytd-bar-chart" style="padding:16px 20px 8px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Top Brands by Financial Loss (YTD)</div>
+          <div id="ytd-brand-table"></div>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Top Facilities by Financial Loss (YTD)</div>
+          <div id="ytd-fac-table"></div>
+        </div>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand × Month Breakdown (Financial Loss COGS)</div>
-        <div id="ytd-brand-table" style="overflow-x:auto"></div>
-      </div>
-      <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 5 Facilities — YTD</div>
-        <div id="ytd-fac-table"></div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Key Insights</div>
+        <div id="ytd-insights" style="display:flex;flex-wrap:wrap;gap:10px;padding:14px"></div>
       </div>
     </div>
   </div>
@@ -3664,35 +3672,24 @@ function renderYTD(){
   var barEl=document.getElementById('ytd-bar-chart');
   var brandEl=document.getElementById('ytd-brand-table');
   var facEl=document.getElementById('ytd-fac-table');
+  var insEl=document.getElementById('ytd-insights');
   if(!kpiEl) return;
 
   function doRenderYTD(rows){
     var YTD_START=new Date(2026,4,1);
     var n=function(v){return parseFloat(v)||0;};
-    var MO_LABELS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     var BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs'];
-    var now=new Date(); var curY=now.getFullYear(), curM=now.getMonth();
+    var now=new Date(); var curY=now.getFullYear(), curM=now.getMonth(), curD=now.getDate();
 
-    // Build periods: past full months + current month split into 7-day weeks
-    var periods=[];
+    // Build monthly periods May'26 → current month
+    var months=[];
     var pd=new Date(2026,4,1);
-    // Past complete months
-    while(pd.getFullYear()<curY||(pd.getFullYear()===curY&&pd.getMonth()<curM)){
-      var ms=new Date(pd.getFullYear(),pd.getMonth(),1);
-      var me=new Date(pd.getFullYear(),pd.getMonth()+1,0);
-      var ml=MO_LABELS[pd.getMonth()]+'\''+String(pd.getFullYear()).slice(2);
-      periods.push({key:ml,barLabel:ml,colLabel:ml+'<br><span style="font-size:8px;font-weight:400">('+pd.getDate()+' '+MO_LABELS[pd.getMonth()]+' – '+me.getDate()+' '+MO_LABELS[pd.getMonth()]+')</span>',startD:ms,endD:me,isWeek:false});
-      pd.setMonth(pd.getMonth()+1);
-    }
-    // Current month: 7-day calendar weeks (1-7, 8-14, 15-21, 22-28, 29+)
-    var wn=1;
-    for(var day=1;day<=now.getDate();day+=7){
-      var ws=new Date(curY,curM,day);
-      var we=new Date(curY,curM,Math.min(day+6,now.getDate()));
-      var wl='W'+wn+' ('+day+'-'+Math.min(day+6,new Date(curY,curM+1,0).getDate())+' '+MO_LABELS[curM]+')';
-      var wbl='W'+wn+'<br><span style="font-size:8px;font-weight:400">'+day+'–'+Math.min(day+6,new Date(curY,curM+1,0).getDate())+' '+MO_LABELS[curM]+'</span>';
-      periods.push({key:MO_LABELS[curM]+'W'+wn,barLabel:'W'+wn+'\n'+day+'-'+Math.min(day+6,new Date(curY,curM+1,0).getDate())+' '+MO_LABELS[curM],colLabel:wbl,startD:ws,endD:we,isWeek:true});
-      wn++;
+    while(pd.getFullYear()<curY||(pd.getFullYear()===curY&&pd.getMonth()<=curM)){
+      months.push({key:MO[pd.getMonth()]+"'"+String(pd.getFullYear()).slice(2),
+        label:MO[pd.getMonth()]+" '"+String(pd.getFullYear()).slice(2),
+        y:pd.getFullYear(),m:pd.getMonth(),fl:0,rec:0,exp:0});
+      pd=new Date(pd.getFullYear(),pd.getMonth()+1,1);
     }
 
     // Filter rows
@@ -3702,12 +3699,15 @@ function renderYTD(){
       if(_ctrFil!=='All'&&getCountry(r['SKU']||r['sku']||'',r['Name']||r['name']||'')!==_ctrFil) return false;
       return true;
     });
-    console.log('[YTD] total rows after filter:',data.length,'country:',_ctrFil);
+
+    // Week-over-week windows (last 7 days vs prior 7 days)
+    var today=new Date(curY,curM,curD);
+    var w1s=new Date(curY,curM,curD-6), w2s=new Date(curY,curM,curD-13), w2e=new Date(curY,curM,curD-7);
+    var twFL=0,twRec=0,twExp=0, lwFL=0,lwRec=0,lwExp=0;
 
     // Accumulators
-    var flTotal=0, recTotal=0, expTotal=0;
-    var perFL={}, perBrand={}, facAcc={};
-    periods.forEach(function(p){perFL[p.key]=0;});
+    var flTotal=0,recTotal=0,expTotal=0;
+    var brandTotals={}, facAcc={};
 
     data.forEach(function(r){
       var d=parseDate(r['Date']);
@@ -3715,109 +3715,191 @@ function renderYTD(){
       var ic=(r['Impact Class']||'').trim();
       var type=(r['Type']||'').trim();
       var brand=r['Brand']||getBrandFromSKU(r['SKU']||'');
-      var fac=r['Facility']||''; var bt=r['BizType']||'';
-
-      if(type==='POS'){ recTotal+=cv; return; }
-      if(ic==='Expiry Risk'){ expTotal+=cv; return; }
-      flTotal+=cv;
-
-      // Find period
+      var fac=r['Facility']||'', bt=r['BizType']||'';
       var dn=new Date(d.getFullYear(),d.getMonth(),d.getDate());
-      for(var pi=0;pi<periods.length;pi++){
-        var p=periods[pi];
-        var ps=new Date(p.startD.getFullYear(),p.startD.getMonth(),p.startD.getDate());
-        var pe=new Date(p.endD.getFullYear(),p.endD.getMonth(),p.endD.getDate());
-        if(dn>=ps&&dn<=pe){
-          perFL[p.key]=(perFL[p.key]||0)+cv;
-          var bk=p.key+'|'+(BRANDS.indexOf(brand)>=0?brand:'Other');
-          perBrand[bk]=(perBrand[bk]||0)+cv;
-          break;
-        }
+      var mo=null;
+      for(var mi=0;mi<months.length;mi++){if(months[mi].y===d.getFullYear()&&months[mi].m===d.getMonth()){mo=months[mi];break;}}
+
+      if(type==='POS'){
+        recTotal+=cv; if(mo) mo.rec+=cv;
+        if(dn>=w1s&&dn<=today) twRec+=cv;
+        if(dn>=w2s&&dn<=w2e) lwRec+=cv;
+        return;
       }
-      if(fac){
-        if(!facAcc[fac]) facAcc[fac]={name:fac,bt:bt,fl:0};
-        facAcc[fac].fl+=cv;
+      if(ic==='Expiry Risk'){
+        expTotal+=cv; if(mo) mo.exp+=cv;
+        if(dn>=w1s&&dn<=today) twExp+=cv;
+        if(dn>=w2s&&dn<=w2e) lwExp+=cv;
+        return;
       }
+      flTotal+=cv; if(mo) mo.fl+=cv;
+      brandTotals[brand]=(brandTotals[brand]||0)+cv;
+      if(fac){if(!facAcc[fac])facAcc[fac]={name:fac,bt:bt,fl:0}; facAcc[fac].fl+=cv;}
+      if(dn>=w1s&&dn<=today) twFL+=cv;
+      if(dn>=w2s&&dn<=w2e) lwFL+=cv;
     });
 
-    var netImpact=flTotal-recTotal;
-
-    // KPI cards
-    function kpiCard(label,val,col){
-      return '<div class="kpi-card"><div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;margin-bottom:6px">'+label+'</div>'
-        +'<div style="font-size:22px;font-weight:800;color:'+col+'">'+fv(val)+'</div></div>';
+    var netTotal=flTotal-recTotal;
+    function wowPct(tw,lw){return lw>0?((tw-lw)/lw*100):null;}
+    function pctTag(val,tw,lw){
+      var p=wowPct(tw,lw); if(p===null) return '';
+      var up=p>=0, col=up?'#DC2626':'#059669', arr=up?'&#8593;':'&#8595;';
+      return '<div style="font-size:11px;color:'+col+';font-weight:600;margin-top:3px">'+arr+' '+Math.abs(p).toFixed(1)+'% vs Last Week</div>';
     }
-    kpiEl.innerHTML=kpiCard('Financial Loss',flTotal,'var(--re)')
-      +kpiCard('Recovery',recTotal,'var(--gn)')
-      +kpiCard('Expiry Risk',expTotal,'var(--yw,#e6a817)')
-      +kpiCard('Net Impact',netImpact,netImpact>0?'var(--re)':'var(--gn)');
 
-    // Bar chart
-    var maxFL=periods.reduce(function(m,p){return Math.max(m,perFL[p.key]||0);},1);
-    var barHtml='<div style="display:flex;align-items:flex-end;gap:6px;height:160px;padding-bottom:36px;position:relative;overflow-x:auto">';
-    periods.forEach(function(p){
-      var v=perFL[p.key]||0;
-      var pct=Math.max(Math.round(v/maxFL*100),0);
-      var col=p.isWeek?'#1558a8':'var(--re)';
-      barHtml+='<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:52px">'
-        +'<div style="font-size:9px;font-weight:700;color:'+col+';margin-bottom:3px">'+fv(v)+'</div>'
-        +'<div style="width:100%;background:'+col+';border-radius:3px 3px 0 0;height:'+pct+'%;min-height:'+(v>0?'4':'0')+'px;opacity:0.85"></div>'
-        +'<div style="font-size:8px;color:var(--mu);margin-top:4px;text-align:center;white-space:pre-line">'+p.barLabel+'</div>'
+    // ── KPI Cards ──
+    function kpiIcon(t){
+      var bg={'fl':'#FEE2E2','rec':'#D1FAE5','exp':'#FEF3C7','net':'#FEE2E2'}[t]||'#F3F4F6';
+      var icons={
+        fl:'<polyline points="7,20 12,13 16,16 21,9" stroke="#DC2626" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="18,9 21,9 21,12" stroke="#DC2626" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
+        rec:'<path d="M8 14 A6 6 0 0 1 20 14" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round"/><polyline points="17,11 20,14 17,17" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+        exp:'<path d="M14 8 L22 22 H6 Z" stroke="#D97706" stroke-width="1.5" fill="none" stroke-linejoin="round"/><line x1="14" y1="13" x2="14" y2="18" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="20.5" r="1" fill="#D97706"/>',
+        net:'<rect x="6" y="18" width="4" height="5" fill="#DC2626"/><rect x="12" y="14" width="4" height="9" fill="#DC2626"/><rect x="18" y="10" width="4" height="13" fill="#DC2626"/>'
+      };
+      return '<svg width="34" height="34" viewBox="0 0 28 28"><circle cx="14" cy="14" r="14" fill="'+bg+'"/>'+icons[t]+'</svg>';
+    }
+    function kpiCard(label,val,col,iconT,tw,lw){
+      return '<div style="background:var(--bg);border:1px solid var(--br);border-radius:10px;padding:16px 18px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
+        +'<div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px">'+label+'</div>'
+        +'<div>'+kpiIcon(iconT)+'</div></div>'
+        +'<div style="font-size:26px;font-weight:800;color:'+col+'">'+fv(val)+'</div>'
+        +pctTag(val,tw,lw)
+        +'<div style="font-size:10px;color:var(--mu);margin-top:6px">YTD (May\'26 onwards)</div>'
+        +'</div>';
+    }
+    kpiEl.innerHTML=
+      kpiCard('Financial Loss',flTotal,'#DC2626','fl',twFL,lwFL)+
+      kpiCard('Recovery',recTotal,'#059669','rec',twRec,lwRec)+
+      kpiCard('Expiry Risk',expTotal,'#D97706','exp',twExp,lwExp)+
+      kpiCard('Net Impact',netTotal,'#DC2626','net',twFL-twRec,lwFL-lwRec);
+
+    // ── SVG Line Chart ──
+    var W=760,H=220,PT=30,PR=30,PB=44,PL=58;
+    var CW=W-PL-PR, CH=H-PT-PB;
+    var nM=months.length;
+    var maxFL=Math.max.apply(null,months.map(function(m){return m.fl;}))||1;
+    var yTop=Math.ceil(maxFL/1e7)*1e7;
+    function xp(i){return PL+(nM<2?CW/2:i*CW/(nM-1));}
+    function yp(v){return PT+CH-(v/yTop*CH);}
+
+    var grid='',yax='';
+    for(var gi=0;gi<=4;gi++){
+      var yv=yTop*gi/4, yy=yp(yv);
+      grid+='<line x1="'+PL+'" y1="'+yy.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+yy.toFixed(1)+'" stroke="#E5E7EB" stroke-width="1"/>';
+      var lbl=yv>=1e7?(yv/1e7).toFixed(0):(yv/1e5).toFixed(0)+'L';
+      yax+='<text x="'+(PL-6)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" font-size="9" fill="#9CA3AF">'+lbl+'</text>';
+    }
+    yax+='<text x="12" y="'+(PT+CH/2)+'" text-anchor="middle" font-size="9" fill="#9CA3AF" transform="rotate(-90,12,'+(PT+CH/2)+')">&#8377; in Cr</text>';
+
+    function mkPath(arr){
+      return arr.map(function(v,i){return (i?'L':'M')+xp(i).toFixed(1)+','+yp(v).toFixed(1);}).join(' ');
+    }
+    function mkDots(arr,col,fmt){
+      return arr.map(function(v,i){
+        var x=xp(i),y=yp(v);
+        var lbl=fmt(v);
+        var ly=y-10; if(ly<PT+2) ly=y+16;
+        return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" fill="'+col+'" stroke="white" stroke-width="1.5"/>'
+          +'<text x="'+x.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="'+col+'">'+lbl+'</text>';
+      }).join('');
+    }
+    var flVals=months.map(function(m){return m.fl;}),
+        recVals=months.map(function(m){return m.rec;}),
+        netVals=months.map(function(m){return m.fl-m.rec;});
+    function fmtCr(v){return v>=1e7?'&#8377;'+(v/1e7).toFixed(2)+'Cr':'&#8377;'+(v/1e5).toFixed(2)+'L';}
+
+    var xLabels=months.map(function(mo,i){
+      return '<text x="'+xp(i).toFixed(1)+'" y="'+(H-PB+18)+'" text-anchor="middle" font-size="10" fill="#6B7280">'+mo.label+'</text>';
+    }).join('');
+
+    var legend='<div style="display:flex;gap:20px;justify-content:center;font-size:11px;color:var(--mu);margin-bottom:8px">'
+      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#DC2626" stroke-width="2.5"/></svg>Financial Loss (Cr)</span>'
+      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#059669" stroke-width="2.5"/></svg>Recovery (L)</span>'
+      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#1D4ED8" stroke-width="2.5"/></svg>Net Impact (Cr)</span>'
+      +'</div>';
+
+    barEl.innerHTML=legend+'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;overflow:visible">'
+      +grid+yax
+      +'<path d="'+mkPath(flVals)+'" stroke="#DC2626" stroke-width="2.5" fill="none"/>'
+      +'<path d="'+mkPath(recVals)+'" stroke="#059669" stroke-width="2.5" fill="none"/>'
+      +'<path d="'+mkPath(netVals)+'" stroke="#1D4ED8" stroke-width="2.5" fill="none"/>'
+      +mkDots(flVals,'#DC2626',fmtCr)+mkDots(recVals,'#059669',fmtCr)+mkDots(netVals,'#1D4ED8',fmtCr)
+      +xLabels
+      +'</svg>';
+
+    // ── Top Brands Horizontal Bar ──
+    var brandList=BRANDS.map(function(br){return{name:br,val:brandTotals[br]||0};});
+    var othVal=0; Object.keys(brandTotals).forEach(function(br){if(BRANDS.indexOf(br)<0) othVal+=brandTotals[br];});
+    if(othVal>0) brandList.push({name:'Others',val:othVal});
+    brandList.sort(function(a,b){return b.val-a.val;});
+    var maxB=brandList[0]?brandList[0].val:1;
+    var bHtml='<div style="padding:14px 16px">';
+    brandList.forEach(function(b){
+      if(!b.val) return;
+      var pct=Math.round(b.val/flTotal*100), bw=Math.round(b.val/maxB*100);
+      bHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+        +'<div style="width:88px;font-size:11px;color:var(--tx);text-align:right;flex-shrink:0">'+b.name+'</div>'
+        +'<div style="flex:1;background:#F3F4F6;border-radius:3px;height:18px">'
+        +'<div style="width:'+bw+'%;background:#DC2626;height:100%;border-radius:3px;transition:width .3s"></div></div>'
+        +'<div style="width:105px;font-size:11px;color:var(--tx);font-weight:600;flex-shrink:0">'+fv(b.val)+' ('+pct+'%)</div>'
         +'</div>';
     });
-    barHtml+='</div><div style="font-size:9px;color:var(--mu);margin-top:4px">&#9632; <span style="color:var(--re)">Past months</span> &nbsp; &#9632; <span style="color:#1558a8">Current month weeks</span></div>';
-    barEl.innerHTML=barHtml;
+    // x-axis ticks
+    bHtml+='<div style="display:flex;margin-left:96px;margin-right:113px;justify-content:space-between;font-size:9px;color:var(--mu);margin-top:2px">';
+    for(var bi=0;bi<=3;bi++){var tv=maxB*bi/3; bHtml+='<span>'+(tv===0?'&#8377;0':tv>=1e7?'&#8377;'+(tv/1e7).toFixed(0)+'Cr':'&#8377;'+(tv/1e5).toFixed(0)+'L')+'</span>';}
+    bHtml+='</div>';
+    bHtml+='<div style="text-align:center;margin-top:14px"><button style="border:1px solid var(--br);background:var(--bg);color:var(--tx);font-size:11px;padding:7px 18px;border-radius:6px;cursor:pointer;font-weight:500">View All Brands &#8594;</button></div>';
+    bHtml+='</div>';
+    brandEl.innerHTML=bHtml;
 
-    // Brand × Period table
-    var TH='padding:6px 8px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);text-align:right;white-space:nowrap';
-    var TD='padding:6px 8px;border-bottom:1px solid var(--br);font-size:10px;font-family:var(--mono);text-align:right';
-    var tbl='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:500px"><thead><tr>'
-      +'<th style="'+TH+';text-align:left;min-width:110px">Brand</th>';
-    periods.forEach(function(p){tbl+='<th style="'+TH+'">'+p.colLabel+'</th>';});
-    tbl+='<th style="'+TH+'">Total</th></tr></thead><tbody>';
-    var grandTotals={}; periods.forEach(function(p){grandTotals[p.key]=0;});
-    var grandTotal=0;
-    BRANDS.forEach(function(br){
-      var rowTotal=0;
-      tbl+='<tr><td style="'+TD+';font-weight:600;color:var(--tx);text-align:left">'+br+'</td>';
-      periods.forEach(function(p){
-        var v=perBrand[p.key+'|'+br]||0; rowTotal+=v; grandTotals[p.key]=(grandTotals[p.key]||0)+v;
-        tbl+='<td style="'+TD+';color:'+(v>0?'var(--re)':'var(--mu)')+'">'+( v>0?fv(v):'—')+'</td>';
-      });
-      grandTotal+=rowTotal;
-      tbl+='<td style="'+TD+';font-weight:700;color:var(--re)">'+fv(rowTotal)+'</td></tr>';
-    });
-    // Other brands row
-    var otherTotal=0;
-    var otherByPeriod={};
-    periods.forEach(function(p){otherByPeriod[p.key]=(perBrand[p.key+'|Other']||0);otherTotal+=otherByPeriod[p.key];grandTotals[p.key]=(grandTotals[p.key]||0)+otherByPeriod[p.key];});
-    grandTotal+=otherTotal;
-    if(otherTotal>0){
-      tbl+='<tr><td style="'+TD+';font-weight:600;color:var(--tx);text-align:left;font-style:italic">Other</td>';
-      periods.forEach(function(p){var v=otherByPeriod[p.key]||0;tbl+='<td style="'+TD+';color:'+(v>0?'var(--re)':'var(--mu)')+'">'+( v>0?fv(v):'—')+'</td>';});
-      tbl+='<td style="'+TD+';font-weight:700;color:var(--re)">'+fv(otherTotal)+'</td></tr>';
-    }
-    tbl+='<tr style="background:var(--sf)"><td style="'+TD+';font-weight:700;text-align:left">Total</td>';
-    periods.forEach(function(p){tbl+='<td style="'+TD+';font-weight:700">'+fv(grandTotals[p.key]||0)+'</td>';});
-    tbl+='<td style="'+TD+';font-weight:800;color:var(--re)">'+fv(grandTotal)+'</td></tr>';
-    tbl+='</tbody></table></div>';
-    brandEl.innerHTML=tbl;
-
-    // Top 5 facilities
+    // ── Top Facilities Horizontal Bar ──
     var facSorted=Object.values(facAcc).sort(function(a,b){return b.fl-a.fl;}).slice(0,5);
-    var ft='<table style="width:100%;border-collapse:collapse"><thead><tr>'
-      +'<th style="'+TH+';text-align:left">Facility</th>'
-      +'<th style="'+TH+';text-align:left">BizType</th>'
-      +'<th style="'+TH+';text-align:right">Financial Loss COGS</th>'
-      +'</tr></thead><tbody>';
-    facSorted.forEach(function(f,i){
-      ft+='<tr><td style="'+TD+'">'+f.name+'</td>'
-        +'<td style="'+TD+';color:var(--mu)">'+f.bt+'</td>'
-        +'<td style="'+TD+';text-align:right;font-weight:700;color:var(--re)">'+fv(f.fl)+'</td></tr>';
+    var maxF=facSorted[0]?facSorted[0].fl:1;
+    var fHtml='<div style="padding:14px 16px">';
+    facSorted.forEach(function(f){
+      var fw=Math.round(f.fl/maxF*100);
+      fHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+        +'<div style="width:100px;font-size:11px;color:var(--tx);text-align:right;flex-shrink:0">'+f.name+'</div>'
+        +'<div style="flex:1;background:#F3F4F6;border-radius:3px;height:18px">'
+        +'<div style="width:'+fw+'%;background:#1D4ED8;height:100%;border-radius:3px;transition:width .3s"></div></div>'
+        +'<div style="width:70px;font-size:11px;color:var(--tx);font-weight:600;flex-shrink:0">'+fv(f.fl)+'</div>'
+        +'</div>';
     });
-    if(!facSorted.length) ft+='<tr><td colspan="3" style="padding:24px;text-align:center;color:var(--mu);font-size:11px">No data</td></tr>';
-    ft+='</tbody></table>';
-    facEl.innerHTML=ft;
+    if(!facSorted.length) fHtml+='<div style="padding:24px;text-align:center;color:var(--mu);font-size:11px">No data</div>';
+    // x-axis ticks
+    if(facSorted.length){
+      fHtml+='<div style="display:flex;margin-left:108px;margin-right:78px;justify-content:space-between;font-size:9px;color:var(--mu);margin-top:2px">';
+      for(var fi=0;fi<=3;fi++){var fv2=maxF*fi/3; fHtml+='<span>'+(fv2===0?'&#8377;0':fv2>=1e7?'&#8377;'+(fv2/1e7).toFixed(0)+'Cr':'&#8377;'+(fv2/1e5).toFixed(0)+'L')+'</span>';}
+      fHtml+='</div>';
+    }
+    fHtml+='<div style="text-align:center;margin-top:14px"><button style="border:1px solid var(--br);background:var(--bg);color:var(--tx);font-size:11px;padding:7px 18px;border-radius:6px;cursor:pointer;font-weight:500">View All Facilities &#8594;</button></div>';
+    fHtml+='</div>';
+    facEl.innerHTML=fHtml;
+
+    // ── Key Insights ──
+    if(insEl){
+      var topBr=brandList[0], topFac=facSorted[0];
+      function insCard(bg,svgPaths,col,txt){
+        return '<div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:200px;background:var(--bg);border:1px solid var(--br);border-radius:8px;padding:14px 12px">'
+          +'<div style="flex-shrink:0"><svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="'+bg+'"/>'+svgPaths+'</svg></div>'
+          +'<div style="font-size:11px;color:var(--mu);line-height:1.55">'+txt+'</div>'
+          +'</div>';
+      }
+      var flp=wowPct(twFL,lwFL), recp=wowPct(twRec,lwRec);
+      var ins='';
+      ins+=insCard('#FEE2E2','<polyline points="8,22 13,15 17,18 22,10" stroke="#DC2626" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>','#DC2626',
+        flp!==null?'Financial loss <strong>'+(flp>=0?'increased':'decreased')+' '+Math.abs(flp).toFixed(1)+'%</strong> compared to last week.':'Financial Loss YTD: <strong>'+fv(flTotal)+'</strong>.');
+      ins+=insCard('#D1FAE5','<path d="M9 16 A7 7 0 0 1 23 16" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round"/><polyline points="20,13 23,16 20,19" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>','#059669',
+        recp!==null?'Recovery <strong>'+(recp>=0?'improved':'declined')+' by '+fv(twRec)+'</strong> compared to last week.':'Recovery YTD: <strong>'+fv(recTotal)+'</strong>.');
+      if(topBr&&topBr.val>0) ins+=insCard('#EDE9FE','<rect x="7" y="19" width="4" height="6" fill="#7C3AED"/><rect x="13" y="15" width="4" height="10" fill="#7C3AED"/><rect x="19" y="11" width="4" height="14" fill="#7C3AED"/>','#7C3AED',
+        '<strong>'+topBr.name+'</strong> contributed <strong>'+Math.round(topBr.val/flTotal*100)+'%</strong> of total financial loss.');
+      if(topFac) ins+=insCard('#DBEAFE','<rect x="8" y="13" width="16" height="11" rx="1" stroke="#1D4ED8" stroke-width="1.5" fill="none"/><rect x="11" y="17" width="3" height="7" fill="#1D4ED8"/><rect x="18" y="17" width="3" height="7" fill="#1D4ED8"/><line x1="8" y1="13" x2="16" y2="8" stroke="#1D4ED8" stroke-width="1.5" stroke-linecap="round"/><line x1="24" y1="13" x2="16" y2="8" stroke="#1D4ED8" stroke-width="1.5" stroke-linecap="round"/>','#1D4ED8',
+        '<strong>'+topFac.name+'</strong> recorded the highest financial loss at <strong>'+fv(topFac.fl)+'</strong>.');
+      ins+=insCard('#FEF3C7','<path d="M16 9 L23 22 H9 Z" stroke="#D97706" stroke-width="1.5" fill="none" stroke-linejoin="round"/><line x1="16" y1="14" x2="16" y2="18" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="20.5" r="1" fill="#D97706"/>','#D97706',
+        'Expiry Risk YTD: <strong>'+fv(expTotal)+'</strong>. Net financial impact: <strong>'+fv(netTotal)+'</strong>.');
+      insEl.innerHTML=ins;
+    }
   }
 
   if(_ytdLoaded){
@@ -3825,14 +3907,14 @@ function renderYTD(){
     return;
   }
   // Lazy load
-  kpiEl.innerHTML='<div style="padding:24px;color:var(--mu);font-size:12px">Loading YTD data&hellip;</div>';
-  barEl.innerHTML=''; brandEl.innerHTML=''; facEl.innerHTML='';
+  kpiEl.innerHTML='<div style="grid-column:1/-1;padding:24px;color:var(--mu);font-size:12px">Loading YTD data&hellip;</div>';
+  barEl.innerHTML=''; brandEl.innerHTML=''; facEl.innerHTML=''; if(insEl) insEl.innerHTML='';
   fetchJ(YTD_URL).then(function(rows){
     ytdEventsData=Array.isArray(rows)?rows:[];
     _ytdLoaded=true;
     doRenderYTD(ytdEventsData);
   }).catch(function(e){
-    kpiEl.innerHTML='<div style="padding:24px;color:var(--re);font-size:12px">Failed to load YTD data.<br>Action needed: paste updated Code.gs into Apps Script and redeploy.</div>';
+    kpiEl.innerHTML='<div style="grid-column:1/-1;padding:24px;color:var(--re);font-size:12px">Failed to load YTD data.<br>Action needed: paste updated Code.gs into Apps Script and redeploy.</div>';
     console.error('YTD fetch error',e);
   });
 }
