@@ -1746,8 +1746,16 @@ function bulkSaveRemarksToNIEvents_(remarksArr) {
   return { matched: matched, total: remarksArr.length };
 }
 
-// Repair Rank column in NI_DailyTop5 after bulk-upload overwrote it.
-// Re-derives rank by sorting each Date+Brand group by COGSValue desc.
+// Repair NI_DailyTop5 after bulk-upload wrote to wrong columns (off-by-one on Impact Class).
+// What happened per affected row:
+//   col Rank      ← remark text  (should be numeric rank)
+//   col Remark    ← "Completed"  (should be remark text)
+//   col Status    ← "Bulk Upload"(should be "Completed")
+//   col AssignedTo← a date       (should be "Bulk Upload")
+// This function:
+//   1. Detects affected rows (Rank cell is non-numeric text)
+//   2. Rescues remark text from Rank cell → writes to Remark, fixes Status/AssignedTo/RemarkDate
+//   3. Recomputes correct numeric Rank for ALL rows by sorting each Date+Brand group by COGSValue desc
 function repairDailyTop5Rank() {
   const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
   const sh = ss.getSheetByName('NI_DailyTop5');
@@ -1755,17 +1763,38 @@ function repairDailyTop5Rank() {
 
   const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
   const ci = {
-    date:  headers.indexOf('Date'),
-    brand: headers.indexOf('Brand'),
-    cogs:  headers.indexOf('COGSValue'),
-    rank:  headers.indexOf('Rank'),
+    date:       headers.indexOf('Date'),
+    brand:      headers.indexOf('Brand'),
+    cogs:       headers.indexOf('COGSValue'),
+    rank:       headers.indexOf('Rank'),
+    remark:     headers.indexOf('Remark'),
+    status:     headers.indexOf('Status'),
+    assignedTo: headers.indexOf('AssignedTo'),
+    remarkDate: headers.indexOf('RemarkDate'),
   };
-  if (ci.rank < 0) { Logger.log('repairDailyTop5Rank: Rank column not found'); return; }
+  if (ci.rank < 0 || ci.remark < 0) { Logger.log('repairDailyTop5Rank: required columns not found'); return; }
 
   const lastRow = sh.getLastRow();
   const data = sh.getRange(2, 1, lastRow - 1, headers.length).getValues();
 
-  // Group rows by Date+Brand
+  // Step 1: Fix rows where Rank contains remark text (non-numeric)
+  let remarksRestored = 0;
+  data.forEach((row, i) => {
+    const rankVal = String(row[ci.rank] || '').trim();
+    const isNumeric = rankVal === '' || !isNaN(Number(rankVal));
+    if (!isNumeric) {
+      // Rank cell holds the remark text — rescue it
+      const savedRemark = rankVal;
+      row[ci.remark]     = savedRemark;        // restore remark text
+      if (ci.status     >= 0) row[ci.status]     = 'Completed';
+      if (ci.assignedTo >= 0) row[ci.assignedTo] = 'Bulk Upload';
+      if (ci.remarkDate >= 0) row[ci.remarkDate] = new Date();
+      row[ci.rank] = '';                        // clear rank; will be set in step 2
+      remarksRestored++;
+    }
+  });
+
+  // Step 2: Recompute correct Rank for all rows (sort Date+Brand group by COGSValue desc)
   const groups = {};
   data.forEach((row, i) => {
     const date  = String(row[ci.date]).substring(0, 10);
@@ -1774,24 +1803,20 @@ function repairDailyTop5Rank() {
     if (!groups[key]) groups[key] = [];
     groups[key].push({ i, cogs: parseFloat(row[ci.cogs]) || 0 });
   });
-
-  // Sort each group by COGSValue desc, assign rank 1..N
-  let fixed = 0;
   Object.values(groups).forEach(group => {
     group.sort((a, b) => b.cogs - a.cogs);
-    group.forEach((item, rank0) => {
-      data[item.i][ci.rank] = rank0 + 1;
-      fixed++;
-    });
+    group.forEach((item, rank0) => { data[item.i][ci.rank] = rank0 + 1; });
   });
 
-  // Write only the Rank column back (column ci.rank+1, 1-indexed)
-  const rankColNum = ci.rank + 1;
-  const rankValues = data.map(row => [row[ci.rank]]);
-  sh.getRange(2, rankColNum, lastRow - 1, 1).setValues(rankValues);
+  // Write all changed columns back in one batch
+  sh.getRange(2, 1, lastRow - 1, headers.length).setValues(data);
   SpreadsheetApp.flush();
-  Logger.log('repairDailyTop5Rank: fixed ' + fixed + ' rows across ' + Object.keys(groups).length + ' Date+Brand groups');
-  SpreadsheetApp.getUi().alert('Done! Rank repaired for ' + fixed + ' rows across ' + Object.keys(groups).length + ' Date+Brand groups.');
+
+  const msg = 'Repair complete!\n'
+    + '• Remarks restored: ' + remarksRestored + ' rows\n'
+    + '• Rank recomputed: all ' + data.length + ' rows across ' + Object.keys(groups).length + ' Date+Brand groups';
+  Logger.log(msg);
+  SpreadsheetApp.getUi().alert(msg);
 }
 
 // Save remark directly into NI_DailyTop5 row by EH_ID
