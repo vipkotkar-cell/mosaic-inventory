@@ -1746,6 +1746,54 @@ function bulkSaveRemarksToNIEvents_(remarksArr) {
   return { matched: matched, total: remarksArr.length };
 }
 
+// Repair Rank column in NI_DailyTop5 after bulk-upload overwrote it.
+// Re-derives rank by sorting each Date+Brand group by COGSValue desc.
+function repairDailyTop5Rank() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  const sh = ss.getSheetByName('NI_DailyTop5');
+  if (!sh || sh.getLastRow() < 2) { Logger.log('repairDailyTop5Rank: sheet empty'); return; }
+
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const ci = {
+    date:  headers.indexOf('Date'),
+    brand: headers.indexOf('Brand'),
+    cogs:  headers.indexOf('COGSValue'),
+    rank:  headers.indexOf('Rank'),
+  };
+  if (ci.rank < 0) { Logger.log('repairDailyTop5Rank: Rank column not found'); return; }
+
+  const lastRow = sh.getLastRow();
+  const data = sh.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+  // Group rows by Date+Brand
+  const groups = {};
+  data.forEach((row, i) => {
+    const date  = String(row[ci.date]).substring(0, 10);
+    const brand = String(row[ci.brand] || '');
+    const key   = date + '|' + brand;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push({ i, cogs: parseFloat(row[ci.cogs]) || 0 });
+  });
+
+  // Sort each group by COGSValue desc, assign rank 1..N
+  let fixed = 0;
+  Object.values(groups).forEach(group => {
+    group.sort((a, b) => b.cogs - a.cogs);
+    group.forEach((item, rank0) => {
+      data[item.i][ci.rank] = rank0 + 1;
+      fixed++;
+    });
+  });
+
+  // Write only the Rank column back (column ci.rank+1, 1-indexed)
+  const rankColNum = ci.rank + 1;
+  const rankValues = data.map(row => [row[ci.rank]]);
+  sh.getRange(2, rankColNum, lastRow - 1, 1).setValues(rankValues);
+  SpreadsheetApp.flush();
+  Logger.log('repairDailyTop5Rank: fixed ' + fixed + ' rows across ' + Object.keys(groups).length + ' Date+Brand groups');
+  SpreadsheetApp.getUi().alert('Done! Rank repaired for ' + fixed + ' rows across ' + Object.keys(groups).length + ' Date+Brand groups.');
+}
+
 // Save remark directly into NI_DailyTop5 row by EH_ID
 function saveRemarkToDailyTop5_(ehId, remark, assignedTo, sheetName) {
 sheetName = sheetName || 'NI_DailyTop5';
