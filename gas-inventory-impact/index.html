@@ -457,8 +457,8 @@ tbody tr:hover td{background:var(--sf)}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-bottom:8px;margin-top:6px">
       <span style="font-size:10px;font-weight:700;color:var(--mu);white-space:nowrap">COUNTRY:</span>
       <div id="country-chips" style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="sub-tab on" id="ctrbtn-All" onclick="setCtrFil('All')" style="padding:3px 12px;font-size:10px;min-width:auto">All</button>
-        <button class="sub-tab" id="ctrbtn-India" onclick="setCtrFil('India')" style="padding:3px 12px;font-size:10px;min-width:auto">India</button>
+        <button class="sub-tab" id="ctrbtn-All" onclick="setCtrFil('All')" style="padding:3px 12px;font-size:10px;min-width:auto">All</button>
+        <button class="sub-tab on" id="ctrbtn-India" onclick="setCtrFil('India')" style="padding:3px 12px;font-size:10px;min-width:auto">India</button>
         <button class="sub-tab" id="ctrbtn-USA" onclick="setCtrFil('USA')" style="padding:3px 12px;font-size:10px;min-width:auto">USA</button>
         <button class="sub-tab" id="ctrbtn-UAE" onclick="setCtrFil('UAE')" style="padding:3px 12px;font-size:10px;min-width:auto">UAE</button>
       </div>
@@ -638,22 +638,35 @@ tbody tr:hover td{background:var(--sf)}
           <div id="mtd-fac5"></div>
         </div>
       </div>
+      <!-- Row 3: Remarks Summary Matrix -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Remarks Summary (COGS Value by Remark &times; Brand)</div>
+        <div id="mtd-rmk-matrix" style="overflow-x:auto;padding:4px 0"></div>
+      </div>
     </div>
 
     <!-- YTD Panel -->
     <div id="panel-ytd" style="display:none">
-      <div id="ytd-kpis" class="impact-hero" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"></div>
+      <div id="ytd-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
       <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Financial Loss COGS — Monthly Bar Chart</div>
-        <div id="ytd-bar-chart" style="padding:16px"></div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:700;color:var(--tx)">Financial Loss Trend (YTD)</span>
+        </div>
+        <div id="ytd-bar-chart" style="padding:16px 20px 8px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Top Brands by Financial Loss (YTD)</div>
+          <div id="ytd-brand-table"></div>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Top Facilities by Financial Loss (YTD)</div>
+          <div id="ytd-fac-table"></div>
+        </div>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Brand × Month Breakdown (Financial Loss COGS)</div>
-        <div id="ytd-brand-table" style="overflow-x:auto"></div>
-      </div>
-      <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Top 5 Facilities — YTD</div>
-        <div id="ytd-fac-table"></div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Key Insights</div>
+        <div id="ytd-insights" style="display:flex;flex-wrap:wrap;gap:10px;padding:14px"></div>
       </div>
     </div>
   </div>
@@ -919,7 +932,8 @@ function ssoInit(){
 
 // GLOBAL STATE
 var R=null,histData=[],allRemarks=[],allEventsData=[],facHistData=[],allEventHistory=[];
-var _ctrFil='All';
+var _ctrFil='India';
+var _todayEvRaw=[];
 var ytdEventsData=[], _ytdLoaded=false;
 var dailyTop5Data=[]; // dedicated NI_DailyTop5 store — source of truth for remarks tracker
 var _dlSyncInterval=null, _dlLastSync=null, _dlNiEvents=[], _dlTop5=[];
@@ -1585,6 +1599,7 @@ function renderTrend(){
     if(!isFL&&!isRec) return;
     var b=(row['Brand']||'').trim();
     if(anyUnchecked && !_trendBrands[b]) return;
+    if(_ctrFil!=='All'&&getCountry(row['SKU']||'',row['Name']||'')!==_ctrFil) return;
     var dk=row['Date'];
     if(!daily[dk]){daily[dk]={negV:0,posV:0}; dateObjs[dk]=d;}
     var cv=n(row['COGSValue']);
@@ -1711,9 +1726,90 @@ function fLabs(v){
   return abs>=100000?'Rs '+(abs/100000).toFixed(1)+'L':abs>=1000?'Rs '+(abs/1000).toFixed(0)+'K':'Rs '+abs.toLocaleString();
 }
 
+// ── REMARKS SUMMARY MATRIX — Remark × Brand × COGSValue (MTD) ──
+function renderRemarksMatrix_(){
+  var el=document.getElementById('mtd-rmk-matrix');
+  if(!el) return;
+  if(!dailyTop5Data.length){ el.innerHTML='<div class="empty" style="padding:14px;font-size:11px;color:var(--mu)">No data yet</div>'; return; }
+
+  // MTD date range: 1st of current month → today
+  var now=new Date();
+  var moS=new Date(now.getFullYear(), now.getMonth(), 1);
+  moS.setHours(0,0,0,0);
+
+  var rows=dailyTop5Data.filter(function(r){
+    var d=new Date(r['Date']); return !isNaN(d)&&d>=moS;
+  });
+  if(!rows.length){ el.innerHTML='<div class="empty" style="padding:14px;font-size:11px;color:var(--mu)">No MTD data</div>'; return; }
+
+  // Collect unique brands (sorted) and remarks (sorted by total COGS desc)
+  var BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs'];
+  var extraBrands=[];
+  rows.forEach(function(r){ var b=r['Brand']||''; if(b&&BRANDS.indexOf(b)<0&&extraBrands.indexOf(b)<0) extraBrands.push(b); });
+  var brands=BRANDS.concat(extraBrands.sort());
+
+  // Build pivot: {remark: {brand: cogsSum}}
+  var pivot={}, rmkTotals={};
+  rows.forEach(function(r){
+    var rmk=(r['Remark']||'').trim()||'(No Remark)';
+    var brand=r['Brand']||'Other';
+    var cogs=parseFloat(r['COGSValue'])||0;
+    if(!pivot[rmk]) pivot[rmk]={};
+    pivot[rmk][brand]=(pivot[rmk][brand]||0)+cogs;
+    rmkTotals[rmk]=(rmkTotals[rmk]||0)+cogs;
+  });
+
+  // Sort remarks by total COGS descending
+  var rmkList=Object.keys(pivot).sort(function(a,b){ return rmkTotals[b]-rmkTotals[a]; });
+
+  function fv(v){ var a=Math.abs(Math.round(v)); return a>=100000?'₹'+(a/100000).toFixed(1)+'L':a>=1000?'₹'+(a/1000).toFixed(0)+'K':a?'₹'+a:'—'; }
+
+  // Build table
+  var th='<thead><tr><th style="text-align:left;padding:7px 10px;background:var(--sf);font-size:10px;font-weight:700;color:var(--tx);border-bottom:2px solid var(--br);min-width:160px;position:sticky;left:0;z-index:1">Remark</th>';
+  brands.forEach(function(b){
+    th+='<th style="text-align:right;padding:7px 8px;background:var(--sf);font-size:10px;font-weight:700;color:var(--tx);border-bottom:2px solid var(--br);min-width:100px">'+b+'</th>';
+  });
+  th+='<th style="text-align:right;padding:7px 8px;background:var(--sf);font-size:10px;font-weight:700;color:var(--tl);border-bottom:2px solid var(--br);min-width:100px">Grand Total</th></tr></thead>';
+
+  var grandCols={}, grandTotal=0;
+  var tb='<tbody>';
+  rmkList.forEach(function(rmk, ri){
+    var bg=ri%2===0?'var(--wh)':'var(--sf)';
+    var rowTotal=0;
+    var cells='';
+    brands.forEach(function(b){
+      var v=pivot[rmk][b]||0;
+      rowTotal+=v;
+      grandCols[b]=(grandCols[b]||0)+v;
+      cells+='<td style="text-align:right;padding:6px 8px;font-size:10px;font-family:var(--mono);color:'+(v?'var(--tx)':'var(--mu)')+'">'+fv(v)+'</td>';
+    });
+    grandTotal+=rowTotal;
+    tb+='<tr style="background:'+bg+'">'
+      +'<td style="padding:6px 10px;font-size:10px;color:var(--tx);border-right:1px solid var(--br);position:sticky;left:0;background:'+bg+';max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+rmk+'">'+rmk+'</td>'
+      +cells
+      +'<td style="text-align:right;padding:6px 8px;font-size:10px;font-family:var(--mono);font-weight:700;color:var(--tl)">'+fv(rowTotal)+'</td>'
+      +'</tr>';
+  });
+
+  // Grand Total row
+  var gCells='';
+  brands.forEach(function(b){ gCells+='<td style="text-align:right;padding:7px 8px;font-size:10px;font-family:var(--mono);font-weight:700;color:var(--tx);border-top:2px solid var(--br)">'+fv(grandCols[b]||0)+'</td>'; });
+  tb+='<tr><td style="padding:7px 10px;font-size:10px;font-weight:700;color:var(--tx);border-top:2px solid var(--br);border-right:1px solid var(--br);position:sticky;left:0;background:var(--sf)">Grand Total</td>'+gCells+'<td style="text-align:right;padding:7px 8px;font-size:10px;font-family:var(--mono);font-weight:700;color:var(--tl);border-top:2px solid var(--br)">'+fv(grandTotal)+'</td></tr>';
+  tb+='</tbody>';
+
+  el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px">'+th+tb+'</table>';
+}
+
 // ── RENDER WTD & MTD — CEO View ──
 function renderHistory(){
+  try { _renderHistoryInner(); } catch(e) {
+    console.error('[renderHistory error]', e);
+    var k=document.getElementById('wtd-kpis'); if(k) k.innerHTML='<div class="empty" style="color:var(--re)">Render error — open F12 Console for details.</div>';
+  }
+}
+function _renderHistoryInner(){
   // Read directly from NI_Events (allEventsData) — no NI_History needed
+  console.log('[WTD] allEventsData rows:', allEventsData.length);
   if(!allEventsData.length){
     ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
      'wtd-fac-rank','mtd-fac-rank',
@@ -1817,6 +1913,7 @@ function renderHistory(){
   }
 
   var W=calcPeriod(wkSClamped), M=calcPeriod(moS);
+  console.log('[WTD] W.negV:',W.negV,'W.posV:',W.posV,'ctrFil:',_ctrFil,'wkStart:',wkSClamped.toDateString(),'month:',_cy,'/',(+_cm+1));
 
   function renderPeriod(acc, pfx){
     var rateClass=acc.recoveryRate>=30?'rate-high':acc.recoveryRate>=10?'rate-med':'rate-low';
@@ -2014,6 +2111,7 @@ function renderHistory(){
 
   renderPeriod(W,'wtd');
   renderPeriod(M,'mtd');
+  renderRemarksMatrix_();
   var nb=document.getElementById('nb-wtd'); if(nb) nb.textContent=W.days+'d';
   // Store acc objects for trend toggle
   window._trendAcc={wtd:W, mtd:M};
@@ -3640,19 +3738,39 @@ function goWtdTab(t){
   if(t==='ytd') renderYTD();
 }
 
+// Called by setCtrFil when YTD sub-tab is active — re-renders with new country filter
+function doRenderYTDWithFilter(){
+  if(_ytdLoaded && ytdEventsData.length){
+    // Re-render in place using cached data (avoids re-fetch)
+    _ytdLoaded=false; renderYTD();
+  }
+}
+
 // ── YTD Render ──────────────────────────────────────────────
 function renderYTD(){
   var kpiEl=document.getElementById('ytd-kpis');
   var barEl=document.getElementById('ytd-bar-chart');
   var brandEl=document.getElementById('ytd-brand-table');
   var facEl=document.getElementById('ytd-fac-table');
+  var insEl=document.getElementById('ytd-insights');
   if(!kpiEl) return;
 
   function doRenderYTD(rows){
-    var YTD_START=new Date(2026,4,1); // May 1 2026
+    var YTD_START=new Date(2026,4,1);
     var n=function(v){return parseFloat(v)||0;};
-    var MO_LABELS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     var BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs'];
+    var now=new Date(); var curY=now.getFullYear(), curM=now.getMonth(), curD=now.getDate();
+
+    // Build monthly periods May'26 → current month
+    var months=[];
+    var pd=new Date(2026,4,1);
+    while(pd.getFullYear()<curY||(pd.getFullYear()===curY&&pd.getMonth()<=curM)){
+      months.push({key:MO[pd.getMonth()]+"'"+String(pd.getFullYear()).slice(2),
+        label:MO[pd.getMonth()]+" '"+String(pd.getFullYear()).slice(2),
+        y:pd.getFullYear(),m:pd.getMonth(),fl:0,rec:0,exp:0});
+      pd=new Date(pd.getFullYear(),pd.getMonth()+1,1);
+    }
 
     // Filter rows
     var data=rows.filter(function(r){
@@ -3662,111 +3780,206 @@ function renderYTD(){
       return true;
     });
 
+    // Week-over-week windows (last 7 days vs prior 7 days)
+    var today=new Date(curY,curM,curD);
+    var w1s=new Date(curY,curM,curD-6), w2s=new Date(curY,curM,curD-13), w2e=new Date(curY,curM,curD-7);
+    var twFL=0,twRec=0,twExp=0, lwFL=0,lwRec=0,lwExp=0;
+
     // Accumulators
-    var flTotal=0, recTotal=0, expTotal=0;
-    var moFL={}, moBrand={}, facAcc={};
+    var flTotal=0,recTotal=0,expTotal=0;
+    var brandTotals={}, facAcc={};
 
     data.forEach(function(r){
       var d=parseDate(r['Date']);
       var cv=n(r['COGSValue']);
       var ic=(r['Impact Class']||'').trim();
       var type=(r['Type']||'').trim();
-      var moKey=MO_LABELS[d.getMonth()]+' '+d.getFullYear();
       var brand=r['Brand']||getBrandFromSKU(r['SKU']||'');
-      var fac=r['Facility']||'';
-      var bt=r['BizType']||'';
+      var fac=r['Facility']||'', bt=r['BizType']||'';
+      var dn=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+      var mo=null;
+      for(var mi=0;mi<months.length;mi++){if(months[mi].y===d.getFullYear()&&months[mi].m===d.getMonth()){mo=months[mi];break;}}
 
-      if(type==='POS'){ recTotal+=cv; return; }
-      if(ic==='Expiry Risk'){ expTotal+=cv; return; }
-      // Financial Loss
-      flTotal+=cv;
-      if(!moFL[moKey]) moFL[moKey]=0;
-      moFL[moKey]+=cv;
-      var bk=moKey+'|'+(BRANDS.indexOf(brand)>=0?brand:'Other');
-      if(!moBrand[bk]) moBrand[bk]=0;
-      moBrand[bk]+=cv;
-      if(fac){
-        if(!facAcc[fac]) facAcc[fac]={name:fac,bt:bt,fl:0};
-        facAcc[fac].fl+=cv;
+      if(type==='POS'){
+        recTotal+=cv; if(mo) mo.rec+=cv;
+        if(dn>=w1s&&dn<=today) twRec+=cv;
+        if(dn>=w2s&&dn<=w2e) lwRec+=cv;
+        return;
       }
+      if(ic==='Expiry Risk'){
+        expTotal+=cv; if(mo) mo.exp+=cv;
+        if(dn>=w1s&&dn<=today) twExp+=cv;
+        if(dn>=w2s&&dn<=w2e) lwExp+=cv;
+        return;
+      }
+      flTotal+=cv; if(mo) mo.fl+=cv;
+      brandTotals[brand]=(brandTotals[brand]||0)+cv;
+      if(fac){if(!facAcc[fac])facAcc[fac]={name:fac,bt:bt,fl:0}; facAcc[fac].fl+=cv;}
+      if(dn>=w1s&&dn<=today) twFL+=cv;
+      if(dn>=w2s&&dn<=w2e) lwFL+=cv;
     });
 
-    var netImpact=flTotal-recTotal;
-
-    // KPI cards
-    function kpiCard(label,val,col){
-      return '<div class="kpi-card"><div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;margin-bottom:6px">'+label+'</div>'
-        +'<div style="font-size:22px;font-weight:800;color:'+col+'">'+fv(val)+'</div></div>';
-    }
-    kpiEl.innerHTML=kpiCard('Financial Loss',flTotal,'var(--re)')
-      +kpiCard('Recovery',recTotal,'var(--gn)')
-      +kpiCard('Expiry Risk',expTotal,'var(--yw,#e6a817)')
-      +kpiCard('Net Impact',netImpact,netImpact>0?'var(--re)':'var(--gn)');
-
-    // Ordered months
-    var moOrder=[];
-    var d=new Date(2026,4,1);
-    var now=new Date();
-    while(d<=now){
-      moOrder.push(MO_LABELS[d.getMonth()]+' '+d.getFullYear());
-      d.setMonth(d.getMonth()+1);
+    var netTotal=flTotal-recTotal;
+    function wowPct(tw,lw){return lw>0?((tw-lw)/lw*100):null;}
+    function pctTag(val,tw,lw){
+      var p=wowPct(tw,lw); if(p===null) return '';
+      var up=p>=0, col=up?'#DC2626':'#059669', arr=up?'&#8593;':'&#8595;';
+      return '<div style="font-size:11px;color:'+col+';font-weight:600;margin-top:3px">'+arr+' '+Math.abs(p).toFixed(1)+'% vs Last Week</div>';
     }
 
-    // Bar chart
-    var maxFL=moOrder.reduce(function(m,mo){return Math.max(m,moFL[mo]||0);},1);
-    var barHtml='<div style="display:flex;align-items:flex-end;gap:10px;height:140px;padding-bottom:24px;position:relative">';
-    moOrder.forEach(function(mo){
-      var v=moFL[mo]||0;
-      var pct=Math.round(v/maxFL*100);
-      barHtml+='<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:40px">'
-        +'<div style="font-size:9px;font-weight:700;color:var(--re);margin-bottom:3px">'+fv(v)+'</div>'
-        +'<div style="width:100%;background:var(--re);border-radius:3px 3px 0 0;height:'+pct+'%;min-height:'+(v>0?'4':'0')+'px;opacity:0.85"></div>'
-        +'<div style="font-size:9px;color:var(--mu);margin-top:4px;white-space:nowrap">'+mo.replace(' 20',' \'')+'</div>'
+    // ── KPI Cards ──
+    function kpiIcon(t){
+      var bg={'fl':'#FEE2E2','rec':'#D1FAE5','exp':'#FEF3C7','net':'#FEE2E2'}[t]||'#F3F4F6';
+      var icons={
+        fl:'<polyline points="7,20 12,13 16,16 21,9" stroke="#DC2626" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="18,9 21,9 21,12" stroke="#DC2626" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
+        rec:'<path d="M8 14 A6 6 0 0 1 20 14" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round"/><polyline points="17,11 20,14 17,17" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+        exp:'<path d="M14 8 L22 22 H6 Z" stroke="#D97706" stroke-width="1.5" fill="none" stroke-linejoin="round"/><line x1="14" y1="13" x2="14" y2="18" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="20.5" r="1" fill="#D97706"/>',
+        net:'<rect x="6" y="18" width="4" height="5" fill="#DC2626"/><rect x="12" y="14" width="4" height="9" fill="#DC2626"/><rect x="18" y="10" width="4" height="13" fill="#DC2626"/>'
+      };
+      return '<svg width="34" height="34" viewBox="0 0 28 28"><circle cx="14" cy="14" r="14" fill="'+bg+'"/>'+icons[t]+'</svg>';
+    }
+    function kpiCard(label,val,col,iconT,tw,lw){
+      return '<div style="background:var(--bg);border:1px solid var(--br);border-radius:10px;padding:16px 18px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
+        +'<div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px">'+label+'</div>'
+        +'<div>'+kpiIcon(iconT)+'</div></div>'
+        +'<div style="font-size:26px;font-weight:800;color:'+col+'">'+fv(val)+'</div>'
+        +pctTag(val,tw,lw)
+        +'<div style="font-size:10px;color:var(--mu);margin-top:6px">YTD (May\'26 onwards)</div>'
+        +'</div>';
+    }
+    kpiEl.innerHTML=
+      kpiCard('Financial Loss',flTotal,'#DC2626','fl',twFL,lwFL)+
+      kpiCard('Recovery',recTotal,'#059669','rec',twRec,lwRec)+
+      kpiCard('Expiry Risk',expTotal,'#D97706','exp',twExp,lwExp)+
+      kpiCard('Net Impact',netTotal,'#DC2626','net',twFL-twRec,lwFL-lwRec);
+
+    // ── SVG Line Chart ──
+    var W=760,H=220,PT=30,PR=30,PB=44,PL=58;
+    var CW=W-PL-PR, CH=H-PT-PB;
+    var nM=months.length;
+    var maxFL=Math.max.apply(null,months.map(function(m){return m.fl;}))||1;
+    var yTop=Math.ceil(maxFL/1e7)*1e7;
+    function xp(i){return PL+(nM<2?CW/2:i*CW/(nM-1));}
+    function yp(v){return PT+CH-(v/yTop*CH);}
+
+    var grid='',yax='';
+    for(var gi=0;gi<=4;gi++){
+      var yv=yTop*gi/4, yy=yp(yv);
+      grid+='<line x1="'+PL+'" y1="'+yy.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+yy.toFixed(1)+'" stroke="#E5E7EB" stroke-width="1"/>';
+      var lbl=yv>=1e7?(yv/1e7).toFixed(0):(yv/1e5).toFixed(0)+'L';
+      yax+='<text x="'+(PL-6)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" font-size="9" fill="#9CA3AF">'+lbl+'</text>';
+    }
+    yax+='<text x="12" y="'+(PT+CH/2)+'" text-anchor="middle" font-size="9" fill="#9CA3AF" transform="rotate(-90,12,'+(PT+CH/2)+')">&#8377; in Cr</text>';
+
+    function mkPath(arr){
+      return arr.map(function(v,i){return (i?'L':'M')+xp(i).toFixed(1)+','+yp(v).toFixed(1);}).join(' ');
+    }
+    function mkDots(arr,col,fmt){
+      return arr.map(function(v,i){
+        var x=xp(i),y=yp(v);
+        var lbl=fmt(v);
+        var ly=y-10; if(ly<PT+2) ly=y+16;
+        return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" fill="'+col+'" stroke="white" stroke-width="1.5"/>'
+          +'<text x="'+x.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="'+col+'">'+lbl+'</text>';
+      }).join('');
+    }
+    var flVals=months.map(function(m){return m.fl;}),
+        recVals=months.map(function(m){return m.rec;}),
+        netVals=months.map(function(m){return m.fl-m.rec;});
+    function fmtCr(v){return v>=1e7?'&#8377;'+(v/1e7).toFixed(2)+'Cr':'&#8377;'+(v/1e5).toFixed(2)+'L';}
+
+    var xLabels=months.map(function(mo,i){
+      return '<text x="'+xp(i).toFixed(1)+'" y="'+(H-PB+18)+'" text-anchor="middle" font-size="10" fill="#6B7280">'+mo.label+'</text>';
+    }).join('');
+
+    var legend='<div style="display:flex;gap:20px;justify-content:center;font-size:11px;color:var(--mu);margin-bottom:8px">'
+      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#DC2626" stroke-width="2.5"/></svg>Financial Loss (Cr)</span>'
+      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#059669" stroke-width="2.5"/></svg>Recovery (L)</span>'
+      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#1D4ED8" stroke-width="2.5"/></svg>Net Impact (Cr)</span>'
+      +'</div>';
+
+    barEl.innerHTML=legend+'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;overflow:visible">'
+      +grid+yax
+      +'<path d="'+mkPath(flVals)+'" stroke="#DC2626" stroke-width="2.5" fill="none"/>'
+      +'<path d="'+mkPath(recVals)+'" stroke="#059669" stroke-width="2.5" fill="none"/>'
+      +'<path d="'+mkPath(netVals)+'" stroke="#1D4ED8" stroke-width="2.5" fill="none"/>'
+      +mkDots(flVals,'#DC2626',fmtCr)+mkDots(recVals,'#059669',fmtCr)+mkDots(netVals,'#1D4ED8',fmtCr)
+      +xLabels
+      +'</svg>';
+
+    // ── Top Brands Horizontal Bar ──
+    var brandList=BRANDS.map(function(br){return{name:br,val:brandTotals[br]||0};});
+    var othVal=0; Object.keys(brandTotals).forEach(function(br){if(BRANDS.indexOf(br)<0) othVal+=brandTotals[br];});
+    if(othVal>0) brandList.push({name:'Others',val:othVal});
+    brandList.sort(function(a,b){return b.val-a.val;});
+    var maxB=brandList[0]?brandList[0].val:1;
+    var bHtml='<div style="padding:14px 16px">';
+    brandList.forEach(function(b){
+      if(!b.val) return;
+      var pct=Math.round(b.val/flTotal*100), bw=Math.round(b.val/maxB*100);
+      bHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+        +'<div style="width:88px;font-size:11px;color:var(--tx);text-align:right;flex-shrink:0">'+b.name+'</div>'
+        +'<div style="flex:1;background:#F3F4F6;border-radius:3px;height:18px">'
+        +'<div style="width:'+bw+'%;background:#DC2626;height:100%;border-radius:3px;transition:width .3s"></div></div>'
+        +'<div style="width:105px;font-size:11px;color:var(--tx);font-weight:600;flex-shrink:0">'+fv(b.val)+' ('+pct+'%)</div>'
         +'</div>';
     });
-    barHtml+='</div>';
-    barEl.innerHTML=barHtml;
+    // x-axis ticks
+    bHtml+='<div style="display:flex;margin-left:96px;margin-right:113px;justify-content:space-between;font-size:9px;color:var(--mu);margin-top:2px">';
+    for(var bi=0;bi<=3;bi++){var tv=maxB*bi/3; bHtml+='<span>'+(tv===0?'&#8377;0':tv>=1e7?'&#8377;'+(tv/1e7).toFixed(0)+'Cr':'&#8377;'+(tv/1e5).toFixed(0)+'L')+'</span>';}
+    bHtml+='</div>';
+    bHtml+='<div style="text-align:center;margin-top:14px"><button style="border:1px solid var(--br);background:var(--bg);color:var(--tx);font-size:11px;padding:7px 18px;border-radius:6px;cursor:pointer;font-weight:500">View All Brands &#8594;</button></div>';
+    bHtml+='</div>';
+    brandEl.innerHTML=bHtml;
 
-    // Brand × Month table
-    var TH='padding:7px 10px;background:var(--sf);border-bottom:1px solid var(--br);font-size:9px;font-weight:700;color:var(--mu);white-space:nowrap';
-    var TD='padding:7px 10px;border-bottom:1px solid var(--br);font-size:11px;font-family:var(--mono)';
-    var tbl='<table style="width:100%;border-collapse:collapse"><thead><tr>'
-      +'<th style="'+TH+';text-align:left">Brand</th>';
-    moOrder.forEach(function(mo){ tbl+='<th style="'+TH+';text-align:right">'+mo.replace(' 20',' \'')+'</th>'; });
-    tbl+='<th style="'+TH+';text-align:right">Total</th></tr></thead><tbody>';
-    var grandTotals={}; moOrder.forEach(function(mo){grandTotals[mo]=0;});
-    var grandTotal=0;
-    BRANDS.forEach(function(br){
-      var rowTotal=0;
-      tbl+='<tr><td style="'+TD+';font-weight:600;color:var(--tx)">'+br+'</td>';
-      moOrder.forEach(function(mo){
-        var v=moBrand[mo+'|'+br]||0; rowTotal+=v; grandTotals[mo]=(grandTotals[mo]||0)+v;
-        tbl+='<td style="'+TD+';text-align:right;color:'+(v>0?'var(--re)':'var(--mu)')+'">'+( v>0?fv(v):'—')+'</td>';
-      });
-      grandTotal+=rowTotal;
-      tbl+='<td style="'+TD+';text-align:right;font-weight:700;color:var(--re)">'+fv(rowTotal)+'</td></tr>';
-    });
-    tbl+='<tr style="background:var(--sf)"><td style="'+TD+';font-weight:700">Total</td>';
-    moOrder.forEach(function(mo){ tbl+='<td style="'+TD+';text-align:right;font-weight:700">'+fv(grandTotals[mo]||0)+'</td>'; });
-    tbl+='<td style="'+TD+';text-align:right;font-weight:800;color:var(--re)">'+fv(grandTotal)+'</td></tr>';
-    tbl+='</tbody></table>';
-    brandEl.innerHTML=tbl;
-
-    // Top 5 facilities
+    // ── Top Facilities Horizontal Bar ──
     var facSorted=Object.values(facAcc).sort(function(a,b){return b.fl-a.fl;}).slice(0,5);
-    var ft='<table style="width:100%;border-collapse:collapse"><thead><tr>'
-      +'<th style="'+TH+';text-align:left">Facility</th>'
-      +'<th style="'+TH+';text-align:left">BizType</th>'
-      +'<th style="'+TH+';text-align:right">Financial Loss COGS</th>'
-      +'</tr></thead><tbody>';
-    facSorted.forEach(function(f,i){
-      ft+='<tr><td style="'+TD+'">'+f.name+'</td>'
-        +'<td style="'+TD+';color:var(--mu)">'+f.bt+'</td>'
-        +'<td style="'+TD+';text-align:right;font-weight:700;color:var(--re)">'+fv(f.fl)+'</td></tr>';
+    var maxF=facSorted[0]?facSorted[0].fl:1;
+    var fHtml='<div style="padding:14px 16px">';
+    facSorted.forEach(function(f){
+      var fw=Math.round(f.fl/maxF*100);
+      fHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+        +'<div style="width:100px;font-size:11px;color:var(--tx);text-align:right;flex-shrink:0">'+f.name+'</div>'
+        +'<div style="flex:1;background:#F3F4F6;border-radius:3px;height:18px">'
+        +'<div style="width:'+fw+'%;background:#1D4ED8;height:100%;border-radius:3px;transition:width .3s"></div></div>'
+        +'<div style="width:70px;font-size:11px;color:var(--tx);font-weight:600;flex-shrink:0">'+fv(f.fl)+'</div>'
+        +'</div>';
     });
-    if(!facSorted.length) ft+='<tr><td colspan="3" style="padding:24px;text-align:center;color:var(--mu);font-size:11px">No data</td></tr>';
-    ft+='</tbody></table>';
-    facEl.innerHTML=ft;
+    if(!facSorted.length) fHtml+='<div style="padding:24px;text-align:center;color:var(--mu);font-size:11px">No data</div>';
+    // x-axis ticks
+    if(facSorted.length){
+      fHtml+='<div style="display:flex;margin-left:108px;margin-right:78px;justify-content:space-between;font-size:9px;color:var(--mu);margin-top:2px">';
+      for(var fi=0;fi<=3;fi++){var fv2=maxF*fi/3; fHtml+='<span>'+(fv2===0?'&#8377;0':fv2>=1e7?'&#8377;'+(fv2/1e7).toFixed(0)+'Cr':'&#8377;'+(fv2/1e5).toFixed(0)+'L')+'</span>';}
+      fHtml+='</div>';
+    }
+    fHtml+='<div style="text-align:center;margin-top:14px"><button style="border:1px solid var(--br);background:var(--bg);color:var(--tx);font-size:11px;padding:7px 18px;border-radius:6px;cursor:pointer;font-weight:500">View All Facilities &#8594;</button></div>';
+    fHtml+='</div>';
+    facEl.innerHTML=fHtml;
+
+    // ── Key Insights ──
+    if(insEl){
+      var topBr=brandList[0], topFac=facSorted[0];
+      function insCard(bg,svgPaths,col,txt){
+        return '<div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:200px;background:var(--bg);border:1px solid var(--br);border-radius:8px;padding:14px 12px">'
+          +'<div style="flex-shrink:0"><svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="'+bg+'"/>'+svgPaths+'</svg></div>'
+          +'<div style="font-size:11px;color:var(--mu);line-height:1.55">'+txt+'</div>'
+          +'</div>';
+      }
+      var flp=wowPct(twFL,lwFL), recp=wowPct(twRec,lwRec);
+      var ins='';
+      ins+=insCard('#FEE2E2','<polyline points="8,22 13,15 17,18 22,10" stroke="#DC2626" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>','#DC2626',
+        flp!==null?'Financial loss <strong>'+(flp>=0?'increased':'decreased')+' '+Math.abs(flp).toFixed(1)+'%</strong> compared to last week.':'Financial Loss YTD: <strong>'+fv(flTotal)+'</strong>.');
+      ins+=insCard('#D1FAE5','<path d="M9 16 A7 7 0 0 1 23 16" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round"/><polyline points="20,13 23,16 20,19" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>','#059669',
+        recp!==null?'Recovery <strong>'+(recp>=0?'improved':'declined')+' by '+fv(twRec)+'</strong> compared to last week.':'Recovery YTD: <strong>'+fv(recTotal)+'</strong>.');
+      if(topBr&&topBr.val>0) ins+=insCard('#EDE9FE','<rect x="7" y="19" width="4" height="6" fill="#7C3AED"/><rect x="13" y="15" width="4" height="10" fill="#7C3AED"/><rect x="19" y="11" width="4" height="14" fill="#7C3AED"/>','#7C3AED',
+        '<strong>'+topBr.name+'</strong> contributed <strong>'+Math.round(topBr.val/flTotal*100)+'%</strong> of total financial loss.');
+      if(topFac) ins+=insCard('#DBEAFE','<rect x="8" y="13" width="16" height="11" rx="1" stroke="#1D4ED8" stroke-width="1.5" fill="none"/><rect x="11" y="17" width="3" height="7" fill="#1D4ED8"/><rect x="18" y="17" width="3" height="7" fill="#1D4ED8"/><line x1="8" y1="13" x2="16" y2="8" stroke="#1D4ED8" stroke-width="1.5" stroke-linecap="round"/><line x1="24" y1="13" x2="16" y2="8" stroke="#1D4ED8" stroke-width="1.5" stroke-linecap="round"/>','#1D4ED8',
+        '<strong>'+topFac.name+'</strong> recorded the highest financial loss at <strong>'+fv(topFac.fl)+'</strong>.');
+      ins+=insCard('#FEF3C7','<path d="M16 9 L23 22 H9 Z" stroke="#D97706" stroke-width="1.5" fill="none" stroke-linejoin="round"/><line x1="16" y1="14" x2="16" y2="18" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="20.5" r="1" fill="#D97706"/>','#D97706',
+        'Expiry Risk YTD: <strong>'+fv(expTotal)+'</strong>. Net financial impact: <strong>'+fv(netTotal)+'</strong>.');
+      insEl.innerHTML=ins;
+    }
   }
 
   if(_ytdLoaded){
@@ -3774,14 +3987,14 @@ function renderYTD(){
     return;
   }
   // Lazy load
-  kpiEl.innerHTML='<div style="padding:24px;color:var(--mu);font-size:12px">Loading YTD data&hellip;</div>';
-  barEl.innerHTML=''; brandEl.innerHTML=''; facEl.innerHTML='';
+  kpiEl.innerHTML='<div style="grid-column:1/-1;padding:24px;color:var(--mu);font-size:12px">Loading YTD data&hellip;</div>';
+  barEl.innerHTML=''; brandEl.innerHTML=''; facEl.innerHTML=''; if(insEl) insEl.innerHTML='';
   fetchJ(YTD_URL).then(function(rows){
     ytdEventsData=Array.isArray(rows)?rows:[];
     _ytdLoaded=true;
     doRenderYTD(ytdEventsData);
   }).catch(function(e){
-    kpiEl.innerHTML='<div style="padding:24px;color:var(--re);font-size:12px">Failed to load YTD data. Make sure NI_Events_Year sheet is published.</div>';
+    kpiEl.innerHTML='<div style="grid-column:1/-1;padding:24px;color:var(--re);font-size:12px">Failed to load YTD data.<br>Action needed: paste updated Code.gs into Apps Script and redeploy.</div>';
     console.error('YTD fetch error',e);
   });
 }
@@ -4606,13 +4819,32 @@ function updateMonthBarVisibility(page) {
 
 function setCtrFil(c) {
   _ctrFil = c;
-  document.querySelectorAll('#country-chips .sub-tab').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('[id^="ctrbtn-"]').forEach(function(b){b.classList.remove('on');});
   var btn = document.getElementById('ctrbtn-'+c);
   if (btn) btn.classList.add('on');
-  // Re-render current visible page
+  // Re-render current visible page with country filter applied
   var activePg = null;
   document.querySelectorAll('.pg.on').forEach(function(el){ activePg = el.id.replace('pg-',''); });
-  if (activePg) goPage(activePg);
+  if (!activePg) return;
+  if (activePg === 'today') {
+    if(_todayEvRaw.length){
+      var _filt=_todayEvRaw.filter(function(row){
+        if((row['Impact Class']||'').trim()==='Expiry Risk') return false;
+        if(_ctrFil!=='All'&&getCountry(row['SKU']||'',row['Name']||'')!==_ctrFil) return false;
+        return true;
+      });
+      R=buildRFromEvents(_filt);
+    }
+    if(R){renderImpact(R); renderTop20Today();}
+  }
+  else if (activePg === 'wtd') {
+    var ytdTab=document.getElementById('wtdtab-ytd');
+    if(ytdTab&&ytdTab.classList.contains('on')){ doRenderYTDWithFilter(); }
+    else { renderHistory(); }
+  }
+  else if (activePg === 'trend') { renderTrend(); }
+  else if (activePg === 'biz') { renderOpsDaily(); renderOpsMonthly(); }
+  else if (activePg === 'remarks') { goRmkTab(document.querySelector('[id^="rmktab-"].on') ? document.querySelector('[id^="rmktab-"].on').id.replace('rmktab-','') : 'top5'); }
 }
 
 
@@ -4642,10 +4874,14 @@ function boot(){
     setTimeout(function(){
       allEventsData=evData;
       var _now=new Date(); var _tY=_now.getFullYear(),_tM=_now.getMonth(),_tD=_now.getDate();
-      var todayEvData=evData.filter(function(row){
-        if((row['Impact Class']||'').trim()==='Expiry Risk') return false;
+      _todayEvRaw=evData.filter(function(row){
         var d=parseDate(row['Date']); if(!d) return false;
         return d.getFullYear()===_tY && d.getMonth()===_tM && d.getDate()===_tD;
+      });
+      var todayEvData=_todayEvRaw.filter(function(row){
+        if((row['Impact Class']||'').trim()==='Expiry Risk') return false;
+        if(_ctrFil!=='All'&&getCountry(row['SKU']||'',row['Name']||'')!==_ctrFil) return false;
+        return true;
       });
       R=buildRFromEvents(todayEvData);
       step('Processing inventory...',65);
