@@ -902,7 +902,7 @@ sh.getRange(existingRowIdx, 1, 1, 15).setValues([rowData]);
 Logger.log('saveRemark_: updated row ' + existingRowIdx + ' by ' + (data.updatedBy||'unknown'));
 SpreadsheetApp.flush();
 // Also update NI_DailyTop5
-if (ehId) saveRemarkToDailyTop5_(ehId, data.remark||'', data.updatedBy||data.assignedTo||'', data.targetSheet||'NI_DailyTop5');
+if (ehId) { saveRemarkToDailyTop5_(ehId, data.remark||'', data.updatedBy||data.assignedTo||'', data.targetSheet||'NI_DailyTop5'); saveRemarkToNIEvents_(ehId, data.remark||''); }
 return existingId;
 }
 const id = 'RMK-' + new Date().getTime();
@@ -911,7 +911,7 @@ sh.appendRow(rowData);
 SpreadsheetApp.flush();
 Logger.log('saveRemark_: appended new remark ' + id + ' by ' + (data.updatedBy||'unknown'));
 // Also update NI_DailyTop5 row
-if (ehId) saveRemarkToDailyTop5_(ehId, data.remark||'', data.updatedBy||data.assignedTo||'', data.targetSheet||'NI_DailyTop5');
+if (ehId) { saveRemarkToDailyTop5_(ehId, data.remark||'', data.updatedBy||data.assignedTo||'', data.targetSheet||'NI_DailyTop5'); saveRemarkToNIEvents_(ehId, data.remark||''); }
 return id;
 }
 function getPendingRemarks_() {
@@ -1530,6 +1530,10 @@ if (data.action==='saveRemark') {
 const id=saveRemark_(data);
 return ContentService.createTextOutput(JSON.stringify({success:true,id:id})).setMimeType(ContentService.MimeType.JSON);
 }
+if (data.action==='bulkSaveNIEventRemarks') {
+const result=bulkSaveRemarksToNIEvents_(data.rows||[]);
+return ContentService.createTextOutput(JSON.stringify({success:true,matched:result.matched,total:result.total})).setMimeType(ContentService.MimeType.JSON);
+}
 if (data.action==='chatQuery') {
   const result = handleChatQuery_(data.question || '');
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
@@ -1677,6 +1681,71 @@ Logger.log('appendDailyTop5_: already logged for ' + dateStr);
 }
 return rows.length;
 }
+// Save remark into NI_Events row by EH_ID (Date|SKU|Batch|Facility|Event)
+function saveRemarkToNIEvents_(ehId, remark) {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  const sh = ss.getSheetByName('NI_Events');
+  if (!sh || sh.getLastRow() < 2) return false;
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  let rmkCol = headers.indexOf('Remark') + 1;
+  if (rmkCol === 0) {
+    rmkCol = headers.length + 1;
+    sh.getRange(1, rmkCol).setValue('Remark');
+  }
+  const ncol = Math.max(18, rmkCol);
+  const data = sh.getRange(2, 1, sh.getLastRow() - 1, ncol).getValues();
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i][0];
+    const rowDate = d instanceof Date
+      ? Utilities.formatDate(d, 'Asia/Kolkata', 'yyyy-MM-dd')
+      : String(d).substring(0, 10);
+    const key = rowDate + '|' + data[i][3] + '|' + data[i][6] + '|' + data[i][7] + '|' + data[i][17];
+    if (key === ehId) {
+      sh.getRange(i + 2, rmkCol).setValue(remark);
+      SpreadsheetApp.flush();
+      return true;
+    }
+  }
+  return false;
+}
+
+// Batch: write many remarks to NI_Events in one pass (efficient for bulk uploads)
+function bulkSaveRemarksToNIEvents_(remarksArr) {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  const sh = ss.getSheetByName('NI_Events');
+  if (!sh || sh.getLastRow() < 2) return { matched: 0, total: remarksArr.length };
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  let rmkCol = headers.indexOf('Remark') + 1;
+  if (rmkCol === 0) {
+    rmkCol = headers.length + 1;
+    sh.getRange(1, rmkCol).setValue('Remark');
+  }
+  const ncol = Math.max(18, rmkCol);
+  const data = sh.getRange(2, 1, sh.getLastRow() - 1, ncol).getValues();
+  // Build index: ehId → row index in data[]
+  const idx = {};
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i][0];
+    const rowDate = d instanceof Date
+      ? Utilities.formatDate(d, 'Asia/Kolkata', 'yyyy-MM-dd')
+      : String(d).substring(0, 10);
+    const key = rowDate + '|' + data[i][3] + '|' + data[i][6] + '|' + data[i][7] + '|' + data[i][17];
+    idx[key] = i;
+  }
+  // Apply remarks in-memory, then batch-write changed cells
+  let matched = 0;
+  remarksArr.forEach(function(item) {
+    const i = idx[item.ehId];
+    if (i !== undefined) {
+      sh.getRange(i + 2, rmkCol).setValue(item.remark);
+      matched++;
+    }
+  });
+  SpreadsheetApp.flush();
+  Logger.log('bulkSaveRemarksToNIEvents_: ' + matched + '/' + remarksArr.length + ' matched');
+  return { matched: matched, total: remarksArr.length };
+}
+
 // Save remark directly into NI_DailyTop5 row by EH_ID
 function saveRemarkToDailyTop5_(ehId, remark, assignedTo, sheetName) {
 sheetName = sheetName || 'NI_DailyTop5';
