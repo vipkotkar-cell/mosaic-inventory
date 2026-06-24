@@ -1816,7 +1816,6 @@ function repairDailyTop5Rank() {
     + '• Remarks restored: ' + remarksRestored + ' rows\n'
     + '• Rank recomputed: all ' + data.length + ' rows across ' + Object.keys(groups).length + ' Date+Brand groups';
   Logger.log(msg);
-  SpreadsheetApp.getUi().alert(msg);
 }
 
 // Save remark directly into NI_DailyTop5 row by EH_ID
