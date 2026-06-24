@@ -638,11 +638,6 @@ tbody tr:hover td{background:var(--sf)}
           <div id="mtd-fac5"></div>
         </div>
       </div>
-      <!-- Row 3: Remarks Summary Matrix -->
-      <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Remarks Summary (COGS Value by Remark &times; Brand)</div>
-        <div id="mtd-rmk-matrix" style="overflow-x:auto;padding:4px 0"></div>
-      </div>
     </div>
 
     <!-- YTD Panel -->
@@ -1726,21 +1721,12 @@ function fLabs(v){
   return abs>=100000?'Rs '+(abs/100000).toFixed(1)+'L':abs>=1000?'Rs '+(abs/1000).toFixed(0)+'K':'Rs '+abs.toLocaleString();
 }
 
-// ── REMARKS SUMMARY MATRIX — Remark × Brand × COGSValue (MTD) ──
-function renderRemarksMatrix_(){
-  var el=document.getElementById('mtd-rmk-matrix');
+// ── REMARKS SUMMARY MATRIX — Remark × Brand × COGSValue ──
+// rows: pre-filtered array of NI_DailyTop5 records; elId: target element id
+function renderRemarksMatrix_(rows, elId){
+  var el=document.getElementById(elId||'rmk-monthly-matrix');
   if(!el) return;
-  if(!dailyTop5Data.length){ el.innerHTML='<div class="empty" style="padding:14px;font-size:11px;color:var(--mu)">No data yet</div>'; return; }
-
-  // MTD date range: 1st of current month → today
-  var now=new Date();
-  var moS=new Date(now.getFullYear(), now.getMonth(), 1);
-  moS.setHours(0,0,0,0);
-
-  var rows=dailyTop5Data.filter(function(r){
-    var d=new Date(r['Date']); return !isNaN(d)&&d>=moS;
-  });
-  if(!rows.length){ el.innerHTML='<div class="empty" style="padding:14px;font-size:11px;color:var(--mu)">No MTD data</div>'; return; }
+  if(!rows||!rows.length){ el.innerHTML='<div style="padding:14px;font-size:11px;color:var(--mu)">No data</div>'; return; }
 
   // Collect unique brands (sorted) and remarks (sorted by total COGS desc)
   var BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs'];
@@ -2111,7 +2097,6 @@ function _renderHistoryInner(){
 
   renderPeriod(W,'wtd');
   renderPeriod(M,'mtd');
-  renderRemarksMatrix_();
   var nb=document.getElementById('nb-wtd'); if(nb) nb.textContent=W.days+'d';
   // Store acc objects for trend toggle
   window._trendAcc={wtd:W, mtd:M};
@@ -4598,7 +4583,9 @@ function renderRmkMonthly(){
   }
   html+=_rmkBizTable(mtd,'rmk-monthly-biz-panel');
   html+='<div id="rmk-monthly-biz-panel"></div>';
+  html+='<div class="card" style="margin-top:14px"><div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:12px;font-weight:700;color:var(--tx)">Remarks Summary &mdash; COGS by Remark &times; Brand (MTD)</div><div id="rmk-monthly-matrix" style="overflow-x:auto;padding:4px 0"></div></div>';
   wrap.innerHTML=html;
+  renderRemarksMatrix_(mtd,'rmk-monthly-matrix');
 }
 
 // DOWNLOAD
