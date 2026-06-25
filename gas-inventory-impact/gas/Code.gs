@@ -237,7 +237,7 @@ g2b: 'Good → Bad', g2q: 'Good → QC Rejected', g2rc: 'Good → Recalled', a2n
 // Rule: stateFrom=Active - Financial Loss (fresh loss from healthy inventory)
 // stateFrom=About_to_expire OR Recalled - Expiry Risk (batch already compromised)
 // POS events - Recovery
-const evHeaders = ['Date','Type','Direction','Category','SKU','Name','Brand','Batch','Facility','City','BizType', 'InvFrom','InvTo','StateFrom','StateTo','Qty','COGSPerUnit','COGSValue','Event','Severity','Impact Class'];
+const evHeaders = ['EH_ID','Date','Type','Direction','Category','SKU','Name','Brand','Batch','Facility','City','BizType','InvFrom','InvTo','StateFrom','StateTo','Qty','COGSPerUnit','COGSValue','Event','Severity','Impact Class'];
 const evRows = [evHeaders];
 // result.neg = {g2b:[],g2q:[],g2rc:[],a2ne:[],ne2e:[],a2e:[],a2rc:[],newBad:[],newQC:[]}
 const negCats = ['g2b','g2q','g2rc','a2ne','ne2e','a2e','a2rc','newBad','newQC'];
@@ -246,14 +246,16 @@ negCats.forEach(cat =>
 const arr = result.neg[cat] || [];
 arr.forEach(x =>
 {
-evRows.push([result.todayStr, 'NEG', cat, CATEGORY_LABEL[cat]||cat, x.sku||'', x.name||'', getBrandFromSKU_(x.sku||''), x.batch||'', x.fac||'', x.city||'', x.bt||'', x.invFrom||x.iF||'', x.invTo||x.iT||'', x.stateFrom||x.sF||'', x.stateTo||x.sT||'', x.qty||0, x.cogsPerUnit||x.cp||0, x.cogsVal||0, x.event||'', x.sev||'', getImpactClass_(x.sF||x.stateFrom||'', 'NEG', x.iF||x.invFrom||'')]);
+const ehid = result.todayStr+'|'+(x.sku||'')+'|'+(x.batch||'')+'|'+(x.fac||'')+'|'+(x.event||'');
+evRows.push([ehid, result.todayStr, 'NEG', cat, CATEGORY_LABEL[cat]||cat, x.sku||'', x.name||'', getBrandFromSKU_(x.sku||''), x.batch||'', x.fac||'', x.city||'', x.bt||'', x.invFrom||x.iF||'', x.invTo||x.iT||'', x.stateFrom||x.sF||'', x.stateTo||x.sT||'', x.qty||0, x.cogsPerUnit||x.cp||0, x.cogsVal||0, x.event||'', x.sev||'', getImpactClass_(x.sF||x.stateFrom||'', 'NEG', x.iF||x.invFrom||'')]);
 });
 });
 // pos is {b2g:[], q2g:[], rc2a:[]} - flatten all arrays
 const posFlat = [].concat(result.pos.b2g||[], result.pos.q2g||[], result.pos.rc2a||[]);
 posFlat.forEach(x =>
 {
-evRows.push([result.todayStr, 'POS', 'pos', CATEGORY_LABEL['pos'], x.sku||'', x.name||'', getBrandFromSKU_(x.sku||''), x.batch||'', x.fac||'', x.city||'', x.bt||'', x.invFrom||x.iF||'', x.invTo||x.iT||'', x.stateFrom||x.sF||'', x.stateTo||x.sT||'', x.qty||0, x.cogsPerUnit||x.cp||0, x.cogsVal||0, x.event||'', 'Positive', 'Recovery']);
+const ehid = result.todayStr+'|'+(x.sku||'')+'|'+(x.batch||'')+'|'+(x.fac||'')+'|'+(x.event||'');
+evRows.push([ehid, result.todayStr, 'POS', 'pos', CATEGORY_LABEL['pos'], x.sku||'', x.name||'', getBrandFromSKU_(x.sku||''), x.batch||'', x.fac||'', x.city||'', x.bt||'', x.invFrom||x.iF||'', x.invTo||x.iT||'', x.stateFrom||x.sF||'', x.stateTo||x.sT||'', x.qty||0, x.cogsPerUnit||x.cp||0, x.cogsVal||0, x.event||'', 'Positive', 'Recovery']);
 });
 // NI_Events: APPEND-ONLY (never clear - history must be preserved)
 let shEv = ss.getSheetByName('NI_Events');
@@ -266,7 +268,7 @@ shEv.setFrozenRows(1);
 // Ensure header row exists (safety check)
 const evFirstCell = shEv.getLastRow() >
 0 ? String(shEv.getRange(1,1).getValue()).trim() : '';
-if (evFirstCell !== 'Date') {
+if (evFirstCell !== 'EH_ID' && evFirstCell !== 'Date') {
 shEv.clearContents();
 shEv.getRange(1,1,1,evHeaders.length).setValues([evHeaders]);
 shEv.getRange(1,1,1,evHeaders.length).setFontWeight('bold');
@@ -275,9 +277,11 @@ shEv.setFrozenRows(1);
 // Dedup: skip if today already logged (prevents double-write if trigger runs twice)
 const evTodayStr = result.todayStr;
 let evTodayExists = false;
-if (shEv.getLastRow() >
-1) {
-const existingEvDates = shEv.getRange(2,1,shEv.getLastRow()-1,1).getValues();
+if (shEv.getLastRow() > 1) {
+const headers_ = shEv.getRange(1,1,1,shEv.getLastColumn()).getValues()[0].map(function(h){return String(h).trim();});
+const dateColIdx_ = headers_.indexOf('Date');
+const checkCol = dateColIdx_ >= 0 ? dateColIdx_ + 1 : 2; // 1-based; default to col 2 if Date not found
+const existingEvDates = shEv.getRange(2, checkCol, shEv.getLastRow()-1, 1).getValues();
 evTodayExists = existingEvDates.some(function(row){
 return String(row[0]).trim() === evTodayStr;
 });
@@ -294,8 +298,10 @@ Logger.log('NI_Events: appended ' + evDataRows.length + ' events for ' + evToday
 // Also append to NI_Events_Year (running year log: May 2026 onwards)
 var shYear = ss.getSheetByName('NI_Events_Year');
 if (shYear) {
+  var yearHdrs_ = shYear.getRange(1,1,1,shYear.getLastColumn()).getValues()[0].map(function(h){return String(h).trim();});
+  var yearDateCol_ = yearHdrs_.indexOf('Date') >= 0 ? yearHdrs_.indexOf('Date') + 1 : 2;
   var yearTodayExists = shYear.getLastRow() > 1 &&
-    shYear.getRange(2,1,shYear.getLastRow()-1,1).getValues().some(function(r){ return String(r[0]).trim() === evTodayStr; });
+    shYear.getRange(2,yearDateCol_,shYear.getLastRow()-1,1).getValues().some(function(r){ return String(r[0]).trim() === evTodayStr; });
   if (!yearTodayExists) {
     shYear.getRange(shYear.getLastRow()+1, 1, evDataRows.length, evHeaders.length).setValues(evDataRows);
     Logger.log('NI_Events_Year: appended ' + evDataRows.length + ' events for ' + evTodayStr);
@@ -1343,14 +1349,20 @@ if (e.parameter.action === 'diag') {
   var last7 = {};
   var cutoff7 = now_d.getTime() - 7*24*60*60*1000;
   dates.forEach(function(ts){ if(ts>=cutoff7){ var k=Utilities.formatDate(new Date(ts),Session.getScriptTimeZone(),'dd MMM yyyy'); last7[k]=(last7[k]||0)+1; }});
+  // Always grab the actual raw value from first data row for diagnostics
+  var rawVal1 = diagData.length > 1 ? diagData[1][iDateDiag < 0 ? 0 : iDateDiag] : undefined;
+  var rawVal2 = diagData.length > 2 ? diagData[2][iDateDiag < 0 ? 0 : iDateDiag] : undefined;
   var sampleDate = dates.length ? diagData[1][iDateDiag < 0 ? 0 : iDateDiag] : null;
   return ContentService.createTextOutput(JSON.stringify({
     sheet_id: NI_CONFIG.SHEET_ID,
     total_rows: totalRows,
+    all_headers: diagHeaders,
     date_col_index: iDateDiag,
     date_col_header: iDateDiag >= 0 ? diagHeaders[iDateDiag] : 'NOT FOUND',
-    sample_raw_date: String(sampleDate),
-    sample_date_type: sampleDate ? typeof sampleDate + (sampleDate instanceof Date ? '(Date)' : '') : 'null',
+    row1_raw_date: String(rawVal1),
+    row1_date_type: typeof rawVal1 + (rawVal1 instanceof Date ? '(Date)' : ''),
+    row2_raw_date: String(rawVal2),
+    row2_date_type: typeof rawVal2 + (rawVal2 instanceof Date ? '(Date)' : ''),
     rows_date_parsed: dates.length,
     rows_null_date: failNull,
     pass_30day_filter: passedCutoff30,
@@ -1531,7 +1543,7 @@ const id=saveRemark_(data);
 return ContentService.createTextOutput(JSON.stringify({success:true,id:id})).setMimeType(ContentService.MimeType.JSON);
 }
 if (data.action==='bulkSaveNIEventRemarks') {
-const result=bulkSaveRemarksToNIEvents_(data.rows||[]);
+const result=bulkSaveRemarksToNIEvents_(data.rows||[], data.skipIfFilled===true);
 return ContentService.createTextOutput(JSON.stringify({success:true,matched:result.matched,total:result.total})).setMimeType(ContentService.MimeType.JSON);
 }
 if (data.action==='chatQuery') {
@@ -1691,16 +1703,13 @@ function saveRemarkToNIEvents_(ehId, remark) {
   if (rmkCol === 0) {
     rmkCol = headers.length + 1;
     sh.getRange(1, rmkCol).setValue('Remark');
+    headers.push('Remark');
   }
-  const ncol = Math.max(18, rmkCol);
+  const cEHID = headers.indexOf('EH_ID');
+  const ncol = Math.max(rmkCol, cEHID + 1);
   const data = sh.getRange(2, 1, sh.getLastRow() - 1, ncol).getValues();
   for (let i = 0; i < data.length; i++) {
-    const d = data[i][0];
-    const rowDate = d instanceof Date
-      ? Utilities.formatDate(d, 'Asia/Kolkata', 'yyyy-MM-dd')
-      : String(d).substring(0, 10);
-    const key = rowDate + '|' + data[i][3] + '|' + data[i][6] + '|' + data[i][7] + '|' + data[i][17];
-    if (key === ehId) {
+    if (String(data[i][cEHID]) === ehId) {
       sh.getRange(i + 2, rmkCol).setValue(remark);
       SpreadsheetApp.flush();
       return true;
@@ -1710,7 +1719,8 @@ function saveRemarkToNIEvents_(ehId, remark) {
 }
 
 // Batch: write many remarks to NI_Events in one pass (efficient for bulk uploads)
-function bulkSaveRemarksToNIEvents_(remarksArr) {
+// skipIfFilled=true → skip rows that already have a non-empty Remark value
+function bulkSaveRemarksToNIEvents_(remarksArr, skipIfFilled) {
   const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
   const sh = ss.getSheetByName('NI_Events');
   if (!sh || sh.getLastRow() < 2) return { matched: 0, total: remarksArr.length };
@@ -1720,23 +1730,23 @@ function bulkSaveRemarksToNIEvents_(remarksArr) {
     rmkCol = headers.length + 1;
     sh.getRange(1, rmkCol).setValue('Remark');
   }
-  const ncol = Math.max(18, rmkCol);
+  const cEHID = headers.indexOf('EH_ID');
+  const ncol = Math.max(rmkCol, cEHID + 1);
   const data = sh.getRange(2, 1, sh.getLastRow() - 1, ncol).getValues();
   // Build index: ehId → row index in data[]
   const idx = {};
   for (let i = 0; i < data.length; i++) {
-    const d = data[i][0];
-    const rowDate = d instanceof Date
-      ? Utilities.formatDate(d, 'Asia/Kolkata', 'yyyy-MM-dd')
-      : String(d).substring(0, 10);
-    const key = rowDate + '|' + data[i][3] + '|' + data[i][6] + '|' + data[i][7] + '|' + data[i][17];
-    idx[key] = i;
+    idx[String(data[i][cEHID])] = i;
   }
   // Apply remarks in-memory, then batch-write changed cells
   let matched = 0;
   remarksArr.forEach(function(item) {
     const i = idx[item.ehId];
     if (i !== undefined) {
+      if (skipIfFilled) {
+        const existing = String(data[i][rmkCol - 1] || '').trim();
+        if (existing !== '') return;
+      }
       sh.getRange(i + 2, rmkCol).setValue(item.remark);
       matched++;
     }
@@ -1744,6 +1754,50 @@ function bulkSaveRemarksToNIEvents_(remarksArr) {
   SpreadsheetApp.flush();
   Logger.log('bulkSaveRemarksToNIEvents_: ' + matched + '/' + remarksArr.length + ' matched');
   return { matched: matched, total: remarksArr.length };
+}
+
+// One-time backfill: adds EH_ID column to NI_Events + NI_Events_Year and fills all existing rows.
+// EH_ID = Date|SKU|Batch|Facility|Event  (same format as NI_DailyTop5)
+// Safe to run multiple times — skips rows that already have an EH_ID.
+function backfillNIEventsEHID() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  ['NI_Events', 'NI_Events_Year'].forEach(function(shName) {
+    const sh = ss.getSheetByName(shName);
+    if (!sh || sh.getLastRow() < 2) { Logger.log(shName + ': empty, skipping'); return; }
+    const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    let ehCol = headers.indexOf('EH_ID') + 1; // 1-based
+    if (ehCol === 0) {
+      // Insert EH_ID as first column
+      sh.insertColumnBefore(1);
+      sh.getRange(1, 1).setValue('EH_ID').setFontWeight('bold');
+      ehCol = 1;
+      headers.unshift('EH_ID');
+    }
+    const cDate = headers.indexOf('Date');
+    const cSKU  = headers.indexOf('SKU');
+    const cBatch = headers.indexOf('Batch');
+    const cFac  = headers.indexOf('Facility');
+    const cEv   = headers.indexOf('Event');
+    const lastRow = sh.getLastRow();
+    const ncol = Math.max(cDate, cSKU, cBatch, cFac, cEv) + 1;
+    const data = sh.getRange(2, 1, lastRow - 1, ncol).getValues();
+    let filled = 0;
+    const updates = [];
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][ehCol - 1]).trim() !== '') continue; // already has EH_ID
+      const d = data[i][cDate];
+      const rowDate = d instanceof Date
+        ? Utilities.formatDate(d, 'Asia/Kolkata', 'yyyy-MM-dd')
+        : String(d).substring(0, 10);
+      const ehid = rowDate + '|' + data[i][cSKU] + '|' + data[i][cBatch] + '|' + data[i][cFac] + '|' + data[i][cEv];
+      updates.push([ehid]);
+      sh.getRange(i + 2, ehCol).setValue(ehid);
+      filled++;
+      if (filled % 500 === 0) SpreadsheetApp.flush();
+    }
+    SpreadsheetApp.flush();
+    Logger.log(shName + ': backfilled EH_ID for ' + filled + ' rows');
+  });
 }
 
 // Repair NI_DailyTop5 after bulk-upload wrote to wrong columns (off-by-one on Impact Class).
@@ -1756,6 +1810,61 @@ function bulkSaveRemarksToNIEvents_(remarksArr) {
 //   1. Detects affected rows (Rank cell is non-numeric text)
 //   2. Rescues remark text from Rank cell → writes to Remark, fixes Status/AssignedTo/RemarkDate
 //   3. Recomputes correct numeric Rank for ALL rows by sorting each Date+Brand group by COGSValue desc
+// Diagnostic: run from editor to verify EH_ID lookup in NI_Events works.
+// Recovers missing Date values in NI_Events by extracting from EH_ID (format: "Date|SKU|Batch|Fac|Event")
+// Run once manually if dates were accidentally wiped.
+function repairNIEventsDates() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  ['NI_Events','NI_Events_Year'].forEach(function(shName) {
+    const sh = ss.getSheetByName(shName);
+    if (!sh || sh.getLastRow() < 2) { Logger.log(shName + ': not found or empty'); return; }
+    const headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(function(h){return String(h).trim();});
+    const ehIdx = headers.indexOf('EH_ID');
+    const dtIdx = headers.indexOf('Date');
+    if (ehIdx < 0 || dtIdx < 0) { Logger.log(shName + ': EH_ID or Date column missing'); return; }
+    const data = sh.getRange(2,1,sh.getLastRow()-1,headers.length).getValues();
+    var fixed = 0;
+    data.forEach(function(row, i) {
+      var existing = String(row[dtIdx]).trim();
+      if (existing && existing !== '' && existing !== 'undefined') return; // already has date
+      var ehid = String(row[ehIdx]).trim();
+      if (!ehid) return;
+      var date = ehid.split('|')[0]; // EH_ID starts with date
+      if (!date) return;
+      sh.getRange(i + 2, dtIdx + 1).setValue(date);
+      fixed++;
+    });
+    SpreadsheetApp.flush();
+    Logger.log(shName + ': repaired ' + fixed + ' rows');
+  });
+}
+
+// Logs first 5 EH_IDs found and attempts to match a known test ID.
+function diagNIEventsEHID() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  const sh = ss.getSheetByName('NI_Events');
+  if (!sh) { Logger.log('NI_Events not found'); return; }
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  Logger.log('Headers (first 5): ' + headers.slice(0,5).join(' | '));
+  Logger.log('EH_ID col index (0-based): ' + headers.indexOf('EH_ID'));
+  Logger.log('Remark col index (0-based): ' + headers.indexOf('Remark'));
+  Logger.log('Total cols: ' + headers.length);
+  const cEHID = headers.indexOf('EH_ID');
+  const data = sh.getRange(2, 1, Math.min(10, sh.getLastRow()-1), cEHID+1).getValues();
+  Logger.log('First 5 EH_IDs from sheet:');
+  for (let i = 0; i < Math.min(5, data.length); i++) {
+    Logger.log('  [' + i + '] ' + data[i][cEHID]);
+  }
+  // Test match with first known EH_ID
+  const testId = data[0][cEHID];
+  Logger.log('Test match for: ' + testId);
+  const idx = {};
+  const allData = sh.getRange(2, 1, sh.getLastRow()-1, cEHID+1).getValues();
+  for (let i = 0; i < allData.length; i++) idx[String(allData[i][cEHID])] = i;
+  Logger.log('idx lookup result: ' + idx[testId]);
+  Logger.log('Total entries in idx: ' + Object.keys(idx).length);
+}
+
 function repairDailyTop5Rank() {
   const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
   const sh = ss.getSheetByName('NI_DailyTop5');
