@@ -1811,6 +1811,43 @@ function backfillNIEventsEHID() {
 //   2. Rescues remark text from Rank cell → writes to Remark, fixes Status/AssignedTo/RemarkDate
 //   3. Recomputes correct numeric Rank for ALL rows by sorting each Date+Brand group by COGSValue desc
 // Diagnostic: run from editor to verify EH_ID lookup in NI_Events works.
+// Fixes mismatched header row in NI_Events and NI_Events_Year caused by insertColumnBefore
+// shifting data right but header row getting out of sync with actual column positions.
+// SAFE: only rewrites row 1 (headers). All data rows are untouched.
+function fixNIEventsSchema() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  // Correct 22-column schema after EH_ID was added as first column
+  const correctHeaders = ['EH_ID','Date','Type','Direction','Category','SKU','Name','Brand',
+    'Batch','Facility','City','BizType','InvFrom','InvTo','StateFrom','StateTo',
+    'Qty','COGSPerUnit','COGSValue','Event','Severity','Impact Class'];
+
+  ['NI_Events','NI_Events_Year'].forEach(function(shName) {
+    var sh = ss.getSheetByName(shName);
+    if (!sh) { Logger.log(shName + ': not found, skipping'); return; }
+
+    var lastCol = sh.getLastColumn();
+    var currentHeaders = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h){ return String(h).trim(); });
+    Logger.log(shName + ' current headers: ' + JSON.stringify(currentHeaders));
+
+    // Check if a Remark column exists beyond the 22 standard cols
+    var remarkExists = currentHeaders.indexOf('Remark') >= 0;
+    var finalHeaders = remarkExists ? correctHeaders.concat(['Remark']) : correctHeaders;
+
+    // Write correct headers starting at A1
+    sh.getRange(1, 1, 1, finalHeaders.length).setValues([finalHeaders]);
+    sh.getRange(1, 1, 1, finalHeaders.length).setFontWeight('bold');
+
+    Logger.log(shName + ': headers fixed → ' + JSON.stringify(finalHeaders));
+
+    // Verify: check that row 2 col B (Date) looks like a real date
+    if (sh.getLastRow() > 1) {
+      var sampleDate = sh.getRange(2, 2).getValue();
+      Logger.log(shName + ' row2 Date value (col B): ' + String(sampleDate));
+    }
+  });
+  SpreadsheetApp.flush();
+}
+
 // Rebuilds NI_Events for June 2026 from NI_Events_Year (which is the source of truth).
 // Clears NI_Events entirely and rewrites with all June 2026 rows from NI_Events_Year.
 // Run once manually to recover from data loss.
