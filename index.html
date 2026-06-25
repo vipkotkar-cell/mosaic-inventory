@@ -4532,6 +4532,14 @@ function openBizPendingPanel(bt, panelId){
 
 function renderRmkTop5(){
   var wrap=document.getElementById('rmk-top5-wrap'); if(!wrap) return;
+  if(!dailyTop5Data.length){
+    wrap.innerHTML='<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">Loading&hellip;</div>';
+    fetchJ(DAILY_TOP5_URL+'&t='+Date.now()).then(function(rows){
+      if(rows&&rows.length){ dailyTop5Data=rows.filter(function(r){return r['EH_ID']||r['SKU'];}); fireAutoRemarks(dailyTop5Data); }
+      renderRmkTop5();
+    }).catch(function(){ wrap.innerHTML='<div style="padding:32px;text-align:center;color:var(--mu);font-size:11px">Failed to load data.</div>'; });
+    return;
+  }
   var now=new Date();
   // All today's Financial Loss from R.flat for total counts/COGS
   var allToday=R&&R.flat?R.flat.filter(function(x){return x.ic==='Financial Loss'&&(_ctrFil==='All'||getCountry(x.sku||'',x.name||'')===_ctrFil);}):[];
