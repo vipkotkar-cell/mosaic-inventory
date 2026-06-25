@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VitalTrack — WTD &amp; MTD Analysis</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;display:flex;color:#111827}
+.sidebar{width:204px;min-width:204px;background:#1e2d3d;display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.sb-brand{padding:20px 18px 15px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-brand-name{font-size:17px;font-weight:700;color:#fff}
+.sb-brand-sub{font-size:10px;color:#7a9ab0;margin-top:2px}
+.sb-nav{flex:1;padding:10px 0}
+.nav-item{display:flex;align-items:center;gap:9px;padding:10px 18px;font-size:12.5px;color:#8aafc5;cursor:pointer;border-left:2.5px solid transparent;text-decoration:none;transition:all .15s}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#e0eaf0}
+.nav-item.active{background:rgba(255,255,255,.1);color:#fff;border-left-color:#4db6e8}
+.sb-footer{padding:14px 18px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:9px}
+.sb-avatar{width:30px;height:30px;border-radius:50%;background:#4db6e8;color:#1e2d3d;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-name{font-size:12px;font-weight:600;color:#fff}
+.sb-role{font-size:10px;color:#7a9ab0}
+.main{flex:1;display:flex;flex-direction:column;min-height:100vh;overflow:hidden}
+.topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;height:52px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.tb-title{font-size:15px;font-weight:700;color:#111827;white-space:nowrap;margin-right:4px}
+.cf-group{display:flex;background:#f3f4f6;border-radius:20px;padding:2px;gap:1px}
+.cf{padding:4px 13px;border-radius:18px;font-size:11px;font-weight:500;color:#6b7280;cursor:pointer;border:none;background:transparent;transition:all .15s}
+.cf.on{background:#1e2d3d;color:#fff}
+.tb-space{flex:1}
+.btn-vm{background:#1e2d3d;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
+.tb-icon{width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;border:1px solid #e5e7eb;color:#6b7280;cursor:pointer;flex-shrink:0}
+.tb-time{font-size:10px;color:#9ca3af;white-space:nowrap}
+.reload-bar{height:2px;background:#e5e7eb;flex-shrink:0}
+.reload-fill{height:100%;background:#4db6e8;width:0;transition:width 1s linear}
+.content{flex:1;overflow-y:auto;padding:16px 24px 24px;display:flex;flex-direction:column;gap:14px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px}
+.kpi-lbl{font-size:10px;font-weight:600;color:#6b7280;letter-spacing:.5px;text-transform:uppercase}
+.kpi-val{font-size:25px;font-weight:700;color:#111827;margin:6px 0 7px;line-height:1}
+.kpi-sub{font-size:11px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.badge{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600}
+.badge-r{background:#fee2e2;color:#991b1b}
+.badge-g{background:#d1fae5;color:#065f46}
+.badge-b{background:#e0f2fe;color:#075985}
+.kpi-health{border-left:3px solid #1e2d3d}
+.hbar{height:5px;background:#e5e7eb;border-radius:3px;margin-top:10px}
+.hbar-fill{height:100%;background:#1e2d3d;border-radius:3px}
+.two-col{display:grid;grid-template-columns:1fr 320px;gap:14px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+.card-hd{padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.card-title{font-size:13px;font-weight:700;color:#111827}
+.legend{display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280}
+.dot{width:8px;height:8px;border-radius:50%;background:#1e2d3d;display:inline-block}
+.chart-wrap{padding:0 18px 0;height:190px;position:relative}
+.week-labels{display:flex;justify-content:space-around;padding:4px 18px 12px;font-size:10px;color:#9ca3af}
+.insights{padding:6px 18px 14px;display:flex;flex-direction:column;gap:10px}
+.ins{display:flex;gap:8px;font-size:12px;color:#374151;line-height:1.5}
+.ins-ic{flex-shrink:0;width:18px;text-align:center;margin-top:1px}
+.ins b{font-weight:600}
+.cr{color:#ef4444}.cg{color:#10b981}.cb{color:#1e2d3d;font-weight:600}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:9px 14px;text-align:left;background:#f9fafb;font-size:10px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid #f3f4f6;color:#374151;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.exp-btn{display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;border:1px solid #e5e7eb;padding:4px 10px;border-radius:6px;background:#fff;cursor:pointer}
+.fac-list{padding:6px 18px 0;display:flex;flex-direction:column;gap:12px}
+.fac-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.fac-name{font-size:12px;font-weight:500;color:#111827}
+.fac-val{font-size:11px;font-weight:600;color:#ef4444}
+.fbar-bg{height:5px;background:#f3f4f6;border-radius:3px}
+.fbar{height:100%;background:#1e2d3d;border-radius:3px;transition:width .6s ease}
+.ai-tog{display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280}
+.tog{width:30px;height:17px;background:#1e2d3d;border-radius:9px;position:relative;cursor:pointer;flex-shrink:0}
+.tog-k{width:13px;height:13px;background:#fff;border-radius:50%;position:absolute;top:2px;right:2px}
+.ai-box{margin:10px 18px 14px;background:#eff6ff;border-radius:8px;padding:11px 13px;border:1px solid #bfdbfe}
+.ai-box-title{font-size:10px;font-weight:700;color:#1d4ed8;margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.ai-box-text{font-size:11px;color:#374151;line-height:1.55}
+.loading{text-align:center;padding:60px 20px;color:#9ca3af;font-size:13px}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-brand-name">VitalTrack</div>
+    <div class="sb-brand-sub">Inventory Health</div>
+  </div>
+  <nav class="sb-nav">
+    <a class="nav-item" href="index.html">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Today's Impact
+    </a>
+    <a class="nav-item active" href="vitaltrack.html">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      WTD &amp; MTD
+    </a>
+    <a class="nav-item" href="index.html">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Remarks
+    </a>
+    <a class="nav-item" href="index.html">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      Daily Trend
+    </a>
+  </nav>
+  <div class="sb-footer">
+    <div class="sb-avatar">VK</div>
+    <div>
+      <div class="sb-name">Vipul Kotkar</div>
+      <div class="sb-role">Operations Lead</div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <span class="tb-title">WTD &amp; MTD Analysis</span>
+    <div class="cf-group">
+      <button class="cf on" onclick="setFilter('All',this)">All</button>
+      <button class="cf" onclick="setFilter('India',this)">India</button>
+      <button class="cf" onclick="setFilter('USA',this)">USA</button>
+      <button class="cf" onclick="setFilter('UAE',this)">UAE</button>
+    </div>
+    <div class="tb-space"></div>
+    <button class="btn-vm" onclick="window.open('index.html','_blank')">View Month</button>
+    <div class="tb-icon" title="Notifications">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+    <div class="tb-icon" title="Settings">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </div>
+    <span class="tb-time" id="tb-time"></span>
+  </header>
+  <div class="reload-bar"><div class="reload-fill" id="reload-fill"></div></div>
+  <div class="content" id="content">
+    <div class="loading">Loading data&hellip;</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const PROXY='https://script.google.com/macros/s/AKfycbw-kSIEpe7Y5U9joLw_svwwo03RyWnWpLIyrdtlTGVe_r03RJkiaH_TWWdxxUiiUjgWtg/exec';
+const YTD_URL=PROXY+'?sheet=NI_Events_Year';
+const RELOAD_MS=5*60*1000;
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const CORE_BRANDS=['Be Bodywise','Man Matters','Little Joys','Root Labs'];
+const TABLE_ORDER=['Others','Little Joys','Man Matters','Be Bodywise'];
+
+let _filter='All', _chart=null, _lastData=null, _barStart=null, _barTimer=null;
+
+function setFilter(f,el){
+  _filter=f;
+  document.querySelectorAll('.cf').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  if(_lastData) render(_lastData);
+}
+
+function parseDt(s){
+  if(!s||s==='') return null;
+  s=String(s).trim();
+  const MO={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const p=s.split(/[\s\-\/]+/);
+  if(p.length>=3){
+    const m=MO[(p[1]||'').toLowerCase().slice(0,3)];
+    if(m!==undefined){const d=parseInt(p[0]),y=parseInt(p[2]);if(d&&y)return new Date(y,m,d);}
+    const m2=MO[(p[0]||'').toLowerCase().slice(0,3)];
+    if(m2!==undefined){const d=parseInt(p[1]),y=parseInt(p[2]);if(d&&y)return new Date(y,m2,d);}
+  }
+  const d=new Date(s); return isNaN(d)?null:d;
+}
+
+function wkOf(day){return day<=7?0:day<=14?1:day<=21?2:3;}
+
+function normBrand(b){
+  b=(b||'').trim();
+  return CORE_BRANDS.includes(b)?b:'Others';
+}
+
+function fCr(v){
+  v=v||0;
+  if(v>=1e7) return '₹'+(v/1e7).toFixed(2)+' Cr';
+  if(v>=1e5) return '₹'+(v/1e5).toFixed(2)+'L';
+  return '₹'+Math.round(v).toLocaleString('en-IN');
+}
+function fCrT(v){
+  v=v||0;
+  return '₹'+(v/1e7).toFixed(2)+'Cr';
+}
+function fK(v){
+  v=v||0;
+  if(v>=1e5) return (v/1e5).toFixed(1)+'L';
+  if(v>=1e3) return (v/1e3).toFixed(1)+'K';
+  return Math.round(v);
+}
+
+function processData(rows){
+  const now=new Date();
+  const cy=now.getFullYear(),cm=now.getMonth();
+  const lm=cm===0?11:cm-1, ly=cm===0?cy-1:cy;
+
+  const allB=['Be Bodywise','Man Matters','Little Joys','Root Labs','Others'];
+  const mk=()=>[0,1,2,3].map(()=>({fl:0,rec:0,qty:0}));
+  const curWk={},lastMo={};
+  allB.forEach(b=>{curWk[b]=mk();lastMo[b]={fl:0,rec:0};});
+  const facMap={};
+  const wkTotals=[0,0,0,0];
+  let totalFL=0,totalRec=0,totalQty=0,lastMonthTotal=0,expiryRisk=0;
+
+  rows.forEach(row=>{
+    const d=parseDt(row['Date']); if(!d)return;
+    const ry=d.getFullYear(),rm=d.getMonth(),rd=d.getDate();
+    const ic=(row['Impact Class']||'').trim();
+    const fl=parseFloat(row['COGSValue'])||0;
+    const qty=parseFloat(row['Qty'])||0;
+    const brand=normBrand(row['Brand']);
+    const fac=(row['Facility']||'Unknown').trim();
+    const isFL=ic==='Financial Loss', isRec=ic==='Recovery', isExp=ic==='Expiry Risk';
+
+    if(ry===cy&&rm===cm){
+      const wk=wkOf(rd);
+      if(isFL){curWk[brand][wk].fl+=fl;curWk[brand][wk].qty+=qty;wkTotals[wk]+=fl;totalFL+=fl;totalQty+=qty;facMap[fac]=(facMap[fac]||0)+fl;}
+      if(isRec){curWk[brand][wk].rec+=fl;totalRec+=fl;}
+      if(isExp) expiryRisk+=fl;
+    } else if(ry===ly&&rm===lm){
+      if(isFL){lastMo[brand].fl+=fl;lastMonthTotal+=fl;}
+      if(isRec) lastMo[brand].rec+=fl;
+    }
+  });
+
+  const netFL=totalFL-totalRec;
+  const healthScore=Math.round(Math.max(0,Math.min(100,100-(netFL/Math.max(totalFL,1))*38)));
+
+  const topFac=Object.entries(facMap).sort((a,b)=>b[1]-a[1]).slice(0,4);
+
+  // Week-over-week: find last two non-zero weeks
+  let lwIdx=-1;
+  for(let i=3;i>=0;i--){if(wkTotals[i]>0){lwIdx=i;break;}}
+  const curWkV=lwIdx>=0?wkTotals[lwIdx]:0;
+  const prevWkV=lwIdx>=1?wkTotals[lwIdx-1]:0;
+  const wowPct=prevWkV>0?((curWkV-prevWkV)/prevWkV*100):0;
+  const momPct=lastMonthTotal>0?((totalFL-lastMonthTotal)/lastMonthTotal*100):0;
+
+  // Recovery WoW
+  const curWkRec=allB.reduce((s,b)=>s+(curWk[b][lwIdx>=0?lwIdx:3]||{rec:0}).rec,0);
+  const prevWkRec=allB.reduce((s,b)=>s+(curWk[b][lwIdx>=1?lwIdx-1:2]||{rec:0}).rec,0);
+  const recWowAbs=curWkRec-prevWkRec;
+  const recWowPct=prevWkRec>0?((curWkRec-prevWkRec)/prevWkRec*100):0;
+
+  // Brand with highest FL this month
+  const brandFL=allB.map(b=>({brand:b,fl:curWk[b].reduce((s,w)=>s+w.fl,0)})).sort((a,b)=>b.fl-a.fl);
+  const topBrand=brandFL[0]||{brand:'N/A',fl:0};
+  const othersPct=totalFL>0?Math.round((curWk['Others']||[]).reduce((s,w)=>s+w.fl,0)/totalFL*100):0;
+
+  return {curWk,lastMo,wkTotals,facMap,topFac,totalFL,totalRec,totalQty,lastMonthTotal,
+    healthScore,wowPct,momPct,recWowAbs,recWowPct,topBrand,othersPct,expiryRisk,netFL,lwIdx};
+}
+
+const WK_LABELS=['W1 (1-7 ','W2 (8-14 ','W3 (15-21 ','W4 (22-28 '];
+function wkLabel(i){
+  const now=new Date();
+  const mn=MONTHS[now.getMonth()];
+  return WK_LABELS[i]+mn+')';
+}
+
+function render(data){
+  _lastData=data;
+  const now=new Date();
+  const cm=now.getMonth(),cy=now.getFullYear();
+  const lm=cm===0?11:cm-1, lmy=cm===0?cy-1:cy;
+  const lastMonthLabel=MONTHS[lm]+' \''+String(lmy).slice(2);
+  const wkLabels=[0,1,2,3].map(wkLabel);
+  const {curWk,lastMo,wkTotals,topFac,totalFL,totalRec,totalQty,healthScore,
+    wowPct,momPct,recWowAbs,recWowPct,topBrand,othersPct,expiryRisk,netFL,lwIdx}=data;
+
+  const momSign=momPct>=0?'↑':'↓';
+  const momCls=momPct>=0?'cr':'cg';
+  const wowSign=wowPct<0?'↓':'↑';
+  const wowCls=wowPct<0?'cg':'cr';
+
+  document.getElementById('content').innerHTML=`
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-lbl">Total Financial Loss</div>
+    <div class="kpi-val">${fCr(totalFL)}</div>
+    <div class="kpi-sub"><span class="${momCls}" style="font-size:11px">${momSign} ${Math.abs(momPct).toFixed(1)}% vs Last Month</span></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-lbl">Inventory Recovery</div>
+    <div class="kpi-val">${fCr(totalRec)}</div>
+    <div class="kpi-sub"><span class="badge ${recWowPct>=0?'badge-g':'badge-r'}">${recWowPct>=0?'↑':'↓'} ${Math.abs(recWowPct).toFixed(1)}% WoW Recovery</span></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-lbl">Active Shortage Units</div>
+    <div class="kpi-val">${fK(totalQty)}</div>
+    <div class="kpi-sub"><span class="badge badge-b">${Object.keys(data.facMap).length} Facilities Impacted</span></div>
+  </div>
+  <div class="kpi kpi-health">
+    <div class="kpi-lbl">Net Health Score</div>
+    <div class="kpi-val">${healthScore}/100</div>
+    <div class="hbar"><div class="hbar-fill" style="width:${healthScore}%"></div></div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-hd">
+      <span class="card-title">Financial Loss Trend (Comparative Analysis)</span>
+      <span class="legend"><span class="dot"></span>Financial Impact</span>
+    </div>
+    <div class="chart-wrap"><canvas id="tc"></canvas></div>
+    <div class="week-labels">${wkLabels.map(l=>`<span>${l}</span>`).join('')}</div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="card-title">Key Insights</span></div>
+    <div class="insights">
+      <div class="ins"><span class="ins-ic ${wowCls}">${wowSign}</span><span>Financial loss <b>${wowPct<0?'decreased':'increased'}</b> <b class="${wowCls}">${Math.abs(wowPct).toFixed(1)}%</b> compared to last week.</span></div>
+      <div class="ins"><span class="ins-ic">⚠</span><span>Recovery <b>${recWowAbs<0?'declined':'improved'}</b> by <b class="${recWowAbs<0?'cr':'cg'}">${fCr(Math.abs(recWowAbs))}</b> compared to last week.</span></div>
+      <div class="ins"><span class="ins-ic" style="color:#6b7280">◑</span><span>Others contributed <b class="cb">${othersPct}%</b> of total financial loss.</span></div>
+      <div class="ins"><span class="ins-ic" style="color:#6b7280">📍</span><span><b class="cb">${topBrand.brand}</b> recorded the highest financial loss at <b class="cb">${fCr(topBrand.fl)}</b>.</span></div>
+      ${expiryRisk>0?`<div class="ins"><span class="ins-ic" style="color:#6b7280">▤</span><span>Expiry Risk MTD: <b class="cb">${fCr(expiryRisk)}</b>.</span></div>`:''}
+      <div class="ins"><span class="ins-ic" style="color:#6b7280">◈</span><span>Net financial impact: <b class="cb">${fCr(netFL)}</b>.</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-hd">
+      <span class="card-title">Financial Loss Trend (Comparative Analysis)</span>
+      <button class="exp-btn" onclick="exportCSV()">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+    </div>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Brand Name</th>
+        <th>${lastMonthLabel} (Total)</th>
+        ${wkLabels.map(l=>`<th>${l}</th>`).join('')}
+      </tr></thead>
+      <tbody>${['Others','Little Joys','Man Matters','Be Bodywise'].map(b=>{
+        const lmt=(lastMo[b]||{fl:0}).fl;
+        const wks=(curWk[b]||[{fl:0},{fl:0},{fl:0},{fl:0}]);
+        return `<tr><td style="font-weight:500">${b}</td><td>${fCrT(lmt)}</td>${wks.map(w=>`<td>${fCrT(w.fl)}</td>`).join('')}</tr>`;
+      }).join('')}</tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd">
+      <span class="card-title">Top Facilities</span>
+      <span class="ai-tog">AI Insights <span class="tog"><span class="tog-k"></span></span></span>
+    </div>
+    <div class="fac-list" id="fac-list"></div>
+    <div class="ai-box">
+      <div class="ai-box-title">✦ AI Prediction</div>
+      <div class="ai-box-text" id="ai-txt"></div>
+    </div>
+  </div>
+</div>`;
+
+  // Facilities
+  const maxV=topFac.length?topFac[0][1]:1;
+  document.getElementById('fac-list').innerHTML=topFac.map(([n,v])=>`
+    <div><div class="fac-top"><span class="fac-name">${n}</span><span class="fac-val">₹${(v/1e5).toFixed(1)}L Loss</span></div>
+    <div class="fbar-bg"><div class="fbar" style="width:${Math.round(v/maxV*100)}%"></div></div></div>
+  `).join('');
+
+  // AI prediction (rule-based)
+  const aiEl=document.getElementById('ai-txt');
+  const topN=topFac.length?topFac[0][0]:'N/A';
+  const w3=wkTotals[2]||0, w4=wkTotals[3]||0;
+  const upDown=w4>w3?'increasing':'stabilizing';
+  aiEl.textContent=`Facility "${topN}" shows ${upDown} loss pattern. `
+    +(wowPct<0?`Overall FL improved ${Math.abs(wowPct).toFixed(1)}% WoW — sustain audit cycles to continue recovery.`
+              :`FL is up ${wowPct.toFixed(1)}% vs last week — recommend immediate facility audit to control exposure.`);
+
+  drawChart(wkTotals, wkLabels);
+  document.getElementById('tb-time').textContent='Updated '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+}
+
+function drawChart(wkTotals, wkLabels){
+  const canvas=document.getElementById('tc'); if(!canvas)return;
+  if(_chart){_chart.destroy();_chart=null;}
+  _chart=new Chart(canvas.getContext('2d'),{
+    type:'line',
+    data:{
+      labels:wkLabels,
+      datasets:[{
+        data:wkTotals.map(v=>parseFloat((v/1e7).toFixed(2))),
+        borderColor:'#1e2d3d',
+        backgroundColor:'rgba(30,45,61,0.06)',
+        fill:true, tension:0.4,
+        pointBackgroundColor:'#1e2d3d',
+        pointRadius:4, pointHoverRadius:6, borderWidth:2
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>'₹'+c.raw.toFixed(2)+' Cr'}}
+      },
+      scales:{
+        x:{display:false},
+        y:{display:true,grid:{color:'#f3f4f6'},
+          ticks:{font:{size:10},color:'#9ca3af',callback:v=>'₹'+v+'Cr'}}
+      }
+    }
+  });
+}
+
+function exportCSV(){
+  if(!_lastData)return;
+  const now=new Date(), cm=now.getMonth(), cy=now.getFullYear();
+  const lm=cm===0?11:cm-1, lmy=cm===0?cy-1:cy;
+  const hdr=['Brand',MONTHS[lm]+' '+lmy,'W1','W2','W3','W4'];
+  const rows=['Others','Little Joys','Man Matters','Be Bodywise'].map(b=>{
+    const lt=(_lastData.lastMo[b]||{fl:0}).fl;
+    const wks=(_lastData.curWk[b]||[]).map(w=>Math.round(w.fl));
+    return [b,Math.round(lt),...wks].join(',');
+  });
+  const csv=[hdr.join(',')+'\n'+rows.join('\n')];
+  const a=document.createElement('a');
+  a.href='data:text/csv,'+encodeURIComponent(csv);
+  a.download='vitaltrack_'+cy+'_'+String(cm+1).padStart(2,'0')+'.csv';
+  a.click();
+}
+
+async function loadData(){
+  try{
+    const res=await fetch(YTD_URL+'&t='+Date.now(),{cache:'no-store'});
+    const json=await res.json();
+    let rows=[];
+    if(json.headers&&json.rows){
+      const h=json.headers;
+      rows=json.rows.map(r=>{const o={};h.forEach((k,i)=>o[k]=r[i]==null?'':String(r[i]).trim());return o;});
+    } else if(Array.isArray(json)){rows=json;}
+    render(processData(rows));
+  } catch(e){
+    document.getElementById('content').innerHTML=`<div class="loading" style="color:#ef4444">Failed to load data.<br><small>${e.message}</small></div>`;
+  }
+}
+
+function startBar(){
+  const bar=document.getElementById('reload-fill');
+  bar.style.transition='none'; bar.style.width='0%';
+  _barStart=Date.now();
+  clearInterval(_barTimer);
+  _barTimer=setInterval(()=>{
+    const pct=Math.min(100,(Date.now()-_barStart)/RELOAD_MS*100);
+    bar.style.transition='width 1s linear'; bar.style.width=pct+'%';
+    if(pct>=100){clearInterval(_barTimer);loadData().then(startBar);}
+  },1000);
+}
+
+loadData().then(startBar);
+</script>
+</body>
+</html>
