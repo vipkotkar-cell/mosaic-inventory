@@ -1811,6 +1811,44 @@ function backfillNIEventsEHID() {
 //   2. Rescues remark text from Rank cell → writes to Remark, fixes Status/AssignedTo/RemarkDate
 //   3. Recomputes correct numeric Rank for ALL rows by sorting each Date+Brand group by COGSValue desc
 // Diagnostic: run from editor to verify EH_ID lookup in NI_Events works.
+// Rebuilds NI_Events for June 2026 from NI_Events_Year (which is the source of truth).
+// Clears NI_Events entirely and rewrites with all June 2026 rows from NI_Events_Year.
+// Run once manually to recover from data loss.
+function restoreJuneFromYearSheet() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  const shYear = ss.getSheetByName('NI_Events_Year');
+  if (!shYear || shYear.getLastRow() < 2) { Logger.log('NI_Events_Year not found or empty'); return; }
+
+  const yearData = shYear.getDataRange().getValues();
+  const yearHeaders = yearData[0].map(function(h){ return String(h).trim(); });
+  const dtIdx = yearHeaders.indexOf('Date');
+  if (dtIdx < 0) { Logger.log('Date column not found in NI_Events_Year'); return; }
+
+  // Filter June 2026 rows
+  var juneRows = [];
+  for (var i = 1; i < yearData.length; i++) {
+    var rawDate = yearData[i][dtIdx];
+    var dateStr = (rawDate instanceof Date) ? Utilities.formatDate(rawDate, 'Asia/Kolkata', 'dd MMM yyyy') : String(rawDate).trim();
+    // Match June 2026
+    if (dateStr.indexOf('Jun 2026') >= 0 || dateStr.indexOf('2026-06') >= 0) {
+      juneRows.push(yearData[i]);
+    }
+  }
+  Logger.log('NI_Events_Year: found ' + juneRows.length + ' June 2026 rows');
+  if (!juneRows.length) { Logger.log('No June 2026 rows found in NI_Events_Year'); return; }
+
+  // Rebuild NI_Events with the year sheet headers + June rows
+  var shEv = ss.getSheetByName('NI_Events');
+  if (!shEv) shEv = ss.insertSheet('NI_Events');
+  shEv.clearContents();
+  shEv.getRange(1, 1, 1, yearHeaders.length).setValues([yearHeaders]);
+  shEv.getRange(1, 1, 1, yearHeaders.length).setFontWeight('bold');
+  shEv.setFrozenRows(1);
+  shEv.getRange(2, 1, juneRows.length, yearHeaders.length).setValues(juneRows);
+  SpreadsheetApp.flush();
+  Logger.log('NI_Events: restored ' + juneRows.length + ' June 2026 rows from NI_Events_Year');
+}
+
 // Recovers missing Date values in NI_Events by extracting from EH_ID (format: "Date|SKU|Batch|Fac|Event")
 // Run once manually if dates were accidentally wiped.
 function repairNIEventsDates() {
