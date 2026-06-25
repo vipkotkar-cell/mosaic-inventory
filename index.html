@@ -643,25 +643,31 @@ tbody tr:hover td{background:var(--sf)}
     <!-- YTD Panel -->
     <div id="panel-ytd" style="display:none">
       <div id="ytd-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
-      <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;font-weight:700;color:var(--tx)">Financial Loss Trend (YTD)</span>
-        </div>
-        <div id="ytd-bar-chart" style="padding:16px 20px 8px"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:14px;margin-bottom:14px">
         <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Top Brands by Financial Loss (YTD)</div>
-          <div id="ytd-brand-table"></div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:700;color:var(--tx)">Financial Loss Trend (YTD)</span>
+            <span style="font-size:10px;color:var(--mu)" id="ytd-updated"></span>
+          </div>
+          <div id="ytd-bar-chart" style="padding:16px 20px 8px"></div>
         </div>
         <div class="card">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Top Facilities by Financial Loss (YTD)</div>
-          <div id="ytd-fac-table"></div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Key Insights</div>
+          <div id="ytd-insights" style="padding:10px 14px;display:flex;flex-direction:column;gap:10px"></div>
         </div>
       </div>
-      <div class="card" style="margin-bottom:14px">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Key Insights</div>
-        <div id="ytd-insights" style="display:flex;flex-wrap:wrap;gap:10px;padding:14px"></div>
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:14px">
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:700;color:var(--tx)">Financial Loss by Brand (Week-wise)</span>
+            <button onclick="ytdExportCSV()" style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mu);border:1px solid var(--br);padding:4px 10px;border-radius:6px;background:var(--bg);cursor:pointer">&#8659; Export</button>
+          </div>
+          <div id="ytd-brand-table" style="overflow-x:auto"></div>
+        </div>
+        <div class="card">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;font-weight:700;color:var(--tx)">Top Facilities</div>
+          <div id="ytd-fac-table" style="padding:10px 14px;display:flex;flex-direction:column;gap:12px"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -3805,6 +3811,24 @@ function renderYTD(){
     });
 
     var netTotal=flTotal-recTotal;
+
+    // ── Week-wise aggregation for brand table ──
+    var CORE_BRANDS_W=['Be Bodywise','Man Matters','Little Joys','Root Labs'];
+    var allBrandsW=CORE_BRANDS_W.concat(['Others']);
+    var lmM=curM===0?11:curM-1, lmY=curM===0?curY-1:curY;
+    var curWkBrand={},lastMoBrand={};
+    allBrandsW.forEach(function(b){curWkBrand[b]=[0,0,0,0];lastMoBrand[b]=0;});
+    data.forEach(function(r){
+      var d=parseDate(r['Date']); if(!d||isNaN(d)) return;
+      var ic=(r['Impact Class']||'').trim(), type=(r['Type']||'').trim();
+      if(type==='POS'||ic==='Expiry Risk'||ic==='Recovery') return;
+      var cv=n(r['COGSValue']);
+      var br=CORE_BRANDS_W.indexOf(r['Brand']||'')>=0?r['Brand']:'Others';
+      var ry=d.getFullYear(),rm=d.getMonth(),rd=d.getDate();
+      if(ry===curY&&rm===curM){var wk=rd<=7?0:rd<=14?1:rd<=21?2:3;curWkBrand[br][wk]+=cv;}
+      else if(ry===lmY&&rm===lmM){lastMoBrand[br]+=cv;}
+    });
+
     function wowPct(tw,lw){return lw>0?((tw-lw)/lw*100):null;}
     function pctTag(val,tw,lw){
       var p=wowPct(tw,lw); if(p===null) return '';
@@ -3893,77 +3917,88 @@ function renderYTD(){
       +xLabels
       +'</svg>';
 
-    // ── Top Brands Horizontal Bar ──
+    // ── Brand × Week Table ──
     var brandList=BRANDS.map(function(br){return{name:br,val:brandTotals[br]||0};});
     var othVal=0; Object.keys(brandTotals).forEach(function(br){if(BRANDS.indexOf(br)<0) othVal+=brandTotals[br];});
     if(othVal>0) brandList.push({name:'Others',val:othVal});
     brandList.sort(function(a,b){return b.val-a.val;});
-    var maxB=brandList[0]?brandList[0].val:1;
-    var bHtml='<div style="padding:14px 16px">';
-    brandList.forEach(function(b){
-      if(!b.val) return;
-      var pct=Math.round(b.val/flTotal*100), bw=Math.round(b.val/maxB*100);
-      bHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-        +'<div style="width:88px;font-size:11px;color:var(--tx);text-align:right;flex-shrink:0">'+b.name+'</div>'
-        +'<div style="flex:1;background:#F3F4F6;border-radius:3px;height:18px">'
-        +'<div style="width:'+bw+'%;background:#DC2626;height:100%;border-radius:3px;transition:width .3s"></div></div>'
-        +'<div style="width:105px;font-size:11px;color:var(--tx);font-weight:600;flex-shrink:0">'+fv(b.val)+' ('+pct+'%)</div>'
-        +'</div>';
+    var lastMoLabel=MO[lmM]+'\''+String(lmY).slice(2);
+    var wkLabels=['W1 (1-7)','W2 (8-14)','W3 (15-21)','W4 (22+)'];
+    var thStyle='padding:9px 12px;text-align:left;background:var(--bg2,#F9FAFB);font-size:10px;font-weight:600;color:var(--mu);border-bottom:1px solid var(--br);white-space:nowrap';
+    var tdStyle='padding:9px 12px;border-bottom:1px solid var(--br);font-size:12px;color:var(--tx);white-space:nowrap';
+    function fCrT(v){return v?'&#8377;'+(v/1e7).toFixed(2)+'Cr':'—';}
+    var bHtml='<table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr>'
+      +'<th style="'+thStyle+'">Brand</th>'
+      +'<th style="'+thStyle+'">'+(lastMoLabel)+' Total</th>'
+      +wkLabels.map(function(l){return'<th style="'+thStyle+'">'+l+'</th>';}).join('')
+      +'</tr></thead><tbody>';
+    ['Others','Little Joys','Man Matters','Be Bodywise'].forEach(function(br){
+      var lmt=lastMoBrand[br]||0;
+      var wks=curWkBrand[br]||[0,0,0,0];
+      bHtml+='<tr>'
+        +'<td style="'+tdStyle+';font-weight:500">'+br+'</td>'
+        +'<td style="'+tdStyle+'">'+fCrT(lmt)+'</td>'
+        +wks.map(function(v){return'<td style="'+tdStyle+'">'+fCrT(v)+'</td>';}).join('')
+        +'</tr>';
     });
-    // x-axis ticks
-    bHtml+='<div style="display:flex;margin-left:96px;margin-right:113px;justify-content:space-between;font-size:9px;color:var(--mu);margin-top:2px">';
-    for(var bi=0;bi<=3;bi++){var tv=maxB*bi/3; bHtml+='<span>'+(tv===0?'&#8377;0':tv>=1e7?'&#8377;'+(tv/1e7).toFixed(0)+'Cr':'&#8377;'+(tv/1e5).toFixed(0)+'L')+'</span>';}
-    bHtml+='</div>';
-    bHtml+='<div style="text-align:center;margin-top:14px"><button style="border:1px solid var(--br);background:var(--bg);color:var(--tx);font-size:11px;padding:7px 18px;border-radius:6px;cursor:pointer;font-weight:500">View All Brands &#8594;</button></div>';
-    bHtml+='</div>';
+    bHtml+='</tbody></table>';
     brandEl.innerHTML=bHtml;
+    // store for export
+    window._ytdBrandData={brands:['Others','Little Joys','Man Matters','Be Bodywise'],lastMoBrand:lastMoBrand,curWkBrand:curWkBrand,lastMoLabel:lastMoLabel};
 
-    // ── Top Facilities Horizontal Bar ──
-    var facSorted=Object.values(facAcc).sort(function(a,b){return b.fl-a.fl;}).slice(0,5);
+    // ── Top Facilities (vertical bars) ──
+    var facSorted=Object.values(facAcc).sort(function(a,b){return b.fl-a.fl;}).slice(0,4);
     var maxF=facSorted[0]?facSorted[0].fl:1;
-    var fHtml='<div style="padding:14px 16px">';
+    var fHtml='';
     facSorted.forEach(function(f){
       var fw=Math.round(f.fl/maxF*100);
-      fHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-        +'<div style="width:100px;font-size:11px;color:var(--tx);text-align:right;flex-shrink:0">'+f.name+'</div>'
-        +'<div style="flex:1;background:#F3F4F6;border-radius:3px;height:18px">'
-        +'<div style="width:'+fw+'%;background:#1D4ED8;height:100%;border-radius:3px;transition:width .3s"></div></div>'
-        +'<div style="width:70px;font-size:11px;color:var(--tx);font-weight:600;flex-shrink:0">'+fv(f.fl)+'</div>'
-        +'</div>';
+      fHtml+='<div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+        +'<span style="font-size:12px;font-weight:500;color:var(--tx)">'+f.name+'</span>'
+        +'<span style="font-size:11px;font-weight:600;color:#DC2626">&#8377;'+(f.fl/1e5).toFixed(1)+'L Loss</span>'
+        +'</div>'
+        +'<div style="height:5px;background:#F3F4F6;border-radius:3px">'
+        +'<div style="width:'+fw+'%;height:100%;background:#1e2d3d;border-radius:3px;transition:width .5s ease"></div>'
+        +'</div></div>';
     });
-    if(!facSorted.length) fHtml+='<div style="padding:24px;text-align:center;color:var(--mu);font-size:11px">No data</div>';
-    // x-axis ticks
-    if(facSorted.length){
-      fHtml+='<div style="display:flex;margin-left:108px;margin-right:78px;justify-content:space-between;font-size:9px;color:var(--mu);margin-top:2px">';
-      for(var fi=0;fi<=3;fi++){var fv2=maxF*fi/3; fHtml+='<span>'+(fv2===0?'&#8377;0':fv2>=1e7?'&#8377;'+(fv2/1e7).toFixed(0)+'Cr':'&#8377;'+(fv2/1e5).toFixed(0)+'L')+'</span>';}
-      fHtml+='</div>';
-    }
-    fHtml+='<div style="text-align:center;margin-top:14px"><button style="border:1px solid var(--br);background:var(--bg);color:var(--tx);font-size:11px;padding:7px 18px;border-radius:6px;cursor:pointer;font-weight:500">View All Facilities &#8594;</button></div>';
-    fHtml+='</div>';
+    if(!facSorted.length) fHtml='<div style="padding:24px;text-align:center;color:var(--mu);font-size:11px">No data</div>';
+    // AI prediction
+    var flpv=wowPct(twFL,lwFL);
+    var topFacName=facSorted[0]?facSorted[0].name:'N/A';
+    var predTxt=flpv!==null&&flpv<0
+      ?'FL improved '+Math.abs(flpv).toFixed(1)+'% WoW — continue audit cycles to sustain recovery.'
+      :'Facility "'+topFacName+'" is the top loss contributor. Recommend immediate audit to control exposure.';
+    fHtml+='<div style="background:#EFF6FF;border-radius:8px;padding:11px 13px;border:1px solid #BFDBFE;margin-top:4px">'
+      +'<div style="font-size:10px;font-weight:700;color:#1D4ED8;margin-bottom:4px">&#10022; AI Prediction</div>'
+      +'<div style="font-size:11px;color:#374151;line-height:1.55">'+predTxt+'</div>'
+      +'</div>';
     facEl.innerHTML=fHtml;
 
-    // ── Key Insights ──
+    // ── Key Insights (vertical list) ──
     if(insEl){
-      var topBr=brandList[0], topFac=facSorted[0];
-      function insCard(bg,svgPaths,col,txt){
-        return '<div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:200px;background:var(--bg);border:1px solid var(--br);border-radius:8px;padding:14px 12px">'
-          +'<div style="flex-shrink:0"><svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="'+bg+'"/>'+svgPaths+'</svg></div>'
-          +'<div style="font-size:11px;color:var(--mu);line-height:1.55">'+txt+'</div>'
-          +'</div>';
-      }
+      var topBr=brandList[0], topFacIns=facSorted[0];
       var flp=wowPct(twFL,lwFL), recp=wowPct(twRec,lwRec);
+      function insRow(icon,col,html){
+        return '<div style="display:flex;gap:8px;font-size:12px;color:var(--tx);line-height:1.5">'
+          +'<span style="flex-shrink:0;width:16px;text-align:center;color:'+col+';font-size:13px">'+icon+'</span>'
+          +'<span>'+html+'</span></div>';
+      }
       var ins='';
-      ins+=insCard('#FEE2E2','<polyline points="8,22 13,15 17,18 22,10" stroke="#DC2626" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>','#DC2626',
-        flp!==null?'Financial loss <strong>'+(flp>=0?'increased':'decreased')+' '+Math.abs(flp).toFixed(1)+'%</strong> compared to last week.':'Financial Loss YTD: <strong>'+fv(flTotal)+'</strong>.');
-      ins+=insCard('#D1FAE5','<path d="M9 16 A7 7 0 0 1 23 16" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round"/><polyline points="20,13 23,16 20,19" stroke="#059669" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>','#059669',
-        recp!==null?'Recovery <strong>'+(recp>=0?'improved':'declined')+' by '+fv(twRec)+'</strong> compared to last week.':'Recovery YTD: <strong>'+fv(recTotal)+'</strong>.');
-      if(topBr&&topBr.val>0) ins+=insCard('#EDE9FE','<rect x="7" y="19" width="4" height="6" fill="#7C3AED"/><rect x="13" y="15" width="4" height="10" fill="#7C3AED"/><rect x="19" y="11" width="4" height="14" fill="#7C3AED"/>','#7C3AED',
-        '<strong>'+topBr.name+'</strong> contributed <strong>'+Math.round(topBr.val/flTotal*100)+'%</strong> of total financial loss.');
-      if(topFac) ins+=insCard('#DBEAFE','<rect x="8" y="13" width="16" height="11" rx="1" stroke="#1D4ED8" stroke-width="1.5" fill="none"/><rect x="11" y="17" width="3" height="7" fill="#1D4ED8"/><rect x="18" y="17" width="3" height="7" fill="#1D4ED8"/><line x1="8" y1="13" x2="16" y2="8" stroke="#1D4ED8" stroke-width="1.5" stroke-linecap="round"/><line x1="24" y1="13" x2="16" y2="8" stroke="#1D4ED8" stroke-width="1.5" stroke-linecap="round"/>','#1D4ED8',
-        '<strong>'+topFac.name+'</strong> recorded the highest financial loss at <strong>'+fv(topFac.fl)+'</strong>.');
-      ins+=insCard('#FEF3C7','<path d="M16 9 L23 22 H9 Z" stroke="#D97706" stroke-width="1.5" fill="none" stroke-linejoin="round"/><line x1="16" y1="14" x2="16" y2="18" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="20.5" r="1" fill="#D97706"/>','#D97706',
-        'Expiry Risk YTD: <strong>'+fv(expTotal)+'</strong>. Net financial impact: <strong>'+fv(netTotal)+'</strong>.');
+      var flSign=flp!==null?(flp<0?'&#8595;':'&#8593;'):null;
+      ins+=insRow(flSign||'&#9632;',flp!==null&&flp<0?'#059669':'#DC2626',
+        flp!==null?'Financial loss <strong>'+(flp<0?'decreased':'increased')+' '+Math.abs(flp).toFixed(1)+'%</strong> vs last week.':'Financial Loss YTD: <strong>'+fv(flTotal)+'</strong>.');
+      ins+=insRow('&#9651;','#059669',
+        recp!==null?'Recovery <strong>'+(recp>=0?'improved':'declined')+' by <span style="color:'+(recp>=0?'#059669':'#DC2626')+'">'+fv(twRec)+'</span></strong> vs last week.':'Recovery YTD: <strong>'+fv(recTotal)+'</strong>.');
+      if(topBr&&topBr.val>0) ins+=insRow('&#11044;','#6B7280',
+        '<strong>'+topBr.name+'</strong> is the top loss brand at <strong>'+fv(topBr.val)+'</strong> ('+Math.round(topBr.val/flTotal*100)+'% of total).');
+      if(topFacIns) ins+=insRow('&#9679;','#6B7280',
+        '<strong>'+topFacIns.name+'</strong> has highest facility loss at <strong>'+fv(topFacIns.fl)+'</strong>.');
+      ins+=insRow('&#9650;','#D97706',
+        'Expiry Risk YTD: <strong>'+fv(expTotal)+'</strong>. Net impact: <strong>'+fv(netTotal)+'</strong>.');
       insEl.innerHTML=ins;
+      var updEl=document.getElementById('ytd-updated');
+      if(updEl) updEl.textContent='Updated '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     }
   }
 
@@ -3982,6 +4017,30 @@ function renderYTD(){
     kpiEl.innerHTML='<div style="grid-column:1/-1;padding:24px;color:var(--re);font-size:12px">Failed to load YTD data.<br>Action needed: paste updated Code.gs into Apps Script and redeploy.</div>';
     console.error('YTD fetch error',e);
   });
+}
+// ── YTD Auto-reload every 5 min when tab is active ──
+setInterval(function(){
+  var panel=document.getElementById('panel-ytd');
+  if(panel&&panel.style.display!=='none'){
+    _ytdLoaded=false;
+    ytdEventsData=[];
+    renderYTD();
+  }
+},5*60*1000);
+
+function ytdExportCSV(){
+  if(!window._ytdBrandData) return;
+  var d=window._ytdBrandData;
+  var rows=[['Brand',d.lastMoLabel+' Total','W1','W2','W3','W4'].join(',')];
+  d.brands.forEach(function(b){
+    var lmt=d.lastMoBrand[b]||0;
+    var wks=d.curWkBrand[b]||[0,0,0,0];
+    rows.push([b,Math.round(lmt),Math.round(wks[0]),Math.round(wks[1]),Math.round(wks[2]),Math.round(wks[3])].join(','));
+  });
+  var a=document.createElement('a');
+  a.href='data:text/csv,'+encodeURIComponent(rows.join('\n'));
+  a.download='ytd_brand_weekly_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
 }
 // ── END YTD ──────────────────────────────────────────────────
 
