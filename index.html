@@ -3863,59 +3863,44 @@ function renderYTD(){
       kpiCard('Expiry Risk',expTotal,'#D97706','exp',twExp,lwExp)+
       kpiCard('Net Impact',netTotal,'#DC2626','net',twFL-twRec,lwFL-lwRec);
 
-    // ── SVG Line Chart ──
-    var W=760,H=220,PT=30,PR=30,PB=44,PL=58;
-    var CW=W-PL-PR, CH=H-PT-PB;
-    var nM=months.length;
-    var maxFL=Math.max.apply(null,months.map(function(m){return m.fl;}))||1;
-    var yTop=Math.ceil(maxFL/1e7)*1e7;
-    function xp(i){return PL+(nM<2?CW/2:i*CW/(nM-1));}
-    function yp(v){return PT+CH-(v/yTop*CH);}
+    // ── Chart.js Line Chart ──
+    var flVals=months.map(function(m){return parseFloat((m.fl/1e7).toFixed(3));});
+    var recVals=months.map(function(m){return parseFloat((m.rec/1e7).toFixed(3));});
+    var netVals=months.map(function(m){return parseFloat(((m.fl-m.rec)/1e7).toFixed(3));});
+    var xLabels=months.map(function(m){return m.label;});
 
-    var grid='',yax='';
-    for(var gi=0;gi<=4;gi++){
-      var yv=yTop*gi/4, yy=yp(yv);
-      grid+='<line x1="'+PL+'" y1="'+yy.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+yy.toFixed(1)+'" stroke="#E5E7EB" stroke-width="1"/>';
-      var lbl=yv>=1e7?(yv/1e7).toFixed(0):(yv/1e5).toFixed(0)+'L';
-      yax+='<text x="'+(PL-6)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" font-size="9" fill="#9CA3AF">'+lbl+'</text>';
-    }
-    yax+='<text x="12" y="'+(PT+CH/2)+'" text-anchor="middle" font-size="9" fill="#9CA3AF" transform="rotate(-90,12,'+(PT+CH/2)+')">&#8377; in Cr</text>';
-
-    function mkPath(arr){
-      return arr.map(function(v,i){return (i?'L':'M')+xp(i).toFixed(1)+','+yp(v).toFixed(1);}).join(' ');
-    }
-    function mkDots(arr,col,fmt){
-      return arr.map(function(v,i){
-        var x=xp(i),y=yp(v);
-        var lbl=fmt(v);
-        var ly=y-10; if(ly<PT+2) ly=y+16;
-        return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" fill="'+col+'" stroke="white" stroke-width="1.5"/>'
-          +'<text x="'+x.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" font-size="9" font-weight="700" fill="'+col+'">'+lbl+'</text>';
-      }).join('');
-    }
-    var flVals=months.map(function(m){return m.fl;}),
-        recVals=months.map(function(m){return m.rec;}),
-        netVals=months.map(function(m){return m.fl-m.rec;});
-    function fmtCr(v){return v>=1e7?'&#8377;'+(v/1e7).toFixed(2)+'Cr':'&#8377;'+(v/1e5).toFixed(2)+'L';}
-
-    var xLabels=months.map(function(mo,i){
-      return '<text x="'+xp(i).toFixed(1)+'" y="'+(H-PB+18)+'" text-anchor="middle" font-size="10" fill="#6B7280">'+mo.label+'</text>';
-    }).join('');
-
-    var legend='<div style="display:flex;gap:20px;justify-content:center;font-size:11px;color:var(--mu);margin-bottom:8px">'
-      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#DC2626" stroke-width="2.5"/></svg>Financial Loss (Cr)</span>'
-      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#059669" stroke-width="2.5"/></svg>Recovery (L)</span>'
-      +'<span style="display:flex;align-items:center;gap:6px"><svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#1D4ED8" stroke-width="2.5"/></svg>Net Impact (Cr)</span>'
-      +'</div>';
-
-    barEl.innerHTML=legend+'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;overflow:visible">'
-      +grid+yax
-      +'<path d="'+mkPath(flVals)+'" stroke="#DC2626" stroke-width="2.5" fill="none"/>'
-      +'<path d="'+mkPath(recVals)+'" stroke="#059669" stroke-width="2.5" fill="none"/>'
-      +'<path d="'+mkPath(netVals)+'" stroke="#1D4ED8" stroke-width="2.5" fill="none"/>'
-      +mkDots(flVals,'#DC2626',fmtCr)+mkDots(recVals,'#059669',fmtCr)+mkDots(netVals,'#1D4ED8',fmtCr)
-      +xLabels
-      +'</svg>';
+    barEl.style.cssText='padding:12px 16px 8px';
+    barEl.innerHTML='<canvas id="ytd-chart-canvas"></canvas>';
+    if(window._ytdChart){try{window._ytdChart.destroy();}catch(e){}}
+    setTimeout(function(){
+      var ctx=document.getElementById('ytd-chart-canvas');
+      if(!ctx) return;
+      window._ytdChart=new Chart(ctx,{
+        type:'line',
+        data:{
+          labels:xLabels,
+          datasets:[
+            {label:'Financial Loss (Cr)',data:flVals,borderColor:'#DC2626',backgroundColor:'rgba(220,38,38,0.08)',fill:true,tension:0.35,pointBackgroundColor:'#DC2626',pointRadius:4,pointHoverRadius:6,borderWidth:2.5},
+            {label:'Recovery (Cr)',data:recVals,borderColor:'#059669',backgroundColor:'rgba(5,150,105,0.07)',fill:true,tension:0.35,pointBackgroundColor:'#059669',pointRadius:4,pointHoverRadius:6,borderWidth:2.5},
+            {label:'Net Impact (Cr)',data:netVals,borderColor:'#1D4ED8',backgroundColor:'rgba(29,78,216,0.04)',fill:false,tension:0.35,pointBackgroundColor:'#1D4ED8',pointRadius:4,pointHoverRadius:6,borderWidth:2}
+          ]
+        },
+        options:{
+          responsive:true,
+          aspectRatio:3.2,
+          interaction:{mode:'index',intersect:false},
+          plugins:{
+            legend:{position:'top',align:'end',labels:{font:{size:11},color:'#6B7280',boxWidth:20,boxHeight:3,padding:14}},
+            tooltip:{backgroundColor:'#fff',borderColor:'#E5E7EB',borderWidth:1,titleColor:'#374151',bodyColor:'#374151',padding:10,
+              callbacks:{label:function(c){return ' '+c.dataset.label+': ₹'+c.raw.toFixed(2)+' Cr';}}}
+          },
+          scales:{
+            x:{grid:{color:'#F3F4F6'},ticks:{font:{size:11},color:'#6B7280'}},
+            y:{grid:{color:'#F3F4F6'},ticks:{font:{size:10},color:'#9CA3AF',callback:function(v){return'₹'+v+'Cr';}},beginAtZero:true}
+          }
+        }
+      });
+    }, 50);
 
     // ── Brand × Week Table ──
     var brandList=BRANDS.map(function(br){return{name:br,val:brandTotals[br]||0};});
