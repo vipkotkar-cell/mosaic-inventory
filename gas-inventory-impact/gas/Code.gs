@@ -1559,15 +1559,17 @@ if (data.action==='bulkSaveRemarks') {
   const rows = data.rows || [];
   const skipIfFilled = data.skipIfFilled === true;
   const updatedBy = data.updatedBy || 'Bulk Upload';
-  let top5Matched = 0, evMatched = 0;
+  let top5Matched = 0, evMatched = 0, skipped = 0;
   rows.forEach(function(item) {
     if (!item.ehId || !item.remark) return;
-    if (saveRemarkToDailyTop5_(item.ehId, item.remark, updatedBy, 'NI_DailyTop5', skipIfFilled)) top5Matched++;
+    var saved = saveRemarkToDailyTop5_(item.ehId, item.remark, updatedBy, 'NI_DailyTop5', skipIfFilled);
+    if (saved === 'skipped') { skipped++; }
+    else if (saved) { top5Matched++; }
     saveRemarkToNIEvents_(item.ehId, item.remark, skipIfFilled);
     evMatched++;
   });
-  Logger.log('bulkSaveRemarks: top5=' + top5Matched + ', events=' + evMatched + '/' + rows.length);
-  return ContentService.createTextOutput(JSON.stringify({success:true, top5Matched:top5Matched, evMatched:evMatched, total:rows.length})).setMimeType(ContentService.MimeType.JSON);
+  Logger.log('bulkSaveRemarks: top5=' + top5Matched + ', skipped=' + skipped + ', events=' + evMatched + '/' + rows.length);
+  return ContentService.createTextOutput(JSON.stringify({success:true, top5Matched:top5Matched, evMatched:evMatched, skipped:skipped, total:rows.length})).setMimeType(ContentService.MimeType.JSON);
 }
 if (data.action==='chatQuery') {
   const result = handleChatQuery_(data.question || '');
@@ -2051,7 +2053,7 @@ const row = i + 2;
 const existingRemark = String(data[i][cRemark-1] || '').trim();
 if (skipIfFilled && existingRemark) {
   Logger.log('saveRemarkToDailyTop5_: skipping ' + ehId + ' — remark already filled');
-  return true;
+  return 'skipped';
 }
 let remarkBy = assignedTo || '';
 if (!remarkBy) { try { remarkBy = Session.getActiveUser().getEmail() || ''; } catch(e) {} }
