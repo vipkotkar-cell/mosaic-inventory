@@ -4212,19 +4212,13 @@ function bulkUploadRemarks(){
   res.style.display='none';
   var userName=(window._gUser&&window._gUser.getName?window._gUser.getName():'Bulk Upload');
   var skipIfFilled=document.getElementById('bulk-skip-filled').checked;
-  fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'bulkSaveRemarks',rows:_bulkRows,updatedBy:userName,skipIfFilled:skipIfFilled})})
-  .then(function(r){return r.json();})
-  .then(function(d){
+  fetch(PROXY,{method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({action:'bulkSaveRemarks',rows:_bulkRows,updatedBy:userName,skipIfFilled:skipIfFilled}),
+    mode:'no-cors'})
+  .then(function(){
     btn.disabled=false; btn.textContent='Upload All Remarks';
-    res.style.display='block';
-    if(d.success){
-      res.style.background='#d1fae5'; res.style.color='#065f46';
-      res.innerHTML='<strong>Done!</strong> Saved '+d.top5Matched+' of '+d.total+' rows to NI_DailyTop5, '+d.evMatched+' to NI_Events.';
-    } else {
-      res.style.background='#fee2e2'; res.style.color='#991b1b';
-      res.textContent='Error: '+(d.error||'Unknown error');
-    }
+    res.style.display='block'; res.style.background='#d1fae5'; res.style.color='#065f46';
+    res.innerHTML='<strong>Submitted!</strong> '+_bulkRows.length+' remarks sent to GAS. Check NI_DailyTop5 sheet to confirm they were saved.';
   })
   .catch(function(err){
     btn.disabled=false; btn.textContent='Upload All Remarks';
