@@ -532,11 +532,44 @@ tbody tr:hover td{background:var(--sf)}
       <div class="sub-tab on" onclick="goRmkTab('top5')"   id="rmk-tab-top5">&#128202; Top 5 Today</div>
       <div class="sub-tab"    onclick="goRmkTab('monthly')" id="rmk-tab-monthly">&#128197; Monthly Summary</div>
       <div class="sub-tab"    onclick="goRmkTab('sysrmk')"  id="rmk-tab-sysrmk">&#129302; System Remarks</div>
+      <div class="sub-tab"    onclick="goRmkTab('bulk')"    id="rmk-tab-bulk">&#128228; Bulk Upload</div>
     </div>
 
     <div id="rmk-view-top5"><div id="rmk-top5-wrap"></div></div>
     <div id="rmk-view-monthly" style="display:none"><div id="rmk-monthly-wrap"></div></div>
     <div id="rmk-view-sysrmk"  style="display:none"><div id="rmk-sysrmk-wrap"></div></div>
+    <div id="rmk-view-bulk" style="display:none">
+      <div class="card" style="padding:20px;max-width:900px">
+        <div style="margin-bottom:16px">
+          <div style="font-weight:600;font-size:15px;margin-bottom:6px">Bulk Upload Remarks from Excel</div>
+          <div style="font-size:13px;color:#6b7280">Upload an .xlsx file. Reads <strong>Sheet1</strong> — expects columns: <code>EH_ID</code> and <code>Remark</code>. Only rows with both filled will be uploaded.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:#f3f4f6;border:1.5px dashed #d1d5db;border-radius:8px;cursor:pointer;font-size:13px">
+            <span>&#128194;</span> Choose .xlsx file
+            <input type="file" id="bulk-file-input" accept=".xlsx" style="display:none" onchange="bulkParseXlsx(this)">
+          </label>
+          <span id="bulk-file-name" style="font-size:13px;color:#6b7280"></span>
+        </div>
+        <div id="bulk-preview" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div id="bulk-preview-count" style="font-size:13px;font-weight:600"></div>
+            <button onclick="bulkUploadRemarks()" id="bulk-upload-btn" style="padding:8px 20px;background:#1D4ED8;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Upload All Remarks</button>
+          </div>
+          <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+            <table id="bulk-preview-table" style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead><tr style="background:#f9fafb;position:sticky;top:0">
+                <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e5e7eb">#</th>
+                <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e5e7eb">EH_ID</th>
+                <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #e5e7eb">Remark</th>
+              </tr></thead>
+              <tbody id="bulk-preview-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="bulk-result" style="display:none;margin-top:14px;padding:12px 16px;border-radius:8px;font-size:13px"></div>
+      </div>
+    </div>
 
   </div>
 
@@ -4116,14 +4149,83 @@ function _obsolete_toggleBtExpand(grp){
 }
 
 function goRmkTab(tab){
-  ['top5','monthly','sysrmk'].forEach(function(t){
+  ['top5','monthly','sysrmk','bulk'].forEach(function(t){
     var v=document.getElementById('rmk-view-'+t); if(v) v.style.display=t===tab?'block':'none';
     var b=document.getElementById('rmk-tab-'+t); if(b) b.classList.toggle('on',t===tab);
   });
   if(tab==='top5') renderRmkTop5();
   else if(tab==='sysrmk') renderSysRemarks();
-  else renderRmkMonthly();
+  else if(tab==='monthly') renderRmkMonthly();
 }
+
+function loadXlsxLib(cb){
+  if(typeof XLSX!=='undefined'){cb();return;}
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=cb; document.head.appendChild(s);
+}
+
+var _bulkRows=[];
+function bulkParseXlsx(input){
+  var file=input.files[0]; if(!file) return;
+  document.getElementById('bulk-file-name').textContent=file.name;
+  document.getElementById('bulk-preview').style.display='none';
+  document.getElementById('bulk-result').style.display='none';
+  var reader=new FileReader();
+  reader.onload=function(e){
+    loadXlsxLib(function(){
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      var shName=wb.SheetNames.includes('Sheet1')?'Sheet1':wb.SheetNames[0];
+      var rows=XLSX.utils.sheet_to_json(wb.Sheets[shName],{defval:''});
+      _bulkRows=rows.filter(function(r){ return (r['EH_ID']||'').trim()&&(r['Remark']||'').trim(); })
+                    .map(function(r){ return {ehId:(r['EH_ID']||'').trim(),remark:(r['Remark']||'').trim()}; });
+      var tbody=document.getElementById('bulk-preview-tbody');
+      tbody.innerHTML=_bulkRows.map(function(r,i){
+        return '<tr style="border-bottom:1px solid #f3f4f6"><td style="padding:6px 10px;color:#6b7280">'+(i+1)+'</td>'
+          +'<td style="padding:6px 10px;font-family:monospace;font-size:11px;max-width:320px;word-break:break-all">'+escHtml(r.ehId)+'</td>'
+          +'<td style="padding:6px 10px">'+escHtml(r.remark)+'</td></tr>';
+      }).join('');
+      document.getElementById('bulk-preview-count').textContent=_bulkRows.length+' rows ready to upload (from '+rows.length+' total in Sheet1)';
+      document.getElementById('bulk-preview').style.display=_bulkRows.length?'block':'none';
+      if(!_bulkRows.length){
+        var res=document.getElementById('bulk-result');
+        res.style.display='block'; res.style.background='#fef3c7'; res.style.color='#92400e';
+        res.textContent='No rows found with both EH_ID and Remark filled.';
+      }
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function bulkUploadRemarks(){
+  if(!_bulkRows.length) return;
+  var btn=document.getElementById('bulk-upload-btn');
+  btn.disabled=true; btn.textContent='Uploading...';
+  var res=document.getElementById('bulk-result');
+  res.style.display='none';
+  var userName=(window._gUser&&window._gUser.getName?window._gUser.getName():'Bulk Upload');
+  fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'bulkSaveRemarks',rows:_bulkRows,updatedBy:userName})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    btn.disabled=false; btn.textContent='Upload All Remarks';
+    res.style.display='block';
+    if(d.success){
+      res.style.background='#d1fae5'; res.style.color='#065f46';
+      res.innerHTML='<strong>Done!</strong> Saved '+d.top5Matched+' of '+d.total+' rows to NI_DailyTop5, '+d.evMatched+' to NI_Events.';
+    } else {
+      res.style.background='#fee2e2'; res.style.color='#991b1b';
+      res.textContent='Error: '+(d.error||'Unknown error');
+    }
+  })
+  .catch(function(err){
+    btn.disabled=false; btn.textContent='Upload All Remarks';
+    res.style.display='block'; res.style.background='#fee2e2'; res.style.color='#991b1b';
+    res.textContent='Network error: '+err.message;
+  });
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 var SYS_REMARKS = ['QC Triggered - Batch Recalled'];
 
