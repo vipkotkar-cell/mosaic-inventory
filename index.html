@@ -4212,25 +4212,67 @@ function bulkUploadRemarks(){
   res.style.display='none';
   var userName=(window._gUser&&window._gUser.getName?window._gUser.getName():'Bulk Upload');
   var skipIfFilled=document.getElementById('bulk-skip-filled').checked;
-  fetch(PROXY,{method:'POST',body:JSON.stringify({action:'bulkSaveRemarks',rows:_bulkRows,updatedBy:userName,skipIfFilled:skipIfFilled})})
-  .then(function(r){return r.json();})
-  .then(function(d){
-    btn.disabled=false; btn.textContent='Upload All Remarks';
-    res.style.display='block';
-    if(d.success){
-      res.style.background='#d1fae5'; res.style.color='#065f46';
-      res.innerHTML='<strong>Done!</strong> Saved <strong>'+d.top5Matched+'</strong> of '+d.total+' to NI_DailyTop5'
-        +(d.skipped?' ('+d.skipped+' skipped — remark already existed)':'')+'. NI_Events: '+d.evMatched+' updated.';
-    } else {
-      res.style.background='#fee2e2'; res.style.color='#991b1b';
-      res.textContent='GAS error: '+(d.error||'Unknown error');
-    }
+  // GAS POST blocks CORS preflight — send no-cors then verify via GET
+  fetch(PROXY,{method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({action:'bulkSaveRemarks',rows:_bulkRows,updatedBy:userName,skipIfFilled:skipIfFilled}),
+    mode:'no-cors'})
+  .then(function(){
+    res.style.display='block'; res.style.background='#fef9c3'; res.style.color='#713f12';
+    res.textContent='Sent to GAS — verifying in sheet...';
+    // Wait 4s for GAS to process, then verify via GET
+    return new Promise(function(resolve){ setTimeout(resolve, 4000); });
+  })
+  .then(function(){
+    // Fetch all top5 rows for each unique date in uploaded batch
+    var dates=[]; _bulkRows.forEach(function(r){
+      var d=(r.ehId||'').split('|')[0]; if(d&&dates.indexOf(d)<0) dates.push(d);
+    });
+    var ehIdSet={}; _bulkRows.forEach(function(r){ ehIdSet[r.ehId]=r.remark; });
+    // Build GET requests for each date
+    var fetches=dates.map(function(d){
+      var iso=parseGasDate_(d);
+      return iso?fetch(PROXY+'?action=top5&date='+iso).then(function(r){return r.json();}).catch(function(){return{rows:[]};})
+               :Promise.resolve({rows:[]});
+    });
+    return Promise.all(fetches).then(function(results){
+      var confirmed=0, missing=[], total=_bulkRows.length;
+      var allRows=[]; results.forEach(function(r){ (r.rows||[]).forEach(function(row){ allRows.push(row); }); });
+      _bulkRows.forEach(function(item){
+        var match=allRows.find(function(row){ return (row['EH_ID']||'').trim()===item.ehId; });
+        if(match && (match['Remark']||'').trim()) confirmed++;
+        else missing.push(item);
+      });
+      btn.disabled=false; btn.textContent='Upload All Remarks';
+      res.style.display='block';
+      if(confirmed===total){
+        res.style.background='#d1fae5'; res.style.color='#065f46';
+        res.innerHTML='<strong>All '+total+' remarks confirmed</strong> in NI_DailyTop5 sheet.';
+      } else if(confirmed>0){
+        res.style.background='#fef3c7'; res.style.color='#92400e';
+        res.innerHTML='<strong>'+confirmed+' of '+total+' confirmed</strong> in sheet. '
+          +(missing.length)+' not found (EH_ID may not exist in NI_DailyTop5):<br>'
+          +missing.slice(0,5).map(function(m){return '<small>• '+escHtml(m.ehId)+'</small>';}).join('<br>')
+          +(missing.length>5?'<br><small>...and '+(missing.length-5)+' more</small>':'');
+      } else {
+        res.style.background='#fee2e2'; res.style.color='#991b1b';
+        res.innerHTML='<strong>Could not verify</strong> — 0 of '+total+' found in sheet after 4s. Either GAS is slow or Code.gs needs redeployment.';
+      }
+    });
   })
   .catch(function(err){
     btn.disabled=false; btn.textContent='Upload All Remarks';
     res.style.display='block'; res.style.background='#fee2e2'; res.style.color='#991b1b';
     res.textContent='Network error: '+err.message;
   });
+}
+
+function parseGasDate_(gasDate){
+  // Convert "23 Jun 2026" to "2026-06-23"
+  var months={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  var p=(gasDate||'').trim().split(' ');
+  if(p.length!==3) return null;
+  var m=months[p[1]]; if(!m) return null;
+  return p[2]+'-'+m+'-'+(p[0].length===1?'0':'')+p[0];
 }
 
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
