@@ -4031,7 +4031,7 @@ function ytdExportCSV(){
 
 // MODAL
 var _rmk={};
-function openRmk(btn){_rmk={sku:btn.getAttribute('data-sku'),batch:btn.getAttribute('data-batch'),fac:btn.getAttribute('data-fac'),bt:btn.getAttribute('data-bt'),ev:btn.getAttribute('data-ev'),cogs:btn.getAttribute('data-cogs')};var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};document.getElementById('rmk-sku-d').textContent=_rmk.sku+' #'+_rmk.batch;document.getElementById('rmk-ev-d').textContent=_rmk.ev+' - COGS: INR '+parseFloat(_rmk.cogs).toLocaleString();document.getElementById('rmk-loc-d').textContent=_rmk.fac+' ('+_rmk.bt+')';document.getElementById('rmk-asn-d').textContent=a.name;document.getElementById('rmk-asn-s-d').textContent=a.email+' - included in tomorrow morning report';document.getElementById('rmk-txt').value='';document.getElementById('rmk-modal').classList.add('show');}
+function openRmk(btn){_rmk={sku:btn.getAttribute('data-sku'),batch:btn.getAttribute('data-batch'),fac:btn.getAttribute('data-fac'),bt:btn.getAttribute('data-bt'),ev:btn.getAttribute('data-ev'),cogs:btn.getAttribute('data-cogs'),ehId:btn.getAttribute('data-ehid')||'',date:btn.getAttribute('data-date')||''};var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};document.getElementById('rmk-sku-d').textContent=_rmk.sku+' #'+_rmk.batch;document.getElementById('rmk-ev-d').textContent=_rmk.ev+' - COGS: INR '+parseFloat(_rmk.cogs).toLocaleString();document.getElementById('rmk-loc-d').textContent=_rmk.fac+' ('+_rmk.bt+')';document.getElementById('rmk-asn-d').textContent=a.name;document.getElementById('rmk-asn-s-d').textContent=a.email+' - included in tomorrow morning report';document.getElementById('rmk-txt').value='';document.getElementById('rmk-modal').classList.add('show');}
 function showToast(msg,err){
   var t=document.getElementById('_toast');
   if(!t){t=document.createElement('div');t.id='_toast';
@@ -4558,7 +4558,7 @@ function openBizPendingPanel(bt, panelId){
     +'<th style="'+TH+';text-align:right">COGS</th><th style="'+TH+'">Action</th>'
     +'</tr></thead><tbody>';
   pending.forEach(function(r,i){
-    var ba='data-sku="'+r['SKU']+'" data-batch="'+(r['Batch']||'')+'" data-fac="'+r['Facility']+'" data-bt="'+(r['BizType']||'')+'" data-ev="'+(r['Event']||'')+'" data-cogs="'+(r['COGSValue']||0)+'"';
+    var ba='data-sku="'+r['SKU']+'" data-batch="'+(r['Batch']||'')+'" data-fac="'+r['Facility']+'" data-bt="'+(r['BizType']||'')+'" data-ev="'+(r['Event']||'')+'" data-cogs="'+(r['COGSValue']||0)+'" data-ehid="'+(r['EH_ID']||'')+'" data-date="'+(r['Date']||'')+'"';
     html+='<tr style="border-bottom:1px solid rgba(228,232,240,.4)">'
       +'<td style="padding:6px 11px;color:var(--mu)">'+(i+1)+'</td>'
       +'<td style="padding:6px 11px"><div style="font-weight:700">'+r['SKU']+'</div><div style="font-size:9px;color:var(--mu)">'+((r['Name']||'').substring(0,24)||'—')+'</div></td>'
