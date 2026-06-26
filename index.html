@@ -547,13 +547,17 @@ tbody tr:hover td{background:var(--sf)}
           </div>
           <button onclick="bulkDownloadSample()" style="padding:7px 14px;background:#f0fdf4;color:#065f46;border:1px solid #6ee7b7;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">&#11015; Download Sample</button>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
           <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:#f3f4f6;border:1.5px dashed #d1d5db;border-radius:8px;cursor:pointer;font-size:13px">
             <span>&#128194;</span> Choose .xlsx file
             <input type="file" id="bulk-file-input" accept=".xlsx" style="display:none" onchange="bulkParseXlsx(this)">
           </label>
           <span id="bulk-file-name" style="font-size:13px;color:#6b7280"></span>
         </div>
+        <label style="display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#374151;margin-bottom:16px;cursor:pointer">
+          <input type="checkbox" id="bulk-skip-filled" checked style="width:14px;height:14px;accent-color:#1D4ED8">
+          Skip rows where a remark already exists (recommended)
+        </label>
         <div id="bulk-preview" style="display:none">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <div id="bulk-preview-count" style="font-size:13px;font-weight:600"></div>
@@ -4207,8 +4211,9 @@ function bulkUploadRemarks(){
   var res=document.getElementById('bulk-result');
   res.style.display='none';
   var userName=(window._gUser&&window._gUser.getName?window._gUser.getName():'Bulk Upload');
+  var skipIfFilled=document.getElementById('bulk-skip-filled').checked;
   fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'bulkSaveRemarks',rows:_bulkRows,updatedBy:userName})})
+    body:JSON.stringify({action:'bulkSaveRemarks',rows:_bulkRows,updatedBy:userName,skipIfFilled:skipIfFilled})})
   .then(function(r){return r.json();})
   .then(function(d){
     btn.disabled=false; btn.textContent='Upload All Remarks';
