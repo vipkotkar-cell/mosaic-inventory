@@ -265,11 +265,8 @@ shEv.getRange(1,1,1,evHeaders.length).setValues([evHeaders]);
 shEv.getRange(1,1,1,evHeaders.length).setFontWeight('bold');
 shEv.setFrozenRows(1);
 }
-// Ensure header row exists (safety check)
-const evFirstCell = shEv.getLastRow() >
-0 ? String(shEv.getRange(1,1).getValue()).trim() : '';
-if (evFirstCell !== 'EH_ID' && evFirstCell !== 'Date') {
-shEv.clearContents();
+// Ensure header row — ONLY initialize if sheet is truly empty; NEVER clear existing data
+if (shEv.getLastRow() === 0) {
 shEv.getRange(1,1,1,evHeaders.length).setValues([evHeaders]);
 shEv.getRange(1,1,1,evHeaders.length).setFontWeight('bold');
 shEv.setFrozenRows(1);
@@ -351,12 +348,14 @@ invRows.push([fac, getBizType_(fac), getCity_(fac), d.good, d.bad, d.qc, d.ne, d
 });
 let shInv = ss.getSheetByName('NI_Inventory');
 if (!shInv) shInv = ss.insertSheet('NI_Inventory');
-shInv.clearContents();
-if (invRows.length >
-1) {
-shInv.getRange(1,1,invRows.length,invHeaders.length).setValues(invRows);
-SpreadsheetApp.flush();
-} Logger.log('NI_Inventory: ' + (invRows.length-1) + ' facilities saved | ' + facSet.size + ' unique facilities in raw data');
+if (invRows.length > 1) {
+  shInv.clearContents();
+  shInv.getRange(1,1,invRows.length,invHeaders.length).setValues(invRows);
+  SpreadsheetApp.flush();
+  Logger.log('NI_Inventory: ' + (invRows.length-1) + ' facilities saved | ' + facSet.size + ' unique facilities in raw data');
+} else {
+  Logger.log('NI_Inventory: no data parsed from CSV — keeping yesterday snapshot to avoid blank dashboard.');
+}
 // -- 3. NI_Expiry: items with Manufacturing + Expiry dates for Near-Expiry calculation --
 // Filter: GOOD + ACTIVE only (per product documentation)
 const expMap = {};
@@ -385,12 +384,14 @@ expRows.push([r.sku,r.name,r.batch,r.fac,getBizType_(r.fac),getCity_(r.fac),r.qt
 });
 let shExp = ss.getSheetByName('NI_Expiry');
 if (!shExp) shExp = ss.insertSheet('NI_Expiry');
-shExp.clearContents();
-if (expRows.length >
-1) {
-shExp.getRange(1,1,expRows.length,expHeaders.length).setValues(expRows);
-SpreadsheetApp.flush();
-} Logger.log('NI_Expiry: ' + (expRows.length-1) + ' GOOD+ACTIVE items with Mfg+Expiry dates');
+if (expRows.length > 1) {
+  shExp.clearContents();
+  shExp.getRange(1,1,expRows.length,expHeaders.length).setValues(expRows);
+  SpreadsheetApp.flush();
+  Logger.log('NI_Expiry: ' + (expRows.length-1) + ' GOOD+ACTIVE items with Mfg+Expiry dates');
+} else {
+  Logger.log('NI_Expiry: no data parsed — keeping yesterday snapshot.');
+}
 Logger.log('NI_NearExpiry and OperationalMetrics handled by Project 2 (Inventory Overview).');
 // -- 4. NI_TodayStock: aggregated by SKU+Facility preserving ALL inventory/status splits --
 // Each raw row has a specific Inventory Type and Batch Status - we sum qty into the right bucket
@@ -465,16 +466,18 @@ stockRows.push([ r.sku, r.name, r.fac, getBizType_(r.fac), getCity_(r.fac), getB
 });
 let shStock = ss.getSheetByName('NI_TodayStock');
 if (!shStock) shStock = ss.insertSheet('NI_TodayStock');
-shStock.clearContents();
-const chunk = 5000;
-for (let i = 0;
-i <
-stockRows.length;
-i += chunk) {
-const c = stockRows.slice(i, i + chunk);
-shStock.getRange(i + 1, 1, c.length, stockHeaders.length).setValues(c);
-SpreadsheetApp.flush();
-} Logger.log('NI_TodayStock: ' + (stockRows.length - 1) + ' SKU+facility rows saved');
+if (stockRows.length > 1) {
+  shStock.clearContents();
+  const chunk = 5000;
+  for (let i = 0; i < stockRows.length; i += chunk) {
+    const c = stockRows.slice(i, i + chunk);
+    shStock.getRange(i + 1, 1, c.length, stockHeaders.length).setValues(c);
+    SpreadsheetApp.flush();
+  }
+  Logger.log('NI_TodayStock: ' + (stockRows.length - 1) + ' SKU+facility rows saved');
+} else {
+  Logger.log('NI_TodayStock: no data parsed — keeping yesterday snapshot.');
+}
 // Log totals for verification against manual pivot
 let vGood=0,vBad=0,vQC=0,vBlocked=0,vNF=0,vNE=0,vExp=0,vRec=0;
 Object.values(stockMap).forEach(r =>
@@ -992,11 +995,17 @@ if (facHistRows.length >
 const facData = shFac.getDataRange().getValues();
 const keepRows = facData.filter((r, i) =>
 i === 0 || String(r[0]).trim() !== facDateStr);
-shFac.clearContents();
-if (keepRows.length >
-0) {
-shFac.getRange(1, 1, keepRows.length, 13).setValues(keepRows);
-} shFac.getRange(shFac.getLastRow()+1, 1, facHistRows.length, 13).setValues(facHistRows);
+if (keepRows.length > 1 || facData.length <= 1) {
+  // Safe to clear: either we have rows to restore, or sheet was already near-empty
+  shFac.clearContents();
+  if (keepRows.length > 0) {
+    shFac.getRange(1, 1, keepRows.length, 13).setValues(keepRows);
+  }
+  shFac.getRange(shFac.getLastRow()+1, 1, facHistRows.length, 13).setValues(facHistRows);
+} else {
+  Logger.log('NI_FacHistory: keepRows unexpectedly empty (filter may have failed) — aborting clear to protect ' + facData.length + ' existing rows. Appending today rows only.');
+  shFac.getRange(shFac.getLastRow()+1, 1, facHistRows.length, 13).setValues(facHistRows);
+}
 SpreadsheetApp.flush();
 Logger.log('NI_FacHistory: ' + facHistRows.length + ' facility rows saved for ' + facDateStr);
 }
@@ -1589,11 +1598,15 @@ const existingHeader = lastCol > 0 ? sh.getRange(1,1,1,lastCol).getValues()[0].m
 if (existingHeader.length !== 19 || existingHeader[10] !== 'Impact Class') {
   // Only rebuild if truly wrong schema — not just missing col 19
   if (existingHeader.length < 18 || existingHeader[10] !== 'Impact Class') {
-    Logger.log('NI_DailyTop5: schema is ' + existingHeader.length + '-col — clearing and rebuilding to 19-col.');
-    sh.clearContents();
-    sh.getRange(1,1,1,19).setValues([HEADERS19]);
-    sh.getRange(1,1,1,19).setFontWeight('bold');
-    sh.setFrozenRows(1);
+    if (sh.getLastRow() <= 1) {
+      Logger.log('NI_DailyTop5: schema wrong and sheet empty — clearing and rebuilding to 19-col.');
+      sh.clearContents();
+      sh.getRange(1,1,1,19).setValues([HEADERS19]);
+      sh.getRange(1,1,1,19).setFontWeight('bold');
+      sh.setFrozenRows(1);
+    } else {
+      Logger.log('NI_DailyTop5: schema looks wrong (' + existingHeader.length + ' cols, col10=' + existingHeader[10] + ') BUT sheet has ' + sh.getLastRow() + ' rows — skipping clear to protect data. Fix schema manually.');
+    }
   }
   // If 18-col valid schema: migration will add col 19 via addUserCommentColumn()
 }
@@ -3185,8 +3198,7 @@ var junData = junSh.getDataRange().getValues();
 var junHeaders = junData[0] ? junData[0].map(function(h){
 return String(h).trim();
 }) : [];
-if (junData.length <
-1 || junHeaders[0] !== 'Date') {
+if (junData.length < 1 || (junHeaders[0] !== 'Date' && junHeaders[0] !== 'EH_ID')) {
 junSh.clearContents();
 junSh.appendRow(EXPECTED);
 junData = junSh.getDataRange().getValues();
