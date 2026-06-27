@@ -2482,7 +2482,9 @@ const now = new Date();
 const archiveDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 const monthLabel = Utilities.formatDate(archiveDate, 'Asia/Kolkata', 'MMM yyyy') .replace(' ', '');
 // e.g. "Apr2026"
-const SHEETS_TO_ARCHIVE = [ 'NI_History', 'NI_FacHistory', 'NI_DailyTop5', 'NI_Remarks', ];
+// NI_DailyTop5 and NI_Events are NEVER cleared — they are permanent records.
+// NI_DailyTop5 is append-only (remarks must survive month transitions).
+const SHEETS_TO_ARCHIVE = [ 'NI_History', 'NI_FacHistory', 'NI_Remarks', ];
 const results = [];
 SHEETS_TO_ARCHIVE.forEach(sheetName =>
 {
