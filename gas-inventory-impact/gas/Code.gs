@@ -3273,6 +3273,10 @@ var junHeaders = junData[0] ? junData[0].map(function(h){
 return String(h).trim();
 }) : [];
 if (junData.length < 1 || (junHeaders[0] !== 'Date' && junHeaders[0] !== 'EH_ID')) {
+if (junSh.getLastRow() >= 2) {
+  Logger.log('backfillFromMayNIEvents: NI_Events has ' + junSh.getLastRow() + ' rows but header looks wrong — aborting to protect data. Fix header manually.');
+  return;
+}
 junSh.clearContents();
 junSh.appendRow(EXPECTED);
 junData = junSh.getDataRange().getValues();
