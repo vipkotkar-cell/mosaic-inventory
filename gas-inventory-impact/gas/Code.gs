@@ -265,11 +265,17 @@ shEv.getRange(1,1,1,evHeaders.length).setValues([evHeaders]);
 shEv.getRange(1,1,1,evHeaders.length).setFontWeight('bold');
 shEv.setFrozenRows(1);
 }
+// Safety: take a daily snapshot backup BEFORE any write
+backupNIEvents_(ss, shEv);
 // Ensure header row — ONLY initialize if sheet is truly empty; NEVER clear existing data
-if (shEv.getLastRow() === 0) {
+const evLastRow = shEv.getLastRow();
+if (evLastRow === 0) {
 shEv.getRange(1,1,1,evHeaders.length).setValues([evHeaders]);
 shEv.getRange(1,1,1,evHeaders.length).setFontWeight('bold');
 shEv.setFrozenRows(1);
+} else if (evLastRow >= 2) {
+// Sheet has data — NEVER touch it, just log
+Logger.log('NI_Events: ' + (evLastRow - 1) + ' existing rows — append-only mode, no clear.');
 }
 // Dedup: skip if today already logged (prevents double-write if trigger runs twice)
 const evTodayStr = result.todayStr;
@@ -2230,6 +2236,53 @@ Logger.log('Email notification failed: ' + e);
 } Logger.log('autoTransitionMonth_: new sheet created → ' + newId);
 return true;
 }
+// ============================================================
+// NI_Events BACKUP — called before every append to NI_Events
+// Creates/updates NI_Events_Backup tab. If NI_Events ever gets wiped,
+// run restoreNIEventsFromBackup() to recover.
+// ============================================================
+function backupNIEvents_(ss, shEv) {
+try {
+if (!shEv || shEv.getLastRow() < 2) return; // nothing to back up
+var tz = Session.getScriptTimeZone();
+var today = Utilities.formatDate(new Date(), tz, 'yyyyMMdd');
+var backupName = 'NI_Events_Backup';
+var shBak = ss.getSheetByName(backupName);
+// Only re-copy if today's backup hasn't been done yet
+if (shBak) {
+var bakNote = shBak.getRange(1,1).getNote();
+if (bakNote === today) { Logger.log('backupNIEvents_: backup already fresh for ' + today); return; }
+ss.deleteSheet(shBak);
+}
+shBak = shEv.copyTo(ss);
+shBak.setName(backupName);
+shBak.getRange(1,1).setNote(today);
+Logger.log('backupNIEvents_: snapshot taken — ' + (shEv.getLastRow()-1) + ' rows backed up to ' + backupName);
+} catch(e) {
+Logger.log('backupNIEvents_: failed (non-fatal) — ' + e);
+}
+}
+
+// Manual recovery: copies NI_Events_Backup → NI_Events
+// Run this from Apps Script editor if NI_Events gets wiped
+function restoreNIEventsFromBackup() {
+var ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+var shBak = ss.getSheetByName('NI_Events_Backup');
+if (!shBak || shBak.getLastRow() < 2) {
+Logger.log('restoreNIEventsFromBackup: no backup found or backup is empty');
+return;
+}
+var shEv = ss.getSheetByName('NI_Events');
+if (!shEv) shEv = ss.insertSheet('NI_Events');
+var data = shBak.getDataRange().getValues();
+shEv.clearContents();
+shEv.getRange(1, 1, data.length, data[0].length).setValues(data);
+shEv.getRange(1,1,1,data[0].length).setFontWeight('bold');
+shEv.setFrozenRows(1);
+SpreadsheetApp.flush();
+Logger.log('restoreNIEventsFromBackup: restored ' + (data.length-1) + ' rows from NI_Events_Backup');
+}
+
 // ============================================================
 // NI_FacHistory - daily per-facility impact log
 // Schema: Date | Facility | City | BizType | NegQty | NegCOGS | PosQty | PosCOGS | NetCOGS
