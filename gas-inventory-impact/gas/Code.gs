@@ -1912,6 +1912,11 @@ function restoreJuneFromYearSheet() {
   // Rebuild NI_Events with the year sheet headers + June rows
   var shEv = ss.getSheetByName('NI_Events');
   if (!shEv) shEv = ss.insertSheet('NI_Events');
+  // Safety guard: if NI_Events already has data, abort — do not overwrite live data
+  if (shEv.getLastRow() >= 2) {
+    Logger.log('restoreJuneFromYearSheet: ABORTED — NI_Events already has ' + (shEv.getLastRow()-1) + ' data rows. Clear it manually first if you truly want to restore.');
+    return;
+  }
   shEv.clearContents();
   shEv.getRange(1, 1, 1, yearHeaders.length).setValues([yearHeaders]);
   shEv.getRange(1, 1, 1, yearHeaders.length).setFontWeight('bold');
@@ -2275,6 +2280,11 @@ return;
 var shEv = ss.getSheetByName('NI_Events');
 if (!shEv) shEv = ss.insertSheet('NI_Events');
 var data = shBak.getDataRange().getValues();
+// Safety guard: only restore if NI_Events is empty
+if (shEv.getLastRow() >= 2) {
+  Logger.log('restoreNIEventsFromBackup: ABORTED — NI_Events already has ' + (shEv.getLastRow()-1) + ' data rows. Clear it manually first if you truly want to restore from backup.');
+  return;
+}
 shEv.clearContents();
 shEv.getRange(1, 1, data.length, data[0].length).setValues(data);
 shEv.getRange(1,1,1,data[0].length).setFontWeight('bold');
