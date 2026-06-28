@@ -131,7 +131,6 @@ appendHistory_(result);
 // Log Top 10 neg events to permanent history
 appendEventHistory_(result, result.todayStr);
 appendFacHistory_(result);
-appendDailyPNL_(result);
 // Load WTD/MTD + pending remarks
 const wtdMtd = getWtdMtd_();
 const pendingRemarks = getPendingRemarks_();
@@ -2331,93 +2330,6 @@ if (rows.length) {
 sh.getRange(sh.getLastRow()+1, 1, rows.length, 9).setValues(rows);
 SpreadsheetApp.flush();
 Logger.log('appendFacHistory_: wrote ' + rows.length + ' facility rows for ' + dateStr);
-}
-}
-// ============================================================
-// NI_DailyPNL - daily P&L per brand
-// Schema: Date | Brand | NegEvents | NegQty | NegCOGS | PosEvents | PosQty | PosCOGS | NetCOGS | ExpiryQty | ExpiryCOGS
-// ExpiryQty/ExpiryCOGS = a2ne+ne2e+a2e (informational, not in Net)
-// ============================================================
-function getDailyPNLSheet_() {
-const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
-let sh = ss.getSheetByName('NI_DailyPNL');
-if (!sh) {
-sh = ss.insertSheet('NI_DailyPNL');
-const h = [['Date','Brand','NegEvents','NegQty','NegCOGS', 'PosEvents','PosQty','PosCOGS','NetCOGS', 'ExpiryQty','ExpiryCOGS']];
-sh.getRange(1,1,1,11).setValues(h).setFontWeight('bold');
-sh.setFrozenRows(1);
-Logger.log('NI_DailyPNL sheet created.');
-}
-return sh;
-}
-function appendDailyPNL_(result) {
-const sh = getDailyPNLSheet_();
-const dateStr = result.todayStr;
-// Deduplicate by date+brand
-const existingKeys = new Set();
-if (sh.getLastRow() >
-1) {
-sh.getRange(2,1,sh.getLastRow()-1,2).getValues() .forEach(r =>
-existingKeys.add(String(r[0]).trim()+'||'+String(r[1]).trim()));
-}
-// Aggregate per brand across all actionable neg categories
-const byBrand = {};
-function addToBrand(arr, type) {
-arr.forEach(x =>
-{
-const brand = getBrandFromSKU_(x.sku||'') || 'Other';
-if (!byBrand[brand]) byBrand[brand] = {negEv:0,negQty:0,negCOGS:0,posEv:0,posQty:0,posCOGS:0,expQty:0,expCOGS:0};
-const b = byBrand[brand];
-if (type==='neg') {
-b.negEv++;
-b.negQty+=x.qty||0;
-b.negCOGS+=x.cogsVal||0;
-} else
-if (type==='pos'){
-b.posEv++;
-b.posQty+=x.qty||0;
-b.posCOGS+=x.cogsVal||0;
-} else
-if (type==='exp'){
-b.expQty+=x.qty||0;
-b.expCOGS+=x.cogsVal||0;
-}
-});
-}
-// Route each neg event by stateFrom (same rule as getImpactClass_)
-// stateFrom=Active or '' (newBad/newQC GRN) - Financial Loss - neg bucket (drives KPIs)
-// stateFrom=About_to_expire or Recalled - Expiry Risk - exp bucket (informational only)
-Object.keys(result.neg).forEach(cat =>
-{
-(result.neg[cat] || []).forEach(x =>
-{
-const sf = x.sF || x.stateFrom || '';
-if (sf === 'Active' || sf === '') addToBrand([x], 'neg');
-else addToBrand([x], 'exp');
-});
-});
-// Positives
-;[...(result.pos.b2g||[]),...(result.pos.q2g||[]),...(result.pos.rc2a||[])].forEach(x =>
-{
-const brand = getBrandFromSKU_(x.sku||'') || 'Other';
-if (!byBrand[brand]) byBrand[brand] = {negEv:0,negQty:0,negCOGS:0,posEv:0,posQty:0,posCOGS:0,expQty:0,expCOGS:0};
-byBrand[brand].posEv++;
-byBrand[brand].posQty+=x.qty||0;
-byBrand[brand].posCOGS+=x.cogsVal||0;
-});
-const rows = [];
-Object.keys(byBrand).sort().forEach(brand =>
-{
-const key = dateStr+'||'+brand;
-if (existingKeys.has(key)) return;
-const b = byBrand[brand];
-const netCOGS = Math.round((b.negCOGS - b.posCOGS)*100)/100;
-rows.push([ dateStr, brand, b.negEv, b.negQty, Math.round(b.negCOGS*100)/100, b.posEv, b.posQty, Math.round(b.posCOGS*100)/100, netCOGS, b.expQty, Math.round(b.expCOGS*100)/100 ]);
-});
-if (rows.length) {
-sh.getRange(sh.getLastRow()+1, 1, rows.length, 11).setValues(rows);
-SpreadsheetApp.flush();
-Logger.log('appendDailyPNL_: wrote ' + rows.length + ' brand rows for ' + dateStr);
 }
 }
 // Keep appendEventHistory_ as alias for backward compatibility
