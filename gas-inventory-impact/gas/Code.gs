@@ -62,20 +62,6 @@ var COGS_CACHE = {"MWBBNTP.2059.BO_N":22.62,"MWBWBCP.00166.B0_N":58.12,"MWBWBCP.
 // ============================================================
 function runDailyNegativeImpactReport() {
 try {
-// ── TIMING GATE: ensure we run at 7:50 AM IST ──────────────────────────
-// GAS triggers fire anywhere in the 7:00-8:00 window.
-// If we're before 7:50 AM, schedule a one-time run at exactly 7:50 AM and exit.
-// This guarantees the 7:45 AM Shelfwise email has arrived before we process.
-const _nowIST = new Date(new Date().toLocaleString('en-US', {timeZone: 'Asia/Kolkata'}));
-const _hIST = _nowIST.getHours(), _mIST = _nowIST.getMinutes();
-const TARGET_HOUR = 7, TARGET_MIN = 50;
-if (_hIST < TARGET_HOUR || (_hIST === TARGET_HOUR && _mIST < TARGET_MIN)) {
-  const _delayMs = ((TARGET_HOUR * 60 + TARGET_MIN) - (_hIST * 60 + _mIST)) * 60 * 1000;
-  Logger.log('Before 7:50 AM IST (' + _hIST + ':' + (_mIST<10?'0':'')+_mIST + ') — scheduling run in ' + Math.round(_delayMs/60000) + ' min');
-  ScriptApp.newTrigger('runDailyNegativeImpactReport').timeBased().after(_delayMs).create();
-  return;
-}
-// ──────────────────────────────────────────────────────────────────────────
 Logger.log('=== Negative Impact Report v5: START ===');
 // -- Month transition: creates new sheet if month has changed
 try {
@@ -172,8 +158,7 @@ if(!seen[f.url]){seen[f.url]=true;unique.push(f);}
 });
 const byDay={};
 unique.forEach(f=>{
-// Reject emails at 8:00 AM or later — the 8:10 AM Shelfwise export is incorrect
-if (f.hourIST >= 8) { Logger.log('getLastTwoExports_: skipping ' + f.dateStr + ' (hourIST=' + f.hourIST + ', >= 8 AM)'); return; }
+// Accept all emails regardless of hour — Shelfwise export arrives 7:45–8:30 AM
 if(!byDay[f.dayKey]) byDay[f.dayKey]=[];
 byDay[f.dayKey].push(f);
 });
@@ -201,6 +186,91 @@ Logger.log('Yesterday : ' + yestSnap.dateStr + ' (target hr=' + yH + ')');
 return {
 today: todaySnap, yesterday: yestSnap
 };
+}
+// ============================================================
+// ONE-TIME PATCH: Run June 29 report when Shelfwise email arrived late (after 8 AM)
+// Skips the hourIST < 8 filter — picks the most recent email per day regardless of time
+// Safe to call any time today; does nothing destructive
+// ============================================================
+// Run this FIRST to clear bad June 29 data, then run runPatchJune29
+function clearJune29Rows() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  const TARGET_DATE = '2026-06-29';
+  const sheetsToClean = ['NI_Events', 'NI_DailyTop5'];
+  sheetsToClean.forEach(function(shName) {
+    const sh = ss.getSheetByName(shName);
+    if (!sh) { Logger.log(shName + ': sheet not found, skipping'); return; }
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) { Logger.log(shName + ': no data rows, skipping'); return; }
+    const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function(h){ return String(h).trim(); });
+    const dateCol = headers.indexOf('Date') + 1; // 1-based
+    if (dateCol === 0) { Logger.log(shName + ': Date column not found, skipping'); return; }
+    const dateVals = sh.getRange(2, dateCol, lastRow - 1, 1).getValues();
+    // Collect rows to delete (bottom-up to preserve row indices)
+    const toDelete = [];
+    dateVals.forEach(function(row, i) {
+      if (String(row[0]).trim() === TARGET_DATE) toDelete.push(i + 2); // +2 for header + 0-index
+    });
+    if (!toDelete.length) { Logger.log(shName + ': no rows found for ' + TARGET_DATE); return; }
+    // Delete bottom-up
+    toDelete.reverse().forEach(function(rowNum) { sh.deleteRow(rowNum); });
+    Logger.log(shName + ': deleted ' + toDelete.length + ' rows for ' + TARGET_DATE);
+  });
+  Logger.log('clearJune29Rows: DONE — safe to re-run runPatchJune29 now');
+}
+function runPatchJune29() {
+  const threads = GmailApp.search(NI_CONFIG.SUBJECT_FILTER + ' newer_than:3d', 0, 30);
+  if (!threads || !threads.length) { Logger.log('runPatchJune29: no Shelfwise emails found'); return; }
+  const found = [];
+  for (const thread of threads) {
+    for (const msg of thread.getMessages()) {
+      const body = msg.getPlainBody() + msg.getBody();
+      const m = body.match(/https:\/\/[a-zA-Z0-9\-\.]+\.cloudfront\.net\/[^\s"<>\n]+\.csv/i);
+      if (!m) continue;
+      const d = msg.getDate();
+      found.push({ url: m[0].trim(), date: d, dateStr: Utilities.formatDate(d,'Asia/Kolkata','dd MMM yyyy HH:mm'), dayKey: Utilities.formatDate(d,'Asia/Kolkata','yyyy-MM-dd') });
+    }
+  }
+  if (!found.length) { Logger.log('runPatchJune29: no CSV URLs found in emails'); return; }
+  const seen = {}, unique = [];
+  found.sort((a,b) => a.date - b.date);
+  found.forEach(f => { if (!seen[f.url]) { seen[f.url] = true; unique.push(f); } });
+  const byDay = {};
+  unique.forEach(f => {
+    if (!byDay[f.dayKey]) byDay[f.dayKey] = [];
+    byDay[f.dayKey].push(f);
+  });
+  const days = Object.keys(byDay).sort().reverse();
+  Logger.log('runPatchJune29: found emails for days: ' + days.join(', '));
+  if (days.length < 2) { Logger.log('runPatchJune29: need at least 2 days of emails, aborting'); return; }
+  // Today: pick latest email regardless of hour (report may arrive late)
+  const todaySnap = byDay[days[0]].slice().sort((a,b) => b.date - a.date)[0];
+  // Yesterday: prefer pre-8AM email (closest to 7:45 AM); if none, fall back to earliest email of that day
+  const yestAll = byDay[days[1]].slice().sort((a,b) => a.date - b.date);
+  const yestPre8 = yestAll.filter(f => parseInt(Utilities.formatDate(f.date,'Asia/Kolkata','HH'),10) < 8);
+  const yestSnap = yestPre8.length
+    ? yestPre8.sort((a,b) => Math.abs(parseInt(Utilities.formatDate(a.date,'Asia/Kolkata','HH'),10)-7) - Math.abs(parseInt(Utilities.formatDate(b.date,'Asia/Kolkata','HH'),10)-7))[0]
+    : yestAll[0]; // fallback: earliest email of yesterday if all arrived late
+  Logger.log('runPatchJune29: yesterday snap = ' + yestSnap.dateStr + (yestPre8.length ? ' (pre-8AM)' : ' (late fallback — no pre-8AM email found)'));
+  Logger.log('runPatchJune29 Today     : ' + todaySnap.dateStr);
+  Logger.log('runPatchJune29 Yesterday : ' + yestSnap.dateStr);
+  const todayData = fetchCSV_(todaySnap.url);
+  const yestData  = fetchCSV_(yestSnap.url);
+  Logger.log('Rows — Today: ' + todayData.length + ' | Yesterday: ' + yestData.length);
+  if (!todayData.length || !yestData.length) { Logger.log('runPatchJune29: empty CSV data, aborting'); return; }
+  try { loadCOGSLookup_(); } catch(e) { Logger.log('loadCOGSLookup_ failed (non-fatal): ' + e); }
+  try { loadSKUNames_(); } catch(e) { Logger.log('loadSKUNames_ failed (non-fatal): ' + e); }
+  const result = analyzeImpact_(yestData, todayData, todaySnap.date, yestSnap.date);
+  saveResultsToSheet_(result, todayData);
+  Logger.log('Sheets saved.');
+  appendDailyTop5_(result, result.todayStr);
+  Logger.log('NI_DailyTop5 updated (brand-wise top 5).');
+  appendHistory_(result);
+  appendFacHistory_(result);
+  const wtdMtd = getWtdMtd_();
+  const pendingRemarks = getPendingRemarks_();
+  sendEmail_(result, wtdMtd, pendingRemarks);
+  Logger.log('runPatchJune29: DONE — email sent for ' + todaySnap.dayKey);
 }
 // ============================================================
 // FETCH CSV
@@ -285,7 +355,9 @@ const dateColIdx_ = headers_.indexOf('Date');
 const checkCol = dateColIdx_ >= 0 ? dateColIdx_ + 1 : 2; // 1-based; default to col 2 if Date not found
 const existingEvDates = shEv.getRange(2, checkCol, shEv.getLastRow()-1, 1).getValues();
 evTodayExists = existingEvDates.some(function(row){
-return String(row[0]).trim() === evTodayStr;
+  var v = row[0];
+  var formatted = (v instanceof Date) ? Utilities.formatDate(v, 'Asia/Kolkata', 'dd MMM yyyy') : String(v).trim();
+  return formatted === evTodayStr;
 });
 }
 if (evTodayExists) {
@@ -303,7 +375,11 @@ if (shYear) {
   var yearHdrs_ = shYear.getRange(1,1,1,shYear.getLastColumn()).getValues()[0].map(function(h){return String(h).trim();});
   var yearDateCol_ = yearHdrs_.indexOf('Date') >= 0 ? yearHdrs_.indexOf('Date') + 1 : 2;
   var yearTodayExists = shYear.getLastRow() > 1 &&
-    shYear.getRange(2,yearDateCol_,shYear.getLastRow()-1,1).getValues().some(function(r){ return String(r[0]).trim() === evTodayStr; });
+    shYear.getRange(2,yearDateCol_,shYear.getLastRow()-1,1).getValues().some(function(r){
+      var v = r[0];
+      var formatted = (v instanceof Date) ? Utilities.formatDate(v, 'Asia/Kolkata', 'dd MMM yyyy') : String(v).trim();
+      return formatted === evTodayStr;
+    });
   if (!yearTodayExists) {
     shYear.getRange(shYear.getLastRow()+1, 1, evDataRows.length, evHeaders.length).setValues(evDataRows);
     Logger.log('NI_Events_Year: appended ' + evDataRows.length + ' events for ' + evTodayStr);
@@ -1885,6 +1961,220 @@ function fixNIEventsSchema() {
 // Rebuilds NI_Events for June 2026 from NI_Events_Year (which is the source of truth).
 // Clears NI_Events entirely and rewrites with all June 2026 rows from NI_Events_Year.
 // Run once manually to recover from data loss.
+// Diagnostic: count duplicate EH_IDs in NI_Events and report by date
+// Run this from the Apps Script editor to check for duplicates
+function diagDuplicatesNIEvents() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  const sh = ss.getSheetByName('NI_Events');
+  if (!sh || sh.getLastRow() < 2) { Logger.log('NI_Events: empty or not found'); return; }
+  const data = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues(); // col A = EH_ID, col B = Date
+  const ehCounts = {}, dateCounts = {};
+  data.forEach(function(row) {
+    const ehid = String(row[0]).trim();
+    const date = String(row[1]).trim();
+    if (!ehid) return;
+    ehCounts[ehid] = (ehCounts[ehid] || 0) + 1;
+    if (!dateCounts[date]) dateCounts[date] = { total: 0, dups: 0 };
+    dateCounts[date].total++;
+  });
+  let totalDups = 0;
+  Object.keys(ehCounts).forEach(function(id) {
+    if (ehCounts[id] > 1) {
+      totalDups += ehCounts[id] - 1;
+      const date = id.split('|')[0];
+      if (dateCounts[date]) dateCounts[date].dups += ehCounts[id] - 1;
+    }
+  });
+  Logger.log('=== NI_Events Duplicate Report ===');
+  Logger.log('Total rows: ' + data.length + ' | Duplicate rows: ' + totalDups);
+  if (totalDups === 0) { Logger.log('No duplicates found.'); return; }
+  Object.keys(dateCounts).sort().forEach(function(d) {
+    if (dateCounts[d].dups > 0)
+      Logger.log(d + ': ' + dateCounts[d].dups + ' duplicate rows (out of ' + dateCounts[d].total + ' total)');
+  });
+}
+// Checks NI_Events for duplicates (by EH_ID AND by normalized date+SKU+Batch+Facility+Event)
+// then removes them, keeping the first occurrence of each unique event.
+// Safe to run multiple times. Reports summary in Execution Logs.
+// Deduplicates NI_Events, NI_Events_Year, and NI_DailyTop5 in one shot.
+// NI_Events + NI_Events_Year: dedup by normalized date+SKU+Batch+Facility+Event
+// NI_DailyTop5: dedup by EH_ID, preserving rows with remarks over blank ones
+// Safe to run multiple times. Reports summary in Execution Logs.
+// ── DUPLICATE CLEANUP ─────────────────────────────────────────────────────
+// cutDuplicatesToReview(): moves duplicate rows out of NI_Events, NI_Events_Year,
+// and NI_DailyTop5 into a new NI_Duplicates_Review sheet. Originals stay in place.
+// When done reviewing, delete NI_Duplicates_Review manually.
+// ─────────────────────────────────────────────────────────────────────────
+
+function normDateDedup_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Kolkata', 'yyyy-MM-dd');
+  var s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var mo = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  var m = s.match(/^(\d{1,2})\/(\d{2})\/(\d{4})$/); if (m) return m[3]+'-'+m[2]+'-'+m[1].padStart(2,'0');
+  var m2 = s.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/); if (m2) return m2[3]+'-'+(mo[m2[2]]||'00')+'-'+m2[1].padStart(2,'0');
+  var m3 = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/); if (m3) { var yr=m3[3].length===2?'20'+m3[3]:m3[3]; return yr+'-'+(mo[m3[2]]||'00')+'-'+m3[1].padStart(2,'0'); }
+  return s;
+}
+
+// Cuts duplicate rows from NI_Events, NI_Events_Year, NI_DailyTop5
+// into NI_Duplicates_Review. First occurrence of each event stays in original sheet.
+// Review NI_Duplicates_Review, then delete it manually when done.
+function cutDuplicatesToReview() {
+  var ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  Logger.log('=== cutDuplicatesToReview: START ===');
+
+  var reviewShName = 'NI_Duplicates_Review';
+  var reviewSh = ss.getSheetByName(reviewShName);
+  if (reviewSh) { reviewSh.clearContents(); } else { reviewSh = ss.insertSheet(reviewShName); }
+  var masterHdr = ['SourceSheet','EH_ID','Date','Type','Direction','Category','SKU','Name','Brand','Batch','Facility','City','BizType','InvFrom','InvTo','StateFrom','StateTo','Qty','COGSPerUnit','COGSValue','Event','Severity','Impact Class'];
+  reviewSh.getRange(1,1,1,masterHdr.length).setValues([masterHdr]).setFontWeight('bold');
+  var nextReviewRow = 2, totalCut = 0;
+
+  // NI_Events and NI_Events_Year: dedup by date+SKU+Batch+Facility+Event
+  ['NI_Events','NI_Events_Year'].forEach(function(shName) {
+    var sh=ss.getSheetByName(shName);
+    if (!sh||sh.getLastRow()<2) { Logger.log(shName+': empty, skipping'); return; }
+    var lastRow=sh.getLastRow(), lastCol=sh.getLastColumn();
+    var hdr=sh.getRange(1,1,1,lastCol).getValues()[0].map(function(h){return String(h).trim();});
+    var iDate=hdr.indexOf('Date'),iSKU=hdr.indexOf('SKU'),iBatch=hdr.indexOf('Batch'),iFac=hdr.indexOf('Facility'),iEv=hdr.indexOf('Event');
+    var rows=sh.getRange(2,1,lastRow-1,lastCol).getValues();
+    var seen={}, kept=[], cutRows=[], dupCount=0, dupByDate={};
+    rows.forEach(function(row) {
+      var key=[normDateDedup_(iDate>=0?row[iDate]:''),iSKU>=0?String(row[iSKU]).trim():'',iBatch>=0?String(row[iBatch]).trim():'',iFac>=0?String(row[iFac]).trim():'',iEv>=0?String(row[iEv]).trim():''].join('|');
+      if (!key||key==='||||') { kept.push(row); return; }
+      if (seen[key]) {
+        cutRows.push([shName].concat(row.slice(0, masterHdr.length-1)));
+        dupCount++; var d=normDateDedup_(iDate>=0?row[iDate]:''); dupByDate[d]=(dupByDate[d]||0)+1;
+      } else { seen[key]=true; kept.push(row); }
+    });
+    // Write cut rows to review sheet
+    if (cutRows.length>0) {
+      reviewSh.getRange(nextReviewRow,1,cutRows.length,masterHdr.length).setValues(cutRows);
+      nextReviewRow+=cutRows.length; totalCut+=cutRows.length;
+    }
+    // Rewrite original sheet with only kept rows
+    sh.getRange(2,1,lastRow-1,lastCol).clearContent();
+    if (kept.length>0) sh.getRange(2,1,kept.length,lastCol).setValues(kept);
+    Logger.log(shName+': cut '+dupCount+' duplicates → kept '+kept.length+' originals');
+    Object.keys(dupByDate).sort().forEach(function(d){ Logger.log('  '+d+': '+dupByDate[d]+' cut'); });
+    SpreadsheetApp.flush();
+  });
+
+  // NI_DailyTop5: dedup by EH_ID, keep row with remark if one copy has it
+  var shT5=ss.getSheetByName('NI_DailyTop5');
+  if (shT5&&shT5.getLastRow()>=2) {
+    var lastRow5=shT5.getLastRow(),lastCol5=shT5.getLastColumn();
+    var hdr5=shT5.getRange(1,1,1,lastCol5).getValues()[0].map(function(h){return String(h).trim();});
+    var iEHID=hdr5.indexOf('EH_ID'),iRmk=hdr5.indexOf('Remark');
+    var rows5=shT5.getRange(2,1,lastRow5-1,lastCol5).getValues();
+    var seen5={},kept5=[],cutRows5=[],dup5=0;
+    rows5.forEach(function(row) {
+      var ehid=String(iEHID>=0?row[iEHID]:'').trim();
+      if (!ehid) { kept5.push(row); return; }
+      if (!seen5[ehid]) { seen5[ehid]=kept5.length; kept5.push(row); }
+      else {
+        var ex=kept5[seen5[ehid]];
+        var exR=String(iRmk>=0?ex[iRmk]:'').trim(), newR=String(iRmk>=0?row[iRmk]:'').trim();
+        if (newR&&!exR) { cutRows5.push(['NI_DailyTop5'].concat(ex.slice(0,masterHdr.length-1))); kept5[seen5[ehid]]=row; }
+        else cutRows5.push(['NI_DailyTop5'].concat(row.slice(0,masterHdr.length-1)));
+        dup5++;
+      }
+    });
+    if (cutRows5.length>0) {
+      reviewSh.getRange(nextReviewRow,1,cutRows5.length,masterHdr.length).setValues(cutRows5);
+      totalCut+=cutRows5.length;
+    }
+    shT5.getRange(2,1,lastRow5-1,lastCol5).clearContent();
+    if (kept5.length>0) shT5.getRange(2,1,kept5.length,lastCol5).setValues(kept5);
+    Logger.log('NI_DailyTop5: cut '+dup5+' duplicates → kept '+kept5.length+' originals');
+    SpreadsheetApp.flush();
+  }
+
+  Logger.log('=== cutDuplicatesToReview: DONE — '+totalCut+' rows moved to '+reviewShName+' ===');
+}
+
+function deduplicateNIEvents() {
+  const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  const sh = ss.getSheetByName('NI_Events');
+  if (!sh || sh.getLastRow() < 2) { Logger.log('deduplicateNIEvents: NI_Events empty, nothing to do'); return; }
+
+  const lastRow = sh.getLastRow();
+  const lastCol = sh.getLastColumn();
+  const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h){ return String(h).trim(); });
+  const allData = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  // Column indices (0-based)
+  const iEHID = headers.indexOf('EH_ID');
+  const iDate  = headers.indexOf('Date');
+  const iSKU   = headers.indexOf('SKU');
+  const iBatch = headers.indexOf('Batch');
+  const iFac   = headers.indexOf('Facility');
+  const iEv    = headers.indexOf('Event');
+
+  // Normalize any date string to yyyy-MM-dd
+  function normDate(v) {
+    var s = String(v).trim();
+    // already yyyy-MM-dd
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // dd Mon yyyy  e.g. "29 Jun 2026"
+    var m = s.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+    if (m) {
+      var months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+      return m[3] + '-' + (months[m[2]]||'00') + '-' + m[1].padStart(2,'0');
+    }
+    // MM/dd/yyyy
+    var m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m2) return m2[3] + '-' + m2[1].padStart(2,'0') + '-' + m2[2].padStart(2,'0');
+    return s; // fallback — keep as-is
+  }
+
+  // Build dedup key: normalizedDate|SKU|Batch|Facility|Event
+  function makeKey(row) {
+    var d = iDate  >= 0 ? normDate(row[iDate])  : '';
+    var s = iSKU   >= 0 ? String(row[iSKU]).trim()   : '';
+    var b = iBatch >= 0 ? String(row[iBatch]).trim()  : '';
+    var f = iFac   >= 0 ? String(row[iFac]).trim()    : '';
+    var e = iEv    >= 0 ? String(row[iEv]).trim()     : '';
+    return [d,s,b,f,e].join('|');
+  }
+
+  const seenKeys = new Set();
+  const keepFlags = []; // true = keep this row
+  var dupCount = 0;
+  var dupByDate = {};
+
+  allData.forEach(function(row, i) {
+    var key = makeKey(row);
+    if (!key || key === '||||') { keepFlags.push(true); return; } // blank row — keep
+    if (seenKeys.has(key)) {
+      keepFlags.push(false);
+      dupCount++;
+      var d = iDate >= 0 ? normDate(row[iDate]) : 'unknown';
+      dupByDate[d] = (dupByDate[d] || 0) + 1;
+    } else {
+      seenKeys.add(key);
+      keepFlags.push(true);
+    }
+  });
+
+  Logger.log('deduplicateNIEvents: total rows=' + allData.length + ', duplicates found=' + dupCount);
+  if (dupCount === 0) { Logger.log('deduplicateNIEvents: no duplicates — NI_Events is clean.'); return; }
+
+  Object.keys(dupByDate).sort().forEach(function(d) {
+    Logger.log('  ' + d + ': ' + dupByDate[d] + ' duplicate rows');
+  });
+
+  // Rebuild sheet: write only kept rows (bottom-up delete is slow for large sheets — rewrite is faster)
+  const keptRows = allData.filter(function(_, i){ return keepFlags[i]; });
+  // Clear data rows and rewrite
+  sh.getRange(2, 1, lastRow - 1, lastCol).clearContent();
+  if (keptRows.length > 0) {
+    sh.getRange(2, 1, keptRows.length, lastCol).setValues(keptRows);
+  }
+  SpreadsheetApp.flush();
+  Logger.log('deduplicateNIEvents: removed ' + dupCount + ' duplicates. Kept ' + keptRows.length + ' rows.');
+}
 function restoreJuneFromYearSheet() {
   const ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
   const shYear = ss.getSheetByName('NI_Events_Year');
@@ -4104,4 +4394,51 @@ function handleChatQuery_(question) {
   var ctx = buildChatContext_();
   if (ctx.error) return {answer: 'Could not load inventory data: ' + ctx.error};
   return callClaude_(JSON.stringify(ctx), question);
+}
+
+// ============================================================
+// DIAGNOSTIC: List all GAS triggers + NI_Events row count
+// Run this from Apps Script editor to find what is wiping NI_Events
+// ============================================================
+function diagnoseWipeRootCause() {
+  // 1. List all triggers in this project
+  var triggers = ScriptApp.getProjectTriggers();
+  Logger.log('=== ALL TRIGGERS IN THIS PROJECT (' + triggers.length + ') ===');
+  triggers.forEach(function(t, i) {
+    var info = [
+      '#' + (i+1),
+      'fn=' + t.getHandlerFunction(),
+      'type=' + t.getEventType(),
+      'source=' + t.getTriggerSource(),
+    ];
+    try { info.push('trigId=' + t.getUniqueId()); } catch(e) {}
+    Logger.log(info.join(' | '));
+  });
+
+  // 2. NI_Events current row count
+  var ss = SpreadsheetApp.openById(NI_CONFIG.SHEET_ID);
+  var shEv = ss.getSheetByName('NI_Events');
+  var shBak = ss.getSheetByName('NI_Events_Backup');
+  var shYr = ss.getSheetByName('NI_Events_Year');
+  Logger.log('=== SHEET ROW COUNTS ===');
+  Logger.log('NI_Events: ' + (shEv ? shEv.getLastRow() : 'NOT FOUND') + ' rows');
+  Logger.log('NI_Events_Backup: ' + (shBak ? shBak.getLastRow() : 'NOT FOUND') + ' rows');
+  Logger.log('NI_Events_Year: ' + (shYr ? shYr.getLastRow() : 'NOT FOUND') + ' rows');
+
+  // 3. Script Properties
+  var props = PropertiesService.getScriptProperties().getProperties();
+  Logger.log('=== SCRIPT PROPERTIES ===');
+  Object.keys(props).forEach(function(k) {
+    if (k !== 'CLAUDE_API_KEY') Logger.log(k + ' = ' + props[k]);
+  });
+
+  // 4. Check if NI_Events_Backup note matches today
+  var tz = Session.getScriptTimeZone();
+  var today = Utilities.formatDate(new Date(), tz, 'yyyyMMdd');
+  if (shBak) {
+    var note = shBak.getRange(1,1).getNote();
+    Logger.log('NI_Events_Backup last backup date: ' + note + ' (today=' + today + ')');
+  }
+
+  Logger.log('=== diagnoseWipeRootCause DONE ===');
 }
