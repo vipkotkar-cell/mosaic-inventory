@@ -62,6 +62,16 @@ var COGS_CACHE = {"MWBBNTP.2059.BO_N":22.62,"MWBWBCP.00166.B0_N":58.12,"MWBWBCP.
 // ============================================================
 function runDailyNegativeImpactReport() {
 try {
+// Wait until 7:55 AM IST before processing — Shelfwise report arrives at ~7:50 AM.
+// If trigger fires before 7:55, schedule a one-time run at 7:55 and exit.
+const _nowIST = new Date(new Date().toLocaleString('en-US', {timeZone: 'Asia/Kolkata'}));
+const _hIST = _nowIST.getHours(), _mIST = _nowIST.getMinutes();
+if (_hIST < 7 || (_hIST === 7 && _mIST < 55)) {
+  const _delayMs = ((7 * 60 + 55) - (_hIST * 60 + _mIST)) * 60 * 1000;
+  Logger.log('Before 7:55 AM IST (' + _hIST + ':' + (_mIST<10?'0':'')+_mIST + ') — rescheduling in ' + Math.round(_delayMs/60000) + ' min');
+  ScriptApp.newTrigger('runDailyNegativeImpactReport').timeBased().after(_delayMs).create();
+  return;
+}
 Logger.log('=== Negative Impact Report v5: START ===');
 // -- Month transition: creates new sheet if month has changed
 try {
