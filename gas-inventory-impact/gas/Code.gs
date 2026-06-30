@@ -158,7 +158,8 @@ if(!seen[f.url]){seen[f.url]=true;unique.push(f);}
 });
 const byDay={};
 unique.forEach(f=>{
-// Accept all emails regardless of hour — Shelfwise export arrives 7:45–8:30 AM
+// Only accept pre-8AM emails — the 7:45 AM Shelfwise snapshot is the correct one
+if (f.hourIST >= 8) { Logger.log('getLastTwoExports_: skipping ' + f.dateStr + ' (hourIST=' + f.hourIST + ', >= 8 AM)'); return; }
 if(!byDay[f.dayKey]) byDay[f.dayKey]=[];
 byDay[f.dayKey].push(f);
 });
