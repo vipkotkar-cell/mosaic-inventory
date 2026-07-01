@@ -1810,7 +1810,9 @@ function _renderHistoryInner(){
   var now=new Date(), dow=now.getDay(), db=dow===0?6:dow-1;
   var wkS=new Date(now); wkS.setDate(now.getDate()-db); wkS.setHours(0,0,0,0);
   var moS=new Date(now.getFullYear(),now.getMonth(),1);
-  var wkSClamped = wkS < moS ? moS : wkS;
+  // WTD is not clamped to month start — week can span a month/year boundary
+  // since wtdSrc (NI_Events_Year) holds cross-month history.
+  var wkSClamped = wkS;
   var _cy=now.getFullYear(), _cm=now.getMonth();
 
   function calcPeriod(startDate){
@@ -1818,7 +1820,6 @@ function _renderHistoryInner(){
     var bizMap={}, daily={}, daySet={};
     wtdSrc.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      if(d.getFullYear()!==_cy) return;
       if(d<startDate) return;
       if(_ctrFil!=='All'&&getCountry(row['SKU']||row['sku']||'',row['Name']||row['name']||'')!==_ctrFil) return;
       var bt  = row['BizType']||'Other';
@@ -1863,7 +1864,6 @@ function _renderHistoryInner(){
     var brandMap={};
     wtdSrc.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      if(d.getFullYear()!==_cy) return;
       if(d<startDate) return;
       if(_ctrFil!=='All'&&getCountry(row['SKU']||row['sku']||'',row['Name']||row['name']||'')!==_ctrFil) return;
       if((row['Impact Class']||'').trim()!=='Financial Loss') return;
@@ -1878,7 +1878,6 @@ function _renderHistoryInner(){
     var facAcc={};
     wtdSrc.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      if(d.getFullYear()!==_cy) return;
       if(d<startDate) return;
       if(_ctrFil!=='All'&&getCountry(row['SKU']||row['sku']||'',row['Name']||row['name']||'')!==_ctrFil) return;
       var fac=row['Facility']||''; if(!fac) return;
@@ -2115,14 +2114,15 @@ function _renderBizPage_removed(){
   var now=new Date(), dow=now.getDay(), db=dow===0?6:dow-1;
   var wkS=new Date(now); wkS.setDate(now.getDate()-db); wkS.setHours(0,0,0,0);
   var moS=new Date(now.getFullYear(),now.getMonth(),1);
-  var wkSClamped = wkS < moS ? moS : wkS;
+  // WTD is not clamped to month start — week can span a month/year boundary
+  // since wtdSrc (NI_Events_Year) holds cross-month history.
+  var wkSClamped = wkS;
   var _cy=now.getFullYear(), _cm=now.getMonth();
 
   function calcBizPeriod(startDate){
     var bizMap={}, daySet={};
     wtdSrc.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      if(d.getFullYear()!==_cy) return;
       if(d<startDate) return;
       var bt=row['BizType']||'Other';
       var qty=n(row['Qty']), cv=n(row['COGSValue']);
