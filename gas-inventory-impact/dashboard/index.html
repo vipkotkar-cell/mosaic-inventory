@@ -1794,9 +1794,11 @@ function renderHistory(){
   }
 }
 function _renderHistoryInner(){
-  // Read directly from NI_Events (allEventsData) — no NI_History needed
-  console.log('[WTD] allEventsData rows:', allEventsData.length);
-  if(!allEventsData.length){
+  // Use NI_Events_Year (ytdEventsData) for WTD/MTD so cross-month history is included.
+  // Falls back to allEventsData (NI_Events current month) if ytdEventsData hasn't loaded yet.
+  var wtdSrc = ytdEventsData.length ? ytdEventsData : allEventsData;
+  console.log('[WTD] source rows:', wtdSrc.length, ytdEventsData.length ? '(NI_Events_Year)' : '(NI_Events fallback)');
+  if(!wtdSrc.length){
     ['wtd-kpis','mtd-kpis','wtd-insight','mtd-insight',
      'wtd-fac-rank','mtd-fac-rank',
      'biz-wtd-kpis','biz-mtd-kpis','biz-wtd-bars','biz-mtd-bars'].forEach(function(id){
@@ -1814,9 +1816,9 @@ function _renderHistoryInner(){
   function calcPeriod(startDate){
     var a={negV:0,negQ:0,posV:0,posQ:0,netV:0,g2bQ:0,g2bV:0,expQ:0,expV:0,grnQ:0,days:0,btDaily:{},movBuckets:{}};
     var bizMap={}, daily={}, daySet={};
-    allEventsData.forEach(function(row){
+    wtdSrc.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
+      if(d.getFullYear()!==_cy) return;
       if(d<startDate) return;
       if(_ctrFil!=='All'&&getCountry(row['SKU']||row['sku']||'',row['Name']||row['name']||'')!==_ctrFil) return;
       var bt  = row['BizType']||'Other';
@@ -1859,9 +1861,9 @@ function _renderHistoryInner(){
     a.recoveryRate=a.negV>0?(a.posV/a.negV*100):0;
     // Brand aggregation (Financial Loss only)
     var brandMap={};
-    allEventsData.forEach(function(row){
+    wtdSrc.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
+      if(d.getFullYear()!==_cy) return;
       if(d<startDate) return;
       if(_ctrFil!=='All'&&getCountry(row['SKU']||row['sku']||'',row['Name']||row['name']||'')!==_ctrFil) return;
       if((row['Impact Class']||'').trim()!=='Financial Loss') return;
@@ -1874,9 +1876,9 @@ function _renderHistoryInner(){
       .sort(function(a,b){return b.negV-a.negV;});
     // Facility ranking from NI_Events (allEventsData) — NI_FacHistory is a mapping table only
     var facAcc={};
-    allEventsData.forEach(function(row){
+    wtdSrc.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
+      if(d.getFullYear()!==_cy) return;
       if(d<startDate) return;
       if(_ctrFil!=='All'&&getCountry(row['SKU']||row['sku']||'',row['Name']||row['name']||'')!==_ctrFil) return;
       var fac=row['Facility']||''; if(!fac) return;
@@ -2118,9 +2120,9 @@ function _renderBizPage_removed(){
 
   function calcBizPeriod(startDate){
     var bizMap={}, daySet={};
-    allEventsData.forEach(function(row){
+    wtdSrc.forEach(function(row){
       var d=parseDate(row['Date']); if(!d||isNaN(d)) return;
-      if(d.getFullYear()!==_cy||d.getMonth()!==_cm) return;
+      if(d.getFullYear()!==_cy) return;
       if(d<startDate) return;
       var bt=row['BizType']||'Other';
       var qty=n(row['Qty']), cv=n(row['COGSValue']);
@@ -4851,10 +4853,12 @@ function boot(){
   Promise.all([
     fetchJ(EVENTS_URL+'&curmonth=1'),
     fetchJ(STOCK_URL).catch(function(){return [];}),
-    fetchJ(DAILY_TOP5_URL).catch(function(){return [];})
+    fetchJ(DAILY_TOP5_URL).catch(function(){return [];}),
+    fetchJ(YTD_URL).catch(function(){return [];})
   ])
   .then(function(res){
-    var evData=res[0], stockData=res[1], top5Rows=res[2];
+    var evData=res[0], stockData=res[1], top5Rows=res[2], ytdRows=res[3];
+    if(Array.isArray(ytdRows)&&ytdRows.length){ ytdEventsData=ytdRows; _ytdLoaded=true; }
     // Populate dailyTop5Data immediately — guaranteed before any render
     if(Array.isArray(top5Rows)&&top5Rows.length){
       dailyTop5Data=top5Rows.filter(function(r){return r['EH_ID']||r['SKU'];});
