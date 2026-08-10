@@ -4150,14 +4150,12 @@ function downloadBulkUploadTemplate(){
   ws1['!cols']=[{wch:50},{wch:36},{wch:40}];
   XLSX.utils.book_append_sheet(wb,ws1,'Template');
 
-  var bucketRows=[['Valid Bucket Names'],['(copy exactly, case-sensitive)'],[]];
+  var bucketRows=[['Bucket','Remark']];
   Object.keys(BUCKET_TAXONOMY).forEach(function(b){
-    bucketRows.push([b]);
-    BUCKET_TAXONOMY[b].forEach(function(r){ bucketRows.push(['   > '+r]); });
-    bucketRows.push([]);
+    BUCKET_TAXONOMY[b].forEach(function(r){ bucketRows.push([b,r]); });
   });
   var ws2=XLSX.utils.aoa_to_sheet(bucketRows);
-  ws2['!cols']=[{wch:60}];
+  ws2['!cols']=[{wch:46},{wch:60}];
   XLSX.utils.book_append_sheet(wb,ws2,'Valid Buckets');
 
   XLSX.writeFile(wb,'Bulk_Upload_Template.xlsx');
