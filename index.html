@@ -384,11 +384,38 @@ tbody tr:hover td{background:var(--sf)}
     <label style="display:flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;padding:3px 8px;border:1px solid var(--br);border-radius:12px;background:var(--sf)"><input type="checkbox" value="System Triggered" style="margin:0"> System Triggered</label>
     <label style="display:flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;padding:3px 8px;border:1px solid var(--br);border-radius:12px;background:var(--sf)"><input type="checkbox" value="Action Taken" style="margin:0"> Action Taken</label>
   </div>
+  <label>Bucket</label>
+  <select id="rmk-bucket" onchange="onRmkBucketChange()" style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:6px;font-size:12px;margin-bottom:10px;font-family:var(--font);box-sizing:border-box;background:#fff"></select>
   <label>Remark / Action Required <span style="color:#dc2626">*</span></label>
+  <select id="rmk-remark-select" onchange="onRmkRemarkSelectChange()" style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:6px;font-size:12px;margin-bottom:8px;font-family:var(--font);box-sizing:border-box;background:#fff"></select>
   <textarea id="rmk-txt" placeholder="Describe the issue or action required..."></textarea>
   <div class="modal-btns">
     <button class="btn-cancel" onclick="closeRmk()">Cancel</button>
     <button class="btn-save" id="rmk-save-btn" onclick="saveRmk()">Save Remark</button>
+  </div>
+</div>
+</div>
+
+<!-- BULK UPLOAD MODAL -->
+<div class="modal-bg" id="bulk-modal" onclick="if(event.target===this)closeBulkUpload()">
+<div class="modal" style="max-width:640px;width:92%">
+  <div class="modal-t">&#128228; Bulk Upload Remarks</div>
+  <div class="modal-s">Paste EH_ID, Bucket, Remark (tab or comma separated), one row per line. Header row optional.</div>
+  <div style="font-size:10px;color:var(--mu);background:var(--sf);border:1px solid var(--br);border-radius:6px;padding:8px 10px;margin:10px 0;line-height:1.6">
+    Format: <code>EH_ID&#9;Bucket&#9;Remark</code><br>
+    Bucket must match one of: <span id="bulk-bucket-list" style="font-style:italic"></span><br>
+    Leave Bucket blank to save just a free-text remark with no bucket.
+  </div>
+  <label>Paste Data <span style="color:#dc2626">*</span></label>
+  <textarea id="bulk-txt" placeholder="EH_ID&#9;Bucket&#9;Remark&#10;01 Jul 2026|SKU|BATCH|FAC|Event&#9;Return triggered&#9;Bad received - RTO" style="width:100%;min-height:160px;font-family:var(--mono),monospace;font-size:11px;padding:8px 10px;border:1px solid var(--br);border-radius:6px;box-sizing:border-box;resize:vertical" oninput="parseBulkUpload()"></textarea>
+  <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;font-size:11px;font-weight:400">
+    <input type="checkbox" id="bulk-skip-filled" checked style="margin:0"> Skip rows that already have a remark (don't overwrite)
+  </label>
+  <div id="bulk-preview" style="font-size:11px;margin-top:10px;padding:8px 10px;border-radius:6px;background:var(--sf);border:1px solid var(--br);display:none"></div>
+  <div id="bulk-result" style="font-size:11px;margin-top:8px;padding:8px 10px;border-radius:6px;display:none"></div>
+  <div class="modal-btns">
+    <button class="btn-cancel" onclick="closeBulkUpload()">Cancel</button>
+    <button class="btn-save" id="bulk-upload-btn" onclick="submitBulkUpload()" disabled>Upload</button>
   </div>
 </div>
 </div>
@@ -406,7 +433,7 @@ tbody tr:hover td{background:var(--sf)}
     <button class="nav-item" onclick="goPage('wtd')" id="nav-wtd"><span class="nav-icon">&#128200;</span>WTD &amp; MTD<span class="nav-bdg nav-bdg-g" id="nb-wtd">-</span></button>
     <button class="nav-item" onclick="goPage('remarks')" id="nav-remarks"><span class="nav-icon">&#128203;</span>Remarks<span class="nav-bdg nav-bdg-a" id="nb-remarks">-</span></button>
     <button class="nav-item" onclick="goPage('trend')" id="nav-trend"><span class="nav-icon">&#128201;</span>Daily Trend</button>
-
+    <button class="nav-item" onclick="openBulkUpload()" id="nav-bulk"><span class="nav-icon">&#128228;</span>Bulk Upload</button>
 
 
   </nav>
@@ -3987,9 +4014,170 @@ function renderYTD(){
 }
 // ── END YTD ──────────────────────────────────────────────────
 
+// ── REMARK BUCKET TAXONOMY (agreed) ──
+// Each bucket maps to its list of standard remarks. "Other (type below)" always appears last
+// so a genuinely new situation can still be typed freely into the textarea.
+var BUCKET_TAXONOMY = {
+  'NPD / Supply planning / QC triggered movement': [
+    'QC Triggered - Batch Recalled',
+    'Good to Bad movement - MRP issue',
+    'Short found in sealed box - Vendor Short',
+    'Old MRP stock received',
+    'New MRP stock instruction (D2C)',
+    'FG short',
+    'Domestic SKU reworked for Export'
+  ],
+  'Auto Expiry': [
+    'Discontinued - Moved to expiry'
+  ],
+  'Return triggered': [
+    'Reworked and moved to good',
+    'Bad received - RTO',
+    'Bad received - RTV',
+    'Bad received - B2C / Marketplace / Forward returns',
+    'RTO - Damage / Missing / Batch mismatch'
+  ],
+  'Warehouse triggered': [
+    'Warehouse internal issue - Damage / Not found / Batch Mismatch',
+    'Delay in Put-away (Tech Issue)',
+    'Incorrect dispatch - Warehouse',
+    'Internal damage - Warehouse (Shelf audit)',
+    'Physical inventory is about to expire (Batch mismatch)',
+    'Duplicate - Short received (LSP / forward returns)',
+    'Short GRN / Short received',
+    'Product expiry mismatch'
+  ],
+  'Darkstore triggered': [
+    'Bad received - Darkstore',
+    'Darkstore internal issue - Damage / Not found / Batch Mismatch',
+    'Expired material received (from DS)',
+    'Damage material received (from DS)',
+    'Damage delivered to channel'
+  ]
+};
+var RMK_OTHER = 'Other (type below)';
+
+function populateRmkBucketDropdown(){
+  var sel=document.getElementById('rmk-bucket');
+  if(!sel) return;
+  sel.innerHTML='<option value="">Select bucket...</option>'+
+    Object.keys(BUCKET_TAXONOMY).map(function(b){return '<option value="'+b.replace(/"/g,'&quot;')+'">'+b+'</option>';}).join('');
+}
+function onRmkBucketChange(){
+  var bucket=document.getElementById('rmk-bucket').value;
+  var remarkSel=document.getElementById('rmk-remark-select');
+  var list=BUCKET_TAXONOMY[bucket]||[];
+  remarkSel.innerHTML='<option value="">Select remark...</option>'+
+    list.map(function(r){return '<option value="'+r.replace(/"/g,'&quot;')+'">'+r+'</option>';}).join('')+
+    '<option value="'+RMK_OTHER+'">'+RMK_OTHER+'</option>';
+  remarkSel.disabled=!bucket;
+  document.getElementById('rmk-txt').value='';
+}
+function onRmkRemarkSelectChange(){
+  var val=document.getElementById('rmk-remark-select').value;
+  var txt=document.getElementById('rmk-txt');
+  if(!val || val===RMK_OTHER){ txt.value=''; txt.focus(); return; }
+  txt.value=val;
+}
+
+// ── BULK UPLOAD MODAL ──
+var _bulkParsed=[];
+function openBulkUpload(){
+  document.getElementById('bulk-bucket-list').textContent=Object.keys(BUCKET_TAXONOMY).join(', ');
+  document.getElementById('bulk-txt').value='';
+  document.getElementById('bulk-preview').style.display='none';
+  document.getElementById('bulk-result').style.display='none';
+  document.getElementById('bulk-upload-btn').disabled=true;
+  _bulkParsed=[];
+  document.getElementById('bulk-modal').classList.add('show');
+}
+function closeBulkUpload(){
+  document.getElementById('bulk-modal').classList.remove('show');
+}
+function parseBulkUpload(){
+  var raw=document.getElementById('bulk-txt').value;
+  var lines=raw.split(/\r?\n/).map(function(l){return l.trim();}).filter(function(l){return l;});
+  var preview=document.getElementById('bulk-preview');
+  var btn=document.getElementById('bulk-upload-btn');
+  if(!lines.length){ preview.style.display='none'; btn.disabled=true; _bulkParsed=[]; return; }
+  var validBuckets=Object.keys(BUCKET_TAXONOMY);
+  var rows=[], badBucketRows=[], missingIdRows=0;
+  lines.forEach(function(line){
+    var parts=line.indexOf('\t')>=0 ? line.split('\t') : line.split(',');
+    parts=parts.map(function(p){return (p||'').trim();});
+    // Skip an obvious header row
+    if(parts[0].toLowerCase()==='eh_id') return;
+    var ehId=parts[0]||'', bucket=parts[1]||'', remark=parts[2]||'';
+    if(!ehId){ missingIdRows++; return; }
+    if(bucket && validBuckets.indexOf(bucket)<0){ badBucketRows.push({ehId:ehId,bucket:bucket}); return; }
+    rows.push({ehId:ehId,bucket:bucket,remark:remark});
+  });
+  _bulkParsed=rows;
+  var html='<strong>'+rows.length+'</strong> row(s) ready to upload.';
+  if(missingIdRows) html+='<br><span style="color:#b7410e">'+missingIdRows+' row(s) skipped — missing EH_ID.</span>';
+  if(badBucketRows.length){
+    html+='<br><span style="color:#c0392b">'+badBucketRows.length+' row(s) skipped — unrecognized bucket: '+
+      badBucketRows.slice(0,5).map(function(b){return '"'+b.bucket+'"';}).join(', ')+(badBucketRows.length>5?', ...':'')+'</span>';
+  }
+  preview.innerHTML=html;
+  preview.style.display='block';
+  btn.disabled=rows.length===0;
+}
+function submitBulkUpload(){
+  if(!_bulkParsed.length) return;
+  var userName=(localStorage.getItem('rmk_user_name')||'').trim();
+  if(!userName){
+    userName=prompt('Enter your name (used for the AssignedTo / audit trail):')||'';
+    if(!userName){ showToast('Name is required to upload.',true); return; }
+    try{localStorage.setItem('rmk_user_name',userName);}catch(e){}
+  }
+  var btn=document.getElementById('bulk-upload-btn');
+  btn.disabled=true; btn.textContent='Uploading...';
+  var skipIfFilled=document.getElementById('bulk-skip-filled').checked;
+  var submittedIds=_bulkParsed.map(function(r){return r.ehId;});
+  var p={action:'bulkSaveRemarksWithBucket',rows:_bulkParsed,skipIfFilled:skipIfFilled,updatedBy:userName,targetSheet:getRmkTargetSheet?getRmkTargetSheet():'NI_DailyTop5'};
+  // This endpoint (like every other POST here) is called with mode:'no-cors' — the Apps
+  // Script web app doesn't return CORS headers our JS can read, so the response body is
+  // opaque. We fire the request, then verify results ourselves by refetching NI_DailyTop5
+  // and checking which of the submitted EH_IDs now have a Remark filled in.
+  fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'})
+    .then(function(){
+      return new Promise(function(resolve){ setTimeout(resolve, Math.min(1500+submittedIds.length*40, 8000)); });
+    })
+    .then(function(){ return fetchJ(DAILY_TOP5_URL+'&t='+Date.now()); })
+    .then(function(rows){
+      var out=document.getElementById('bulk-result');
+      out.style.display='block';
+      if(!Array.isArray(rows)){ out.style.background='#fce8e6'; out.textContent='Upload sent, but could not verify results (data refresh failed).'; btn.textContent='Upload'; btn.disabled=false; return; }
+      dailyTop5Data=rows.filter(function(r){return r['EH_ID']||r['SKU'];});
+      allEventHistory=dailyTop5Data;
+      var byId={}; dailyTop5Data.forEach(function(r){byId[(r['EH_ID']||'').trim()]=r;});
+      var matched=0, stillBlank=0, notFound=0;
+      submittedIds.forEach(function(id){
+        var r=byId[id.trim()];
+        if(!r){ notFound++; return; }
+        if((r['Remark']||'').trim()) matched++; else stillBlank++;
+      });
+      out.style.background='#e6f4ea';
+      out.innerHTML='&#10003; Upload sent — verified against live data: <strong>'+matched+'</strong> now have a remark, '+
+        '<strong>'+stillBlank+'</strong> still blank (likely skipped as already-filled), '+
+        '<strong>'+notFound+'</strong> EH_ID not found in NI_DailyTop5, out of '+submittedIds.length+' submitted.';
+      btn.textContent='Upload'; btn.disabled=false;
+      showToast('Bulk upload verified — data refreshed.');
+      renderActiveRmkView();
+    })
+    .catch(function(err){
+      var out=document.getElementById('bulk-result');
+      out.style.display='block';
+      out.style.background='#fce8e6';
+      out.textContent='Upload sent, but verification failed: '+(err&&err.message?err.message:'network error')+'. Check the sheet directly to confirm.';
+      btn.textContent='Upload'; btn.disabled=false;
+    });
+}
+
 // MODAL
 var _rmk={};
-function openRmk(btn){_rmk={sku:btn.getAttribute('data-sku'),batch:btn.getAttribute('data-batch'),fac:btn.getAttribute('data-fac'),bt:btn.getAttribute('data-bt'),ev:btn.getAttribute('data-ev'),cogs:btn.getAttribute('data-cogs'),date:btn.getAttribute('data-date')||'',ehId:btn.getAttribute('data-ehid')||''};var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};document.getElementById('rmk-sku-d').textContent=_rmk.sku+' #'+_rmk.batch;document.getElementById('rmk-ev-d').textContent=_rmk.ev+' - COGS: INR '+parseFloat(_rmk.cogs).toLocaleString();document.getElementById('rmk-loc-d').textContent=_rmk.fac+' ('+_rmk.bt+')';document.getElementById('rmk-asn-d').textContent=a.name;document.getElementById('rmk-asn-s-d').textContent=a.email+' - included in tomorrow morning report';document.getElementById('rmk-txt').value='';document.getElementById('rmk-modal').classList.add('show');}
+function openRmk(btn){_rmk={sku:btn.getAttribute('data-sku'),batch:btn.getAttribute('data-batch'),fac:btn.getAttribute('data-fac'),bt:btn.getAttribute('data-bt'),ev:btn.getAttribute('data-ev'),cogs:btn.getAttribute('data-cogs'),date:btn.getAttribute('data-date')||'',ehId:btn.getAttribute('data-ehid')||''};var a=ASGN[_rmk.bt]||{name:'Ops Team',email:'ops@mosaicwellness.in'};document.getElementById('rmk-sku-d').textContent=_rmk.sku+' #'+_rmk.batch;document.getElementById('rmk-ev-d').textContent=_rmk.ev+' - COGS: INR '+parseFloat(_rmk.cogs).toLocaleString();document.getElementById('rmk-loc-d').textContent=_rmk.fac+' ('+_rmk.bt+')';document.getElementById('rmk-asn-d').textContent=a.name;document.getElementById('rmk-asn-s-d').textContent=a.email+' - included in tomorrow morning report';document.getElementById('rmk-txt').value='';populateRmkBucketDropdown();document.getElementById('rmk-bucket').value='';onRmkBucketChange();document.getElementById('rmk-modal').classList.add('show');}
 function showToast(msg,err){
   var t=document.getElementById('_toast');
   if(!t){t=document.createElement('div');t.id='_toast';
@@ -4019,7 +4207,8 @@ function saveRmk(){
     var ehId=(_rmk.ehId&&_rmk.ehId.trim())
       ? _rmk.ehId.trim()
       : [_evDate,_rmk.sku,_rmk.batch||'',_rmk.fac,_rmk.ev].join('|');
-    var p={action:'saveRemark',sku:_rmk.sku,batch:_rmk.batch,facility:_rmk.fac,bizType:_rmk.bt,event:_rmk.ev,cogsVal:parseFloat(_rmk.cogs)||0,remark:t,assignedTo:a.name,assignedEmail:a.email,updatedBy:userName,tags:tagStr,isEdit:isEdit,date:_evDate,ehId:ehId,status:'Completed',targetSheet:getRmkTargetSheet()};fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'}).then(function(){// Remove any existing entry with same EH_ID or composite key (dedup)
+    var _bucket=document.getElementById('rmk-bucket')?document.getElementById('rmk-bucket').value:'';
+    var p={action:'saveRemark',sku:_rmk.sku,batch:_rmk.batch,facility:_rmk.fac,bizType:_rmk.bt,event:_rmk.ev,cogsVal:parseFloat(_rmk.cogs)||0,remark:t,bucket:_bucket,assignedTo:a.name,assignedEmail:a.email,updatedBy:userName,tags:tagStr,isEdit:isEdit,date:_evDate,ehId:ehId,status:'Completed',targetSheet:getRmkTargetSheet()};fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),mode:'no-cors'}).then(function(){// Remove any existing entry with same EH_ID or composite key (dedup)
     var _ehId=(p.ehId||'').trim();
     var _ck=[p.date,p.sku,p.batch||'',p.facility,p.event].join('|');
     for(var _i=allRemarks.length-1;_i>=0;_i--){
@@ -5269,6 +5458,9 @@ function openRmkFromEvent(btn){
   document.getElementById('rmk-asn-d').textContent=a.name;
   document.getElementById('rmk-asn-s-d').textContent=a.email+' - included in tomorrow morning report';
   document.getElementById('rmk-txt').value='';
+  populateRmkBucketDropdown();
+  document.getElementById('rmk-bucket').value='';
+  onRmkBucketChange();
   document.getElementById('rmk-modal').classList.add('show');
 }
 
@@ -5298,6 +5490,21 @@ function openRmkModal(ehId,sku,name,batch,fac,bt,ev,cogs,date){
   if(isSystem) document.querySelectorAll('#rmk-tags input[type=checkbox]').forEach(function(cb){if(cb.value==='System Triggered')cb.checked=true;});
   // Pre-fill name from memory
   try{var n=localStorage.getItem('rmk_user_name');if(n)document.getElementById('rmk-user-name').value=n;}catch(e){}
+  // Populate bucket/remark dropdowns — if the existing remark matches a known standard remark,
+  // pre-select its bucket + remark; otherwise leave both blank (free text still works via rmk-txt).
+  populateRmkBucketDropdown();
+  var matchedBucket='';
+  if(existingText){
+    Object.keys(BUCKET_TAXONOMY).forEach(function(b){
+      if(BUCKET_TAXONOMY[b].indexOf(existingText)>=0) matchedBucket=b;
+    });
+  }
+  document.getElementById('rmk-bucket').value=matchedBucket;
+  onRmkBucketChange();
+  if(matchedBucket){
+    document.getElementById('rmk-remark-select').value=existingText;
+    document.getElementById('rmk-txt').value=existingText;
+  }
   document.getElementById('rmk-modal').classList.add('show');
 }
 
