@@ -400,17 +400,21 @@ tbody tr:hover td{background:var(--sf)}
 <div class="modal-bg" id="bulk-modal" onclick="if(event.target===this)closeBulkUpload()">
 <div class="modal" style="max-width:640px;width:92%">
   <div class="modal-t">&#128228; Bulk Upload Remarks</div>
-  <div class="modal-s">Paste EH_ID, Bucket, Remark (tab or comma separated), one row per line. Header row optional.</div>
+  <div class="modal-s">Upload a file or paste EH_ID, Bucket, Remark (tab or comma separated), one row per line. Header row optional.</div>
   <div style="font-size:10px;color:var(--mu);background:var(--sf);border:1px solid var(--br);border-radius:6px;padding:8px 10px;margin:10px 0;line-height:1.6">
     Format: <code>EH_ID&#9;Bucket&#9;Remark</code><br>
     Bucket must match one of: <span id="bulk-bucket-list" style="font-style:italic"></span><br>
-    Leave Bucket blank to save just a free-text remark with no bucket.
+    Leave Bucket blank to save just a free-text remark with no bucket.<br>
+    <strong>Fixed rule:</strong> rows that already have a remark on the sheet are always skipped — this tool never overwrites an existing remark.
   </div>
-  <label>Paste Data <span style="color:#dc2626">*</span></label>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+    <button type="button" class="dl-btn" onclick="downloadBulkUploadTemplate()">&#8681; Download Sample Template</button>
+    <label class="dl-btn" style="cursor:pointer;margin:0" for="bulk-file-input">&#8679; Upload File (.xlsx / .csv)</label>
+    <input type="file" id="bulk-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" style="display:none" onchange="handleBulkFileUpload(event)">
+    <span id="bulk-file-name" style="font-size:10px;color:var(--mu)"></span>
+  </div>
+  <label>Paste Data (or use the file upload above) <span style="color:#dc2626">*</span></label>
   <textarea id="bulk-txt" placeholder="EH_ID&#9;Bucket&#9;Remark&#10;01 Jul 2026|SKU|BATCH|FAC|Event&#9;Return triggered&#9;Bad received - RTO" style="width:100%;min-height:160px;font-family:var(--mono),monospace;font-size:11px;padding:8px 10px;border:1px solid var(--br);border-radius:6px;box-sizing:border-box;resize:vertical" oninput="parseBulkUpload()"></textarea>
-  <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;font-size:11px;font-weight:400">
-    <input type="checkbox" id="bulk-skip-filled" checked style="margin:0"> Skip rows that already have a remark (don't overwrite)
-  </label>
   <div id="bulk-preview" style="font-size:11px;margin-top:10px;padding:8px 10px;border-radius:6px;background:var(--sf);border:1px solid var(--br);display:none"></div>
   <div id="bulk-result" style="font-size:11px;margin-top:8px;padding:8px 10px;border-radius:6px;display:none"></div>
   <div class="modal-btns">
@@ -4088,6 +4092,8 @@ function openBulkUpload(){
   document.getElementById('bulk-preview').style.display='none';
   document.getElementById('bulk-result').style.display='none';
   document.getElementById('bulk-upload-btn').disabled=true;
+  var fileInput=document.getElementById('bulk-file-input'); if(fileInput) fileInput.value='';
+  var fileName=document.getElementById('bulk-file-name'); if(fileName) fileName.textContent='';
   _bulkParsed=[];
   document.getElementById('bulk-modal').classList.add('show');
 }
@@ -4123,6 +4129,78 @@ function parseBulkUpload(){
   preview.style.display='block';
   btn.disabled=rows.length===0;
 }
+
+// Builds and downloads a sample .xlsx template — headers + example rows + valid bucket list.
+// Reuses the same lazy-load pattern as dlReport() for the SheetJS library.
+function downloadBulkUploadTemplate(){
+  if(typeof XLSX === 'undefined'){
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=function(){ downloadBulkUploadTemplate(); };
+    document.head.appendChild(s); return;
+  }
+  var wb=XLSX.utils.book_new();
+  var s1=[
+    ['EH_ID','Bucket','Remark'],
+    ['01 Jul 2026|SKU_CODE|BATCH_CODE|FACILITY|Good to Bad','Return triggered','Bad received - RTO'],
+    ['02 Jul 2026|SKU_CODE|BATCH_CODE|FACILITY|Direct Bad GRN','Warehouse triggered','Short GRN / Short received'],
+    ['03 Jul 2026|SKU_CODE|BATCH_CODE|FACILITY|Good to Bad','','Free-text remark with no bucket is also fine']
+  ];
+  var ws1=XLSX.utils.aoa_to_sheet(s1);
+  ws1['!cols']=[{wch:50},{wch:36},{wch:40}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Template');
+
+  var bucketRows=[['Valid Bucket Names'],['(copy exactly, case-sensitive)'],[]];
+  Object.keys(BUCKET_TAXONOMY).forEach(function(b){
+    bucketRows.push([b]);
+    BUCKET_TAXONOMY[b].forEach(function(r){ bucketRows.push(['   > '+r]); });
+    bucketRows.push([]);
+  });
+  var ws2=XLSX.utils.aoa_to_sheet(bucketRows);
+  ws2['!cols']=[{wch:60}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Valid Buckets');
+
+  XLSX.writeFile(wb,'Bulk_Upload_Template.xlsx');
+}
+
+// Reads an uploaded .xlsx/.csv/.tsv/.txt file into the textarea, then parses it the same
+// way as pasted text — one shared validation path regardless of how the data got in.
+function handleBulkFileUpload(event){
+  var file=event.target.files && event.target.files[0];
+  if(!file) return;
+  document.getElementById('bulk-file-name').textContent=file.name;
+  var isExcel=/\.(xlsx|xls)$/i.test(file.name);
+  if(isExcel){
+    if(typeof XLSX === 'undefined'){
+      var s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=function(){ handleBulkFileUpload(event); };
+      document.head.appendChild(s); return;
+    }
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        var firstSheetName=wb.SheetNames[0];
+        var rows=XLSX.utils.sheet_to_json(wb.Sheets[firstSheetName],{header:1,defval:''});
+        var lines=rows.map(function(r){ return r.map(function(c){return String(c==null?'':c);}).join('\t'); });
+        document.getElementById('bulk-txt').value=lines.join('\n');
+        parseBulkUpload();
+      }catch(err){
+        showToast('Could not read that Excel file: '+err.message,true);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    var reader2=new FileReader();
+    reader2.onload=function(e){
+      document.getElementById('bulk-txt').value=e.target.result;
+      parseBulkUpload();
+    };
+    reader2.readAsText(file);
+  }
+}
+
 function submitBulkUpload(){
   if(!_bulkParsed.length) return;
   var userName=(localStorage.getItem('rmk_user_name')||'').trim();
@@ -4133,7 +4211,8 @@ function submitBulkUpload(){
   }
   var btn=document.getElementById('bulk-upload-btn');
   btn.disabled=true; btn.textContent='Uploading...';
-  var skipIfFilled=document.getElementById('bulk-skip-filled').checked;
+  // Fixed rule — never overwrite an existing remark. Not user-configurable.
+  var skipIfFilled=true;
   var submittedIds=_bulkParsed.map(function(r){return r.ehId;});
   var p={action:'bulkSaveRemarksWithBucket',rows:_bulkParsed,skipIfFilled:skipIfFilled,updatedBy:userName,targetSheet:getRmkTargetSheet?getRmkTargetSheet():'NI_DailyTop5'};
   // This endpoint (like every other POST here) is called with mode:'no-cors' — the Apps
