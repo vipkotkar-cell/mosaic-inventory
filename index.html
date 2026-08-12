@@ -4818,7 +4818,8 @@ function renderRmkTop5(){
   // Top 5 entries (brand-wise) from NI_DailyTop5
   var top5=dailyTop5Data.filter(function(r){
     var d=parseDate(r['Date']);
-    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate();
+    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate()
+      &&(r['Impact Class']||'').trim()==='Financial Loss';
   });
   var html=_rmkKpis(allToday.length, top5, totalCogs||top5.reduce(function(s,r){return s+(parseFloat(r['COGSValue'])||0);},0));
   if(!top5.length){
@@ -4848,7 +4849,8 @@ function renderRmkMonthly(){
   var now=new Date();
   var mtd=dailyTop5Data.filter(function(r){
     var d=parseDate(r['Date']);
-    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
+    return d&&d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()
+      &&(r['Impact Class']||'').trim()==='Financial Loss';
   });
   // Total FL events + COGS from NI_Events (allEventsData), fall back to dailyTop5Data
   var allMtdFL=allEventsData.filter(function(r){
