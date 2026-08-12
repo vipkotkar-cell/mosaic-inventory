@@ -4839,6 +4839,12 @@ function renderRmkMonthly(){
     }).catch(function(){});
     return;
   }
+  if(!window._rmkMonthlyEvFetched){
+    window._rmkMonthlyEvFetched=true;
+    fetchJ(EVENTS_URL+'&curmonth=1&t='+Date.now()).then(function(rows){
+      if(Array.isArray(rows)&&rows.length){ allEventsData=rows; renderRmkMonthly(); }
+    }).catch(function(){});
+  }
   var now=new Date();
   var mtd=dailyTop5Data.filter(function(r){
     var d=parseDate(r['Date']);
